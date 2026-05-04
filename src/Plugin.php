@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm;
 
 use BlobSolutions\WooCommerceVcrAm\Admin\ConnectionTester;
+use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\SettingsPage;
 
@@ -90,9 +91,17 @@ final class Plugin
         );
 
         $keyStore = new KeyStore(self::API_KEY_OPTION);
+        $config = new Configuration($keyStore);
+        $clientFactory = new VcrClientFactory();
+        $cashierCatalog = new CashierCatalog($config, $clientFactory);
 
-        (new SettingsPage($keyStore))->register();
-        (new ConnectionTester($keyStore, $this->pluginFile, $this->version))->register();
+        (new SettingsPage($keyStore, $cashierCatalog))->register();
+        (new ConnectionTester(
+            $keyStore,
+            $clientFactory,
+            $this->pluginFile,
+            $this->version,
+        ))->register();
     }
 
     public function showWooCommerceMissingNotice(): void

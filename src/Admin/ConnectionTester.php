@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Admin;
 
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
+use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrException;
-use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
-use BlobSolutions\WooCommerceVcrAm\Vendor\GuzzleHttp\Client as GuzzleClient;
 use Throwable;
 
 /**
@@ -36,24 +35,9 @@ final class ConnectionTester
 
     private const AJAX_ACTION = 'vcr_test_connection';
 
-    /**
-     * Hard ceiling on a full request round-trip including TLS handshake,
-     * server-side processing, and response transmission. PHP itself caps
-     * scripts at `max_execution_time` (default 30s on most hosts), so
-     * matching that here gives us a deterministic upper bound on the
-     * spinner the admin sees in the UI.
-     */
-    private const HTTP_TIMEOUT_SECONDS = 30;
-
-    /**
-     * TLS/TCP connect must complete in this window — much shorter so we
-     * fail fast on dead endpoints (typo'd base URL, firewall block) without
-     * making the admin wait the full request timeout.
-     */
-    private const HTTP_CONNECT_TIMEOUT_SECONDS = 10;
-
     public function __construct(
         private readonly KeyStore $keyStore,
+        private readonly VcrClientFactory $clientFactory,
         private readonly string $pluginFile,
         private readonly string $version,
     ) {
@@ -100,7 +84,7 @@ final class ConnectionTester
             // server's actual error response wins the race against the
             // client's AbortController, otherwise admins always see a
             // generic "timed out" instead of the real error message.
-            'timeoutMs' => (self::HTTP_TIMEOUT_SECONDS + 5) * 1000,
+            'timeoutMs' => (VcrClientFactory::DEFAULT_TIMEOUT_SECONDS + 5) * 1000,
             'i18n' => [
                 'testButton' => __('Test connection', 'vcr'),
                 'testing' => __('Testing…', 'vcr'),
@@ -143,16 +127,10 @@ final class ConnectionTester
             ? trim(esc_url_raw(wp_unslash($_POST['base_url'])))
             : '';
 
-        $guzzle = new GuzzleClient([
-            'timeout' => self::HTTP_TIMEOUT_SECONDS,
-            'connect_timeout' => self::HTTP_CONNECT_TIMEOUT_SECONDS,
-        ]);
-
         try {
-            $client = new VcrClient(
+            $client = $this->clientFactory->create(
                 apiKey: $apiKey,
-                baseUrl: $baseUrl !== '' ? $baseUrl : VcrClient::DEFAULT_BASE_URL,
-                httpClient: $guzzle,
+                baseUrl: $baseUrl !== '' ? $baseUrl : null,
             );
 
             $cashiers = $client->listCashiers();

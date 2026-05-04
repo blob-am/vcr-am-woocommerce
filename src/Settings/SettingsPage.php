@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Settings;
 
+use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
+
 /**
  * Top-level registration entry for the plugin's settings tab.
  *
@@ -16,6 +18,7 @@ final class SettingsPage
 {
     public function __construct(
         private readonly KeyStore $keyStore,
+        private readonly CashierCatalog $cashierCatalog,
     ) {
     }
 
@@ -30,7 +33,7 @@ final class SettingsPage
      */
     public function addTab(array $pages): array
     {
-        $pages[] = new VcrSettingsTab($this->keyStore);
+        $pages[] = new VcrSettingsTab($this->keyStore, $this->cashierCatalog);
 
         return $pages;
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use BlobSolutions\WooCommerceVcrAm\Admin\ConnectionTester;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
+use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
 
@@ -17,7 +18,12 @@ it('registers the AJAX action and admin_enqueue_scripts hooks', function (): voi
     Actions\expectAdded('admin_enqueue_scripts')->once();
 
     $keyStore = new KeyStore('vcr_test_keystore_option');
-    (new ConnectionTester($keyStore, '/tmp/plugin.php', '0.1.0'))->register();
+    (new ConnectionTester(
+        $keyStore,
+        new VcrClientFactory(),
+        '/tmp/plugin.php',
+        '0.1.0',
+    ))->register();
 });
 
 // Exercising `handle()` would require a fully-mocked PSR-18 client that the
