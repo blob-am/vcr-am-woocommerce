@@ -12,6 +12,7 @@
     },
     "exclude": [
         "vendor",
-        "vendor-prefixed"
+        "vendor-prefixed",
+        "tests/E2E/scripts"
     ]
 }

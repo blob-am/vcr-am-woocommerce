@@ -43,3 +43,11 @@ Thumbs.db
 /playground/
 /wp-env.json
 .wp-env.override.json
+
+# Playwright
+/playwright-report/
+/test-results/
+/playwright/.cache/
+
+# E2E artefacts
+/.wp-env/

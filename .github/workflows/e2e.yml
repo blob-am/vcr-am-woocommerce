@@ -1,0 +1,121 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright (PHP ${{ matrix.php }} · WP ${{ matrix.wp }} · WC ${{ matrix.wc }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Start narrow. Once stable, broaden the matrix per
+        # `WP/WC version policy` in the README.
+        php: ['8.3']
+        wp: ['latest']
+        wc: ['latest']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Composer cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-${{ matrix.php }}-
+
+      - name: Install Composer deps (also runs Strauss → vendor-prefixed/)
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npm run test:e2e:install
+
+      - name: Override .wp-env.json with matrix versions
+        # Only patch when the matrix selects a non-default version, to
+        # avoid touching the file in the latest×latest case (the
+        # checked-in .wp-env.json already targets latest).
+        if: matrix.wp != 'latest' || matrix.wc != 'latest'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const c = JSON.parse(fs.readFileSync('.wp-env.json', 'utf8'));
+            const wp = '${{ matrix.wp }}';
+            const wc = '${{ matrix.wc }}';
+            if (wp !== 'latest') {
+              c.core = 'WordPress/WordPress#' + wp;
+            }
+            if (wc !== 'latest') {
+              c.plugins = c.plugins.map((p) =>
+                p.includes('woocommerce') ? 'https://downloads.wordpress.org/plugin/woocommerce.' + wc + '.zip' : p
+              );
+            }
+            fs.writeFileSync('.wp-env.override.json', JSON.stringify(c, null, 2));
+          "
+
+      - name: Start wp-env
+        run: npm run env:start
+
+      - name: Wait for wp-env to settle
+        # wp-env's own readiness signal isn't exposed; poll until
+        # WC's REST is responsive.
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://localhost:8888/wp-json/wc/v3 -o /dev/null; then
+              echo "WC REST responding"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "WC REST never responded"
+          npx wp-env logs all
+          exit 1
+
+      - name: Run Playwright tests
+        run: npm run test:e2e
+
+      - name: Capture wp-env logs on failure
+        if: failure()
+        run: npx wp-env logs all || true
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-php${{ matrix.php }}-wp${{ matrix.wp }}-wc${{ matrix.wc }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+      - name: Stop wp-env
+        if: always()
+        run: npm run env:stop || true

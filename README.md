@@ -73,6 +73,42 @@ composer format:check   # verify code style without writing
 composer strauss        # re-run Strauss (auto-runs after install/update)
 ```
 
+### End-to-end tests (Phase 4 lite)
+
+The repo ships an E2E suite that runs the full plugin against a real WordPress + WooCommerce stack via `wp-env`, with a tiny in-process mock VCR API server. No production VCR endpoint is touched.
+
+Requirements: Node 20+, Docker.
+
+```bash
+npm install                    # one-off: pulls @wordpress/env + @playwright/test
+npm run test:e2e:install       # one-off: downloads chromium for Playwright
+
+npm run env:start              # boot WP + WC + this plugin in Docker (~30s)
+npm run test:e2e               # run the suite (mock VCR auto-starts via webServer)
+npm run env:stop               # tear down
+```
+
+Layout:
+
+| Path | What |
+| --- | --- |
+| `.wp-env.json` | wp-env config — pins PHP 8.3, mounts plugin + WC, loads bootstrap mu-plugin |
+| `tests/E2E/wp-bootstrap.php` | mu-plugin loaded inside WP — pre-configures the plugin to point at the mock VCR |
+| `tests/E2E/mock-vcr-server.mjs` | Node HTTP server on `:9876` answering `/api/v1/cashiers`, `/api/v1/sales`. Programmable per test via `/__test/plan` |
+| `tests/E2E/helpers/wp-cli.mjs` | `wp ...` runner — driving WP/WC state from Node without browser navigation |
+| `tests/E2E/helpers/mock-vcr.mjs` | Test-side client for `/__test/log` (assertions) and `/__test/plan` (scenario programming) |
+| `tests/E2E/*.spec.mjs` | Playwright test specs |
+
+#### WP/WC version policy
+
+CI matrix today is `php 8.3 × WP latest × WC latest` — one combo, sequential. Once the suite proves stable on `main` for a couple of weeks, broaden to:
+
+- PHP: 8.3, 8.4
+- WP: 6.6, 6.7, latest
+- WC: 9.4, latest, beta
+
+Matrix combos cost ~2 min each in parallel. The narrow start lets us iterate on flake without burning CI minutes; expand by editing the `matrix:` block in `.github/workflows/e2e.yml`.
+
 ## Architecture principles
 
 This plugin follows the same conventions as the rest of the VCR.AM ecosystem:
