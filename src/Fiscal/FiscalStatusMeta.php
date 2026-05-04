@@ -190,6 +190,31 @@ class FiscalStatusMeta
     }
 
     /**
+     * Wipe the terminal-state markers so the next call to
+     * {@see \BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue::enqueue()}
+     * treats the order as fresh and schedules a new attempt.
+     *
+     * Used by the admin "Fiscalize now" button (Phase 3c) after a Failed
+     * or ManualRequired outcome — the admin has presumably fixed
+     * whatever was broken (missing SKU, bad config, transient SRC
+     * outage) and wants another go.
+     *
+     * Preserves the external id (audit trail and future server-side
+     * idempotency) but clears all attempt counters and last-error so
+     * the next run starts from a clean slate. Success identifiers
+     * (urlId / crn / fiscal) are also untouched here — they would
+     * already be empty for any non-Success state, and the caller is
+     * expected to gate this method on terminal failure status only.
+     */
+    public function resetForRetry(WC_Order $order): void
+    {
+        $order->delete_meta_data(self::META_STATUS);
+        $order->update_meta_data(self::META_ATTEMPT_COUNT, '0');
+        $order->update_meta_data(self::META_LAST_ERROR, '');
+        $order->save();
+    }
+
+    /**
      * Build the deterministic external id for a given WC order. Centralised
      * so the same value is used everywhere we'd want to identify the sale
      * from the outside (logs, future SRC idempotency, support tickets).

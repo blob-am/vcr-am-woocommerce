@@ -139,3 +139,14 @@ it('markManualRequired flips status and stores the operator-readable reason', fu
 
     $this->meta->markManualRequired($order, 'no SKU on product 5');
 });
+
+it('resetForRetry deletes the status meta and zeroes the attempt counters', function (): void {
+    $order = Mockery::mock(WC_Order::class);
+
+    $order->expects('delete_meta_data')->with(FiscalStatusMeta::META_STATUS);
+    $order->expects('update_meta_data')->with(FiscalStatusMeta::META_ATTEMPT_COUNT, '0');
+    $order->expects('update_meta_data')->with(FiscalStatusMeta::META_LAST_ERROR, '');
+    $order->expects('save')->once();
+
+    $this->meta->resetForRetry($order);
+});

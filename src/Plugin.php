@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm;
 
 use BlobSolutions\WooCommerceVcrAm\Admin\ConnectionTester;
+use BlobSolutions\WooCommerceVcrAm\Admin\FiscalizeNowHandler;
+use BlobSolutions\WooCommerceVcrAm\Admin\OrderMetaBox;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJob;
@@ -125,6 +127,8 @@ final class Plugin
         $queue->register();
 
         (new OrderListener($queue))->register();
+        (new OrderMetaBox($meta))->register();
+        (new FiscalizeNowHandler($meta, $queue))->register();
     }
 
     public function showWooCommerceMissingNotice(): void

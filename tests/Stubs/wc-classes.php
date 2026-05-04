@@ -175,6 +175,22 @@ if (! class_exists('WC_Order_Refund', false)) {
     }
 }
 
+if (! class_exists('WP_Post', false)) {
+    /**
+     * Bare-bones stub of the WP_Post class. Used by OrderMetaBox tests
+     * to exercise the legacy (non-HPOS) order edit screen path where
+     * the meta box callback receives a WP_Post instead of a WC_Order.
+     */
+    class WP_Post
+    {
+        public function __construct(
+            public int $ID = 0,
+            public string $post_type = 'shop_order',
+        ) {
+        }
+    }
+}
+
 if (! class_exists('WC_Settings_Page', false)) {
     /**
      * Bare-bones stub of WC's settings-page base class. Real WC fires a
