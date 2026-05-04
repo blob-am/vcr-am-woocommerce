@@ -1,0 +1,98 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BlobSolutions\WooCommerceVcrAm\Settings;
+
+use RuntimeException;
+
+/**
+ * Encrypted-at-rest storage for sensitive configuration (currently the
+ * VCR.AM API key).
+ *
+ * Uses libsodium's authenticated encryption (`crypto_secretbox`). The
+ * encryption key is derived from `wp_salt('auth')` so:
+ *
+ *   - Each WordPress install has its own unique key with no extra
+ *     ceremony (the salt already exists in `wp-config.php`).
+ *   - A database dump without `wp-config.php` cannot be decrypted.
+ *   - Rotating `auth` salts invalidates stored ciphertext, forcing the
+ *     admin to re-enter the API key — the desirable behaviour after a
+ *     salt rotation, not a bug.
+ *
+ * Storage format: base64( nonce(24) || ciphertext ).
+ *
+ * Decryption failures (corrupt data, tampered ciphertext, salt rotation)
+ * return null rather than throwing — the caller surfaces a "please
+ * re-enter your API key" admin notice. Exceptions are reserved for
+ * environment misconfiguration that the user can't recover from at
+ * runtime (libsodium missing).
+ */
+final class KeyStore
+{
+    public function __construct(
+        private readonly string $optionName,
+    ) {
+        if (! function_exists('sodium_crypto_secretbox')) {
+            throw new RuntimeException(
+                'libsodium (ext-sodium) is required for VCR encrypted credential storage. '
+                . 'It ships with PHP 7.2+ and is enabled by default; check your PHP build.',
+            );
+        }
+    }
+
+    public function put(string $plaintext): void
+    {
+        $key = $this->deriveKey();
+        $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        $ciphertext = sodium_crypto_secretbox($plaintext, $nonce, $key);
+        $encoded = base64_encode($nonce . $ciphertext);
+
+        // autoload=false: the API key is read only on first use after request
+        // boot, not on every page load. Keeps `wp_options` autoload payload lean.
+        update_option($this->optionName, $encoded, false);
+
+        sodium_memzero($key);
+    }
+
+    public function get(): ?string
+    {
+        $encoded = get_option($this->optionName, null);
+        if (! is_string($encoded) || $encoded === '') {
+            return null;
+        }
+
+        $raw = base64_decode($encoded, true);
+        $minLength = SODIUM_CRYPTO_SECRETBOX_NONCEBYTES + SODIUM_CRYPTO_SECRETBOX_MACBYTES;
+        if ($raw === false || strlen($raw) < $minLength) {
+            return null;
+        }
+
+        $nonce = substr($raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        $ciphertext = substr($raw, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+
+        $key = $this->deriveKey();
+        $plaintext = sodium_crypto_secretbox_open($ciphertext, $nonce, $key);
+        sodium_memzero($key);
+
+        return $plaintext === false ? null : $plaintext;
+    }
+
+    public function isSet(): bool
+    {
+        return $this->get() !== null;
+    }
+
+    public function forget(): void
+    {
+        delete_option($this->optionName);
+    }
+
+    private function deriveKey(): string
+    {
+        // SHA-256 of the auth salt — gives us a deterministic 32-byte key
+        // (`SODIUM_CRYPTO_SECRETBOX_KEYBYTES`) without depending on the
+        // salt's raw length.
+        return hash('sha256', wp_salt('auth'), true);
+    }
+}

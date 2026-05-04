@@ -5,29 +5,33 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Settings;
 
 /**
- * Admin settings surface — lives under WooCommerce → Settings → VCR.
+ * Top-level registration entry for the plugin's settings tab.
  *
- * Phase 1 scaffold: registers the menu entry and a placeholder render
- * callback. Real fields (API key, base URL, test mode, per-payment-method
- * fiscalization triggers) land in Phase 2 alongside the actual fiscal
- * flow they configure.
+ * Lives in WooCommerce → Settings → VCR. The actual tab class
+ * (`VcrSettingsTab`) extends `WC_Settings_Page` and is constructed lazily
+ * inside `addTab()` so this class stays instantiable in unit tests
+ * without WooCommerce loaded.
  */
 final class SettingsPage
 {
+    public function __construct(
+        private readonly KeyStore $keyStore,
+    ) {
+    }
+
     public function register(): void
     {
-        add_filter('woocommerce_get_settings_pages', [$this, 'addSettingsPage']);
+        add_filter('woocommerce_get_settings_pages', [$this, 'addTab']);
     }
 
     /**
-     * @param  array<int, mixed> $pages
+     * @param  array<int, mixed>  $pages
      * @return array<int, mixed>
      */
-    public function addSettingsPage(array $pages): array
+    public function addTab(array $pages): array
     {
-        // Wired in Phase 2 — returning the array unchanged for now keeps
-        // the filter registration side-effect-free until the real settings
-        // class exists.
+        $pages[] = new VcrSettingsTab($this->keyStore);
+
         return $pages;
     }
 }

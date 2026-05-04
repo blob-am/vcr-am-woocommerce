@@ -36,6 +36,7 @@
     "require": {
         "php": "^8.3",
         "ext-json": "*",
+        "ext-sodium": "*",
         "blob-solutions/vcr-am-sdk": "^0.3.0",
         "guzzlehttp/guzzle": "^7.8"
     },
@@ -81,7 +82,25 @@
             "classmap_prefix": "BlobSolutions_WooCommerceVcrAm_Vendor_",
             "constant_prefix": "BLOB_VCRAM_WC_",
             "delete_vendor_packages": true,
+            "exclude_from_copy": {
+                "packages": [
+                    "psr/http-client",
+                    "psr/http-factory",
+                    "psr/http-message",
+                    "psr/log",
+                    "psr/container",
+                    "psr/simple-cache"
+                ]
+            },
             "exclude_from_prefix": {
+                "packages": [
+                    "psr/http-client",
+                    "psr/http-factory",
+                    "psr/http-message",
+                    "psr/log",
+                    "psr/container",
+                    "psr/simple-cache"
+                ],
                 "namespaces": [
                     "Psr\\"
                 ]
