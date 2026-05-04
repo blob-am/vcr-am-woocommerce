@@ -92,3 +92,33 @@ it('isFullyConfigured requires apiKey AND cashier AND department', function (): 
     ]);
     expect((new Configuration(new KeyStore('vcr_x')))->isFullyConfigured())->toBeFalse();
 });
+
+it('shippingSku returns null when option is unset', function (): void {
+    withOptionMap([]);
+
+    expect((new Configuration(new KeyStore('vcr_x')))->shippingSku())->toBeNull();
+});
+
+it('shippingSku returns null when option is whitespace', function (): void {
+    withOptionMap([Configuration::OPT_SHIPPING_SKU => '   ']);
+
+    expect((new Configuration(new KeyStore('vcr_x')))->shippingSku())->toBeNull();
+});
+
+it('shippingSku returns the trimmed value when set', function (): void {
+    withOptionMap([Configuration::OPT_SHIPPING_SKU => '  ship-001  ']);
+
+    expect((new Configuration(new KeyStore('vcr_x')))->shippingSku())->toBe('ship-001');
+});
+
+it('feeSku returns null when option is unset', function (): void {
+    withOptionMap([]);
+
+    expect((new Configuration(new KeyStore('vcr_x')))->feeSku())->toBeNull();
+});
+
+it('feeSku returns the trimmed value when set', function (): void {
+    withOptionMap([Configuration::OPT_FEE_SKU => 'srv-fee']);
+
+    expect((new Configuration(new KeyStore('vcr_x')))->feeSku())->toBe('srv-fee');
+});

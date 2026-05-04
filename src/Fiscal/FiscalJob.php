@@ -152,7 +152,12 @@ class FiscalJob
         assert($departmentId !== null);
 
         $department = new Department($departmentId);
-        $items = $this->itemBuilder->build($order, $department);
+        $items = $this->itemBuilder->build(
+            $order,
+            $department,
+            shippingSku: $this->configuration->shippingSku(),
+            feeSku: $this->configuration->feeSku(),
+        );
         $amount = $this->paymentMapper->map($order);
 
         return new RegisterSaleInput(

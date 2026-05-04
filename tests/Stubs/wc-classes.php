@@ -139,6 +139,21 @@ if (! class_exists('WC_Order_Item_Product', false)) {
     }
 }
 
+if (! class_exists('WC_Order_Item_Fee', false)) {
+    class WC_Order_Item_Fee extends WC_Order_Item
+    {
+        public function get_total(string $context = 'view'): string
+        {
+            return '0';
+        }
+
+        public function get_total_tax(string $context = 'view'): string
+        {
+            return '0';
+        }
+    }
+}
+
 if (! class_exists('WC_Product', false)) {
     class WC_Product extends WC_Data
     {

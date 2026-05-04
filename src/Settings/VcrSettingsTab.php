@@ -11,8 +11,9 @@ use WC_Settings_Page;
 /**
  * The "VCR" tab inside WooCommerce → Settings.
  *
- * Renders five fields:
+ * Renders seven fields across two sections:
  *
+ * Connection:
  *   - **API Key** — sensitive; intercepted on save and routed to KeyStore
  *     for at-rest encryption. The stored `wp_options` row stays empty so
  *     the value never leaks back into the form on subsequent renders.
@@ -23,6 +24,13 @@ use WC_Settings_Page;
  *   - **Default department ID** — numeric input. The SDK does not yet
  *     expose `listDepartments`, so the admin enters the integer id from
  *     the VCR dashboard manually until that endpoint is published.
+ *
+ * Order line synthesis (optional — only needed for stores using WC's
+ * built-in shipping or fee features):
+ *   - **Shipping SKU** — references a pre-onboarded "shipping" offer in
+ *     the VCR catalog. Without it, every order with shipping > 0 is
+ *     blocked at fiscalisation time (ManualRequired).
+ *   - **Fee SKU** — same idea for `WC_Order_Item_Fee` lines.
  *
  * Loaded only when WooCommerce is active (gated by
  * `Plugin::onPluginsLoaded`), so it's safe to extend `WC_Settings_Page`
@@ -119,6 +127,41 @@ final class VcrSettingsTab extends WC_Settings_Page
             [
                 'type' => 'sectionend',
                 'id' => 'vcr_section',
+            ],
+            [
+                'name' => __('Order line synthesis', 'vcr'),
+                'type' => 'title',
+                'desc' => __(
+                    'WooCommerce ships shipping and fees as separate order items. The fiscal receipt needs every line to reference a catalog offer with its own classifier code, so the plugin synthesises a SaleItem against an SKU you onboard once in the VCR dashboard. Without these SKUs configured, any order with shipping or fees is blocked from fiscalisation.',
+                    'vcr',
+                ),
+                'id' => 'vcr_synthesis_section',
+            ],
+            [
+                'name' => __('Shipping SKU', 'vcr'),
+                'type' => 'text',
+                'id' => Configuration::OPT_SHIPPING_SKU,
+                'desc_tip' => __(
+                    'External id (SKU) of a pre-onboarded "Shipping" offer in your VCR catalog. The plugin references this offer for every shipping line item; you control its classifier code, unit, and tax treatment in VCR proper.',
+                    'vcr',
+                ),
+                'default' => '',
+                'placeholder' => 'shipping',
+            ],
+            [
+                'name' => __('Fee SKU', 'vcr'),
+                'type' => 'text',
+                'id' => Configuration::OPT_FEE_SKU,
+                'desc_tip' => __(
+                    'External id (SKU) of a pre-onboarded "Fee" offer in your VCR catalog. Used for every WooCommerce fee line (handling charges, surcharges, etc.).',
+                    'vcr',
+                ),
+                'default' => '',
+                'placeholder' => 'service-fee',
+            ],
+            [
+                'type' => 'sectionend',
+                'id' => 'vcr_synthesis_section',
             ],
         ];
     }

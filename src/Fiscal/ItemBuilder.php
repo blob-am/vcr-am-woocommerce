@@ -10,6 +10,7 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Offer;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\SaleItem;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Unit;
 use WC_Order;
+use WC_Order_Item_Fee;
 use WC_Order_Item_Product;
 use WC_Product;
 
@@ -59,36 +60,52 @@ class ItemBuilder
     private const DECIMAL_PRECISION = 8;
 
     /**
+     * Build the SDK SaleItem list for an order.
+     *
+     * Shipping and fees are synthesised as `Offer::existing(externalId)`
+     * lines when the corresponding admin-configured SKU is provided.
+     * Without the SKU, the order is rejected loudly: silently dropping
+     * either category would produce a fiscal receipt whose items don't
+     * sum to the payment amount, which is both a customer-visible bug
+     * and a compliance risk.
+     *
+     * Why SKUs and not classifier codes here: the catalog onboarding
+     * (classifier code, unit, type, multilingual title) lives in VCR
+     * proper, not in this plugin. Admins create one "Shipping" offer
+     * and one "Service fee" offer in the VCR dashboard, then drop their
+     * SKUs into Settings → VCR. The plugin then references those offers
+     * by SKU on every receipt — no compliance call inside plugin code.
+     *
+     * @param  ?string $shippingSku The configured shipping offer SKU,
+     *                              or null to fail loudly when the
+     *                              order has shipping charges.
+     * @param  ?string $feeSku      Same contract for fee items.
      * @return list<SaleItem>
      *
      * @throws FiscalBuildException
      */
-    public function build(WC_Order $order, Department $department): array
-    {
-        // Shipping and fees can't currently be turned into SaleItems
-        // because the SDK requires every Offer to carry an external
-        // catalog reference (existing SKU or new-offer with classifier
-        // code, type, unit). Stores would need to onboard "shipping"
-        // and "fee" pseudo-products in the VCR catalog, which is a
-        // workflow we haven't built yet (Phase 3c+).
-        //
-        // Silently dropping these would produce a fiscal receipt whose
-        // item total doesn't match the payment amount — the buyer paid
-        // for shipping but the receipt only itemises products. That's
-        // both a UX bug (customer confusion) and a compliance risk
-        // (SRC may reject mismatched receipts). Fail loudly instead so
-        // the admin sees the gap and either disables shipping/fees on
-        // affected orders or waits for the next phase.
+    public function build(
+        WC_Order $order,
+        Department $department,
+        ?string $shippingSku = null,
+        ?string $feeSku = null,
+    ): array {
+        // Fast-fail on missing SKU configuration BEFORE iterating
+        // products. Catches the misconfiguration at the cheapest
+        // possible point and saves the admin a confusing two-line
+        // error trace.
         $shippingTotal = (float) $order->get_shipping_total() + (float) $order->get_shipping_tax();
-        if ($shippingTotal > 0.0) {
+        $feeItems = $order->get_items('fee');
+
+        if ($shippingTotal > 0.0 && $shippingSku === null) {
             throw new FiscalBuildException(
-                'Order has shipping charges, which the VCR plugin cannot yet itemise on a fiscal receipt. Disable shipping for this order, or wait for the next plugin release.',
+                'Order has shipping charges but no shipping SKU is configured. Open WooCommerce → Settings → VCR and set "Shipping SKU" to a pre-onboarded offer in your VCR catalog.',
             );
         }
 
-        if ($this->orderHasFees($order)) {
+        if ($feeItems !== [] && $feeSku === null) {
             throw new FiscalBuildException(
-                'Order has fees (handling, surcharge, etc.), which the VCR plugin cannot yet itemise on a fiscal receipt. Remove the fee or wait for the next plugin release.',
+                'Order has fee lines (handling, surcharge, etc.) but no fee SKU is configured. Open WooCommerce → Settings → VCR and set "Fee SKU" to a pre-onboarded offer in your VCR catalog.',
             );
         }
 
@@ -96,14 +113,51 @@ class ItemBuilder
 
         foreach ($order->get_items() as $item) {
             if (! $item instanceof WC_Order_Item_Product) {
-                // After the shipping/fee guards above, the only remaining
-                // non-product items are taxes (carried separately by WC
-                // and reflected via per-line `get_total_tax()` inside the
-                // VAT-inclusive unit price). Skip them silently.
+                // Taxes etc. are skipped — taxes are carried via the
+                // per-line VAT-inclusive price; refunds run through a
+                // separate SDK call entirely.
                 continue;
             }
 
             $built[] = $this->buildOne($item, $department);
+        }
+
+        if ($shippingTotal > 0.0) {
+            assert($shippingSku !== null);
+            $built[] = new SaleItem(
+                offer: Offer::existing($shippingSku),
+                department: $department,
+                quantity: '1',
+                price: $this->formatDecimal($shippingTotal),
+                // `Other` is the SDK's catch-all unit; the catalog
+                // entry's defaultMeasureUnit is what actually renders
+                // on the receipt.
+                unit: Unit::Other,
+            );
+        }
+
+        foreach ($feeItems as $fee) {
+            if (! $fee instanceof WC_Order_Item_Fee) {
+                continue;
+            }
+
+            $amount = (float) $fee->get_total() + (float) $fee->get_total_tax();
+
+            if ($amount <= 0.0) {
+                // Negative fees (discount-style adjustments) and zero
+                // fees are skipped — discounts belong on the product
+                // line, not as a separate SaleItem.
+                continue;
+            }
+
+            assert($feeSku !== null);
+            $built[] = new SaleItem(
+                offer: Offer::existing($feeSku),
+                department: $department,
+                quantity: '1',
+                price: $this->formatDecimal($amount),
+                unit: Unit::Other,
+            );
         }
 
         if ($built === []) {
@@ -113,17 +167,6 @@ class ItemBuilder
         }
 
         return $built;
-    }
-
-    /**
-     * Detects WC_Order_Item_Fee lines without referencing the class
-     * symbol (which would force a stub for unit tests that don't
-     * exercise the fee path). `get_items('fee')` returns only fee
-     * lines on a real WC_Order, or empty for our stub.
-     */
-    private function orderHasFees(WC_Order $order): bool
-    {
-        return $order->get_items('fee') !== [];
     }
 
     private function buildOne(WC_Order_Item_Product $item, Department $department): SaleItem

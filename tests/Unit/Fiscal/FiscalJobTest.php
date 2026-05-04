@@ -111,6 +111,8 @@ function primeBuildable(): void
     $config->allows('apiKey')->andReturn('test-key');
     $config->allows('defaultCashierId')->andReturn(5);
     $config->allows('defaultDepartmentId')->andReturn(7);
+    $config->allows('shippingSku')->andReturn(null);
+    $config->allows('feeSku')->andReturn(null);
 
     /** @var \Mockery\MockInterface $itemBuilder */
     $itemBuilder = test()->itemBuilder;
@@ -195,9 +197,11 @@ it('flips to ManualRequired when ItemBuilder rejects the order', function (): vo
     $this->config->allows('apiKey')->andReturn('k');
     $this->config->allows('defaultCashierId')->andReturn(5);
     $this->config->allows('defaultDepartmentId')->andReturn(7);
+    $this->config->allows('shippingSku')->andReturn(null);
+    $this->config->allows('feeSku')->andReturn(null);
 
     $this->itemBuilder->expects('build')
-        ->with($order, Mockery::type(Department::class))
+        ->with($order, Mockery::type(Department::class), null, null)
         ->andThrow(new FiscalBuildException('No SKU on product Foo'));
 
     $this->meta->expects('markManualRequired')->with($order, Mockery::pattern('/No SKU/'));

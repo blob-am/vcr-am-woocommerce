@@ -34,6 +34,10 @@ class Configuration
 
     public const OPT_DEFAULT_DEPARTMENT_ID = 'vcr_default_department_id';
 
+    public const OPT_SHIPPING_SKU = 'vcr_shipping_sku';
+
+    public const OPT_FEE_SKU = 'vcr_fee_sku';
+
     public function __construct(
         private readonly KeyStore $keyStore,
     ) {
@@ -95,9 +99,50 @@ class Configuration
         return $value > 0 ? $value : null;
     }
 
+    /**
+     * SKU of the offer (pre-onboarded in the VCR catalog with its own
+     * classifier code, type, and unit) that the plugin should reference
+     * for shipping line items synthesised from `WC_Order::get_shipping_total()`.
+     *
+     * `null` when unset → {@see Fiscal\ItemBuilder} fails loudly on any
+     * order with shipping > 0, routing the order to ManualRequired with
+     * a clear admin message. The plugin deliberately does NOT pick a
+     * classifier code on the admin's behalf — that's a compliance call
+     * that belongs in the catalog onboarding flow inside VCR proper,
+     * not buried in plugin code.
+     */
+    public function shippingSku(): ?string
+    {
+        return $this->nonEmptyStringOption(self::OPT_SHIPPING_SKU);
+    }
+
+    /**
+     * Same contract as {@see self::shippingSku()} but for `WC_Order_Item_Fee`
+     * lines (handling charges, surcharges, etc.). All fee lines on a
+     * single order share this SKU; per-fee SKU mapping is a future
+     * elaboration if real stores need it.
+     */
+    public function feeSku(): ?string
+    {
+        return $this->nonEmptyStringOption(self::OPT_FEE_SKU);
+    }
+
     public function hasCredentials(): bool
     {
         return $this->apiKey() !== null;
+    }
+
+    private function nonEmptyStringOption(string $key): ?string
+    {
+        $stored = get_option($key, '');
+
+        if (! is_string($stored)) {
+            return null;
+        }
+
+        $trimmed = trim($stored);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 
     public function isFullyConfigured(): bool

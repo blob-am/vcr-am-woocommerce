@@ -32,6 +32,10 @@ $options = [
     'vcr_api_key',
     'vcr_base_url',
     'vcr_test_mode',
+    'vcr_default_cashier_id',
+    'vcr_default_department_id',
+    'vcr_shipping_sku',
+    'vcr_fee_sku',
 ];
 
 foreach ($options as $option) {
