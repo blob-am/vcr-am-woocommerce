@@ -35,14 +35,19 @@
     ],
     "require": {
         "php": "^8.3",
-        "ext-json": "*"
+        "ext-json": "*",
+        "blob-solutions/vcr-am-sdk": "^0.3.0",
+        "guzzlehttp/guzzle": "^7.8"
     },
     "require-dev": {
+        "bamarni/composer-bin-plugin": "^1.8",
         "brain/monkey": "^2.6",
         "laravel/pint": "^1.29",
         "pestphp/pest": "^4.0",
+        "php-stubs/woocommerce-stubs": "^10.0",
         "phpstan/phpstan": "^2.1",
-        "phpstan/phpstan-strict-rules": "^2.0"
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "szepeviktor/phpstan-wordpress": "^2.0"
     },
     "autoload": {
         "psr-4": {
@@ -60,11 +65,40 @@
             "php": "8.3.0"
         },
         "allow-plugins": {
+            "bamarni/composer-bin-plugin": true,
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
         }
     },
+    "extra": {
+        "bamarni-bin": {
+            "bin-links": false,
+            "forward-command": false
+        },
+        "strauss": {
+            "target_directory": "vendor-prefixed",
+            "namespace_prefix": "BlobSolutions\\WooCommerceVcrAm\\Vendor\\",
+            "classmap_prefix": "BlobSolutions_WooCommerceVcrAm_Vendor_",
+            "constant_prefix": "BLOB_VCRAM_WC_",
+            "delete_vendor_packages": true,
+            "exclude_from_prefix": {
+                "namespaces": [
+                    "Psr\\"
+                ]
+            }
+        }
+    },
     "scripts": {
+        "post-install-cmd": [
+            "@bin-install",
+            "@strauss"
+        ],
+        "post-update-cmd": [
+            "@bin-install",
+            "@strauss"
+        ],
+        "bin-install": "@composer bin strauss install --ansi --no-interaction",
+        "strauss": "@php bin/strauss",
         "test": "pest --colors=always",
         "phpstan": "phpstan analyse --no-progress --memory-limit=1G",
         "format": "pint",
@@ -76,8 +110,10 @@
         ]
     },
     "scripts-descriptions": {
+        "bin-install": "Install Strauss into its isolated composer-bin context (vendor-bin/strauss/vendor/) so its transitive deps don't conflict with the main composer environment (Pest 4 / php-parser 5.x)",
+        "strauss": "Run Strauss to scope production dependencies into vendor-prefixed/, namespacing them under BlobSolutions\\WooCommerceVcrAm\\Vendor\\ to prevent conflicts with other plugins bundling the same libs",
         "test": "Run Pest test suite",
-        "phpstan": "Run static analysis at level max + strict rules",
+        "phpstan": "Run static analysis at level max + strict rules with WordPress / WooCommerce stubs",
         "format": "Apply Pint code style fixes",
         "format:check": "Verify code style without writing changes",
         "check": "Run the full local CI pipeline (format + phpstan + test)"

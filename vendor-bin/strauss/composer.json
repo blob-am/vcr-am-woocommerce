@@ -1,0 +1,15 @@
+{
+    "name": "blob-solutions/woocommerce-vcr-am-strauss-bin",
+    "description": "Isolated composer-bin context for brianhenryie/strauss. Strauss's transitive deps (voku/simple-cache → psr/simple-cache 1|2) conflict with Pest 4's mutate plugin (psr/simple-cache 3) when installed in the main require-dev. Keeping Strauss here lets us scope production deps for WP.org distribution without dragging that conflict into the main composer environment.",
+    "type": "project",
+    "require": {
+        "php": "^8.3",
+        "brianhenryie/strauss": "^0.27"
+    },
+    "config": {
+        "sort-packages": true,
+        "platform": {
+            "php": "8.3.0"
+        }
+    }
+}

@@ -1,6 +1,8 @@
 # Dependencies (committed lock, ignored install dirs)
 /vendor/
 /vendor-prefixed/
+/vendor-bin/*/vendor/
+/vendor-bin/*/composer.lock
 /node_modules/
 
 # Composer

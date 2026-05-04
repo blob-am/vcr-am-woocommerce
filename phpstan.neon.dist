@@ -6,24 +6,11 @@ parameters:
         analyseAndScan:
             - vendor
             - vendor-prefixed (?)
+            - vendor-bin
             - tests
     treatPhpDocTypesAsCertain: false
-    reportUnmatchedIgnoredErrors: false
-    # WordPress / WooCommerce functions and classes are not autoloadable from
-    # plain PHP — without an integration like szepeviktor/phpstan-wordpress we
-    # would get hundreds of "unknown function" errors. Until we wire that in
-    # (Phase 2 alongside real WC integration code), instruct PHPStan to ignore
-    # references to global WP/WC symbols.
-    ignoreErrors:
-        - identifier: function.notFound
-        - identifier: class.notFound
-        - identifier: constant.notFound
-        - identifier: classConstant.notFound
-        - identifier: staticMethod.notFound
-        # `plugin_basename` and `esc_html` return mixed without WP stubs; cast
-        # would only paper over the issue. Added to ignore list pending Phase
-        # 2 integration of szepeviktor/phpstan-wordpress.
-        - identifier: argument.type
-        - identifier: echo.nonString
+    bootstrapFiles:
+        - vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
 includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon

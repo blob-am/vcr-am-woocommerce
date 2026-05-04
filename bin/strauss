@@ -1,0 +1,38 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Strauss invocation wrapper.
+ *
+ * Strauss is installed in an isolated `composer-bin-plugin` context at
+ * `vendor-bin/strauss/vendor/` to keep its transitive deps (voku/simple-cache
+ * → psr/simple-cache 1|2) out of the main composer environment, where they
+ * would conflict with Pest 4's mutate plugin (psr/simple-cache 3).
+ *
+ * The vendored Strauss bin script (`vendor-bin/strauss/vendor/brianhenryie/strauss/bin/strauss`)
+ * searches for `autoload.php` in several locations; with `bin-links: false`
+ * it matches the *main* project's `vendor/autoload.php` first — which does
+ * not have Strauss classes — and exits with "You must set up the project
+ * dependencies".
+ *
+ * This wrapper sidesteps the search by loading the bin-context autoloader
+ * explicitly, then invoking Strauss's Application class directly. CWD is
+ * left untouched so Strauss reads the *main* `composer.json` (where the
+ * `extra.strauss` config lives).
+ */
+
+$autoload = __DIR__ . '/../vendor-bin/strauss/vendor/autoload.php';
+
+if (!is_file($autoload)) {
+    fwrite(
+        STDERR,
+        "Strauss bin context not installed. Run: composer bin strauss install\n",
+    );
+    exit(1);
+}
+
+require $autoload;
+
+(new BrianHenryIE\Strauss\Console\Application('@dev'))->run();
