@@ -87,7 +87,11 @@ class FiscalQueue
     {
         $order = wc_get_order($orderId);
 
-        if (! $order instanceof WC_Order) {
+        // WC_Order_Refund extends WC_Order, so a bare `instanceof` check
+        // accepts refunds. Filter on order type instead — only true shop
+        // orders are fiscalisable here (refunds get their own listener
+        // and SDK call in Phase 3e).
+        if (! $order instanceof WC_Order || $order->get_type() !== 'shop_order') {
             return;
         }
 
@@ -136,7 +140,11 @@ class FiscalQueue
     {
         $order = wc_get_order($orderId);
 
-        if (! $order instanceof WC_Order) {
+        // Same refund/subtype guard as `enqueue()`. The order id reaches
+        // here from a FiscalJob run that already filtered, so this is
+        // belt-and-braces — but if FiscalJob is ever bypassed, we still
+        // refuse to schedule retries against the wrong order kind.
+        if (! $order instanceof WC_Order || $order->get_type() !== 'shop_order') {
             return;
         }
 

@@ -35,6 +35,7 @@ it('enqueue is a no-op when wc_get_order returns null', function (): void {
 
 it('enqueue skips orders already in a terminal state', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_type')->andReturn('shop_order');
     Functions\when('wc_get_order')->justReturn($order);
 
     $this->meta->allows('status')->with($order)->andReturn(FiscalStatus::Success);
@@ -47,6 +48,7 @@ it('enqueue skips orders already in a terminal state', function (): void {
 
 it('enqueue skips when an action is already scheduled (de-dupe)', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_type')->andReturn('shop_order');
     Functions\when('wc_get_order')->justReturn($order);
 
     $this->meta->allows('status')->with($order)->andReturn(null);
@@ -60,6 +62,7 @@ it('enqueue skips when an action is already scheduled (de-dupe)', function (): v
 
 it('enqueue initialises meta and schedules the action on a fresh order', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_type')->andReturn('shop_order');
     Functions\when('wc_get_order')->justReturn($order);
 
     $this->meta->allows('status')->with($order)->andReturn(null);
@@ -88,6 +91,7 @@ it('handle does not reschedule on a terminal outcome', function (): void {
 
 it('handle schedules the next attempt with the configured delay on a retriable outcome', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_type')->andReturn('shop_order');
 
     $this->job->expects('run')->with(123)->andReturn(FiscalJobOutcome::retriable('try again'));
 
@@ -111,6 +115,7 @@ it('handle does not reschedule when the attempt index is out of bounds', functio
     // FiscalJob should mark Failed itself in this case — but if it ever
     // returns retriable beyond the budget, the queue must NOT loop.
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_type')->andReturn('shop_order');
 
     $this->job->expects('run')->with(123)->andReturn(FiscalJobOutcome::retriable('odd'));
 

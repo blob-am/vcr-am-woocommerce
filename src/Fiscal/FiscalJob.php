@@ -71,13 +71,15 @@ class FiscalJob
     {
         $order = wc_get_order($orderId);
 
-        // wc_get_order() returns WC_Order | WC_Order_Refund | false. We
-        // intentionally do NOT fiscalise refunds (they have a separate
-        // SDK call, future Phase 3e). A non-WC_Order result here means
-        // the order vanished, was an unsupported type, or is a refund —
-        // either way we have nothing valid to act on.
-        if (! $order instanceof WC_Order) {
-            return FiscalJobOutcome::failed(sprintf('Order #%d not found.', $orderId));
+        // wc_get_order() returns WC_Order | WC_Order_Refund | false.
+        // WC_Order_Refund extends WC_Order, so a plain `instanceof
+        // WC_Order` check would let refunds through — and refunds need
+        // the separate `registerSaleRefund` SDK endpoint (Phase 3e), not
+        // `registerSale`. Filter on `get_type()` so refunds, draft
+        // orders, and any future order subtypes route to the failure
+        // branch instead of being mis-fiscalised.
+        if (! $order instanceof WC_Order || $order->get_type() !== 'shop_order') {
+            return FiscalJobOutcome::failed(sprintf('Order #%d not found or not a fiscalisable shop order.', $orderId));
         }
 
         $existing = $this->meta->status($order);
@@ -86,7 +88,16 @@ class FiscalJob
             return FiscalJobOutcome::success();
         }
 
-        if (! $this->configuration->isFullyConfigured()) {
+        // Configuration gate. We re-read the API key explicitly below
+        // because `isFullyConfigured()` is a check against persisted
+        // state at THIS moment — the key could be cleared by a parallel
+        // request between this gate and the registrar build. Treating
+        // that disappearance as "config gap" instead of a transient
+        // failure prevents wasting the entire retry budget on something
+        // that needs admin intervention.
+        $apiKey = $this->configuration->apiKey();
+
+        if (! $this->configuration->isFullyConfigured() || $apiKey === null) {
             $reason = __(
                 'VCR plugin is not fully configured (missing API key, cashier, or department). Open WooCommerce -> Settings -> VCR to finish setup, then retry.',
                 'vcr',
@@ -109,7 +120,7 @@ class FiscalJob
         $attempt = $this->meta->attemptCount($order);
 
         try {
-            $registrar = $this->registrarFactory->create();
+            $registrar = $this->registrarFactory->create($apiKey);
             $response = $registrar->registerSale($payload);
         } catch (Throwable $e) {
             return $this->handleFailure($order, $e, $attempt);

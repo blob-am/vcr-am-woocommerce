@@ -60,6 +60,9 @@ beforeEach(function (): void {
 function makeOrderMockReturnedByWcGetOrder(int $orderId = 123): WC_Order
 {
     $order = Mockery::mock(WC_Order::class);
+    // Default: a real shop order (not a refund). Tests that want to
+    // exercise the refund-filter branch override this allow().
+    $order->allows('get_type')->andReturn('shop_order');
     Functions\when('wc_get_order')->alias(static fn (int $id): ?WC_Order => $id === $orderId ? $order : null);
 
     return $order;
@@ -105,6 +108,7 @@ function primeBuildable(): void
     /** @var \Mockery\MockInterface $config */
     $config = test()->config;
     $config->allows('isFullyConfigured')->andReturn(true);
+    $config->allows('apiKey')->andReturn('test-key');
     $config->allows('defaultCashierId')->andReturn(5);
     $config->allows('defaultDepartmentId')->andReturn(7);
 
@@ -126,6 +130,22 @@ it('returns failed when wc_get_order returns null', function (): void {
         ->and($outcome->reason)->toContain('not found');
 });
 
+it('refuses to fiscalise refunds (WC_Order_Refund extends WC_Order)', function (): void {
+    // The crux: a bare `instanceof WC_Order` check would let refunds
+    // through, because WC_Order_Refund extends WC_Order upstream. This
+    // test pins the order-type filter that catches them.
+    $refund = Mockery::mock(WC_Order::class);
+    $refund->allows('get_type')->andReturn('shop_order_refund');
+    Functions\when('wc_get_order')->justReturn($refund);
+
+    $this->meta->expects('status')->never();
+    $this->registrarFactory->expects('create')->never();
+
+    $outcome = $this->job->run(456);
+
+    expect($outcome->status)->toBe(FiscalStatus::Failed);
+});
+
 it('short-circuits on an order already marked Success (no API call)', function (): void {
     $order = makeOrderMockReturnedByWcGetOrder();
     $this->meta->allows('status')->with($order)->andReturn(FiscalStatus::Success);
@@ -139,7 +159,26 @@ it('short-circuits on an order already marked Success (no API call)', function (
 it('flips the order to ManualRequired when configuration is incomplete', function (): void {
     $order = makeOrderMockReturnedByWcGetOrder();
     $this->meta->allows('status')->with($order)->andReturn(null);
+    $this->config->allows('apiKey')->andReturn(null);
     $this->config->allows('isFullyConfigured')->andReturn(false);
+
+    $this->meta->expects('markManualRequired')->with($order, Mockery::type('string'));
+    $this->registrarFactory->expects('create')->never();
+
+    $outcome = $this->job->run(123);
+
+    expect($outcome->status)->toBe(FiscalStatus::ManualRequired);
+});
+
+it('flips to ManualRequired when isFullyConfigured passes but apiKey vanished mid-flight', function (): void {
+    // Simulates the race where the admin clears the API key between the
+    // gate check and the registrar build. Without the explicit-apiKey
+    // refactor this would be a generic RuntimeException routed to the
+    // retry path — wasting the entire 6-attempt budget.
+    $order = makeOrderMockReturnedByWcGetOrder();
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    $this->config->allows('isFullyConfigured')->andReturn(true);
+    $this->config->allows('apiKey')->andReturn(null);
 
     $this->meta->expects('markManualRequired')->with($order, Mockery::type('string'));
     $this->registrarFactory->expects('create')->never();
@@ -153,6 +192,7 @@ it('flips to ManualRequired when ItemBuilder rejects the order', function (): vo
     $order = makeOrderMockReturnedByWcGetOrder();
     $this->meta->allows('status')->with($order)->andReturn(null);
     $this->config->allows('isFullyConfigured')->andReturn(true);
+    $this->config->allows('apiKey')->andReturn('k');
     $this->config->allows('defaultCashierId')->andReturn(5);
     $this->config->allows('defaultDepartmentId')->andReturn(7);
 

@@ -65,13 +65,41 @@ class ItemBuilder
      */
     public function build(WC_Order $order, Department $department): array
     {
+        // Shipping and fees can't currently be turned into SaleItems
+        // because the SDK requires every Offer to carry an external
+        // catalog reference (existing SKU or new-offer with classifier
+        // code, type, unit). Stores would need to onboard "shipping"
+        // and "fee" pseudo-products in the VCR catalog, which is a
+        // workflow we haven't built yet (Phase 3c+).
+        //
+        // Silently dropping these would produce a fiscal receipt whose
+        // item total doesn't match the payment amount — the buyer paid
+        // for shipping but the receipt only itemises products. That's
+        // both a UX bug (customer confusion) and a compliance risk
+        // (SRC may reject mismatched receipts). Fail loudly instead so
+        // the admin sees the gap and either disables shipping/fees on
+        // affected orders or waits for the next phase.
+        $shippingTotal = (float) $order->get_shipping_total() + (float) $order->get_shipping_tax();
+        if ($shippingTotal > 0.0) {
+            throw new FiscalBuildException(
+                'Order has shipping charges, which the VCR plugin cannot yet itemise on a fiscal receipt. Disable shipping for this order, or wait for the next plugin release.',
+            );
+        }
+
+        if ($this->orderHasFees($order)) {
+            throw new FiscalBuildException(
+                'Order has fees (handling, surcharge, etc.), which the VCR plugin cannot yet itemise on a fiscal receipt. Remove the fee or wait for the next plugin release.',
+            );
+        }
+
         $built = [];
 
         foreach ($order->get_items() as $item) {
             if (! $item instanceof WC_Order_Item_Product) {
-                // Fees, shipping lines, taxes — not fiscalisable as items.
-                // (Shipping and fees show on the receipt total, not as line
-                // items. Phase 3+ may add explicit "service" line items.)
+                // After the shipping/fee guards above, the only remaining
+                // non-product items are taxes (carried separately by WC
+                // and reflected via per-line `get_total_tax()` inside the
+                // VAT-inclusive unit price). Skip them silently.
                 continue;
             }
 
@@ -80,11 +108,22 @@ class ItemBuilder
 
         if ($built === []) {
             throw new FiscalBuildException(
-                'Order has no fiscalisable line items — only fees, shipping, or empty.',
+                'Order has no fiscalisable line items.',
             );
         }
 
         return $built;
+    }
+
+    /**
+     * Detects WC_Order_Item_Fee lines without referencing the class
+     * symbol (which would force a stub for unit tests that don't
+     * exercise the fee path). `get_items('fee')` returns only fee
+     * lines on a real WC_Order, or empty for our stub.
+     */
+    private function orderHasFees(WC_Order $order): bool
+    {
+        return $order->get_items('fee') !== [];
     }
 
     private function buildOne(WC_Order_Item_Product $item, Department $department): SaleItem

@@ -64,7 +64,7 @@ if (! class_exists('WC_Order', false)) {
         /**
          * @return array<int, WC_Order_Item>
          */
-        public function get_items(string $type = 'line_item'): array
+        public function get_items(string|array $types = 'line_item'): array
         {
             return [];
         }
@@ -74,9 +74,24 @@ if (! class_exists('WC_Order', false)) {
             return '0';
         }
 
+        public function get_shipping_total(string $context = 'view'): string
+        {
+            return '0';
+        }
+
+        public function get_shipping_tax(string $context = 'view'): string
+        {
+            return '0';
+        }
+
         public function get_payment_method(string $context = 'view'): string
         {
             return '';
+        }
+
+        public function get_type(): string
+        {
+            return 'shop_order';
         }
 
         public function add_order_note(string $note, int $is_customer_note = 0, bool $added_by_user = false): int

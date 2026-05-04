@@ -41,6 +41,9 @@ function mockProductLine(string $sku = 'SKU-1', float $qty = 1.0, string $total 
 
 it('converts a single product line into a SaleItem with VAT-inclusive unit price', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine(qty: 2.0, total: '200', totalTax: '40')]);
 
     $items = $this->builder->build($order, $this->department);
@@ -54,11 +57,15 @@ it('converts a single product line into a SaleItem with VAT-inclusive unit price
         ->and($items[0]->unit)->toBe(Unit::Piece);
 });
 
-it('skips non-product line items (fees, shipping, taxes)', function (): void {
+it('skips non-product line items inside the items list', function (): void {
     $order = Mockery::mock(WC_Order::class);
-    $shipping = Mockery::mock(WC_Order_Item::class);
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
+
+    $genericItem = Mockery::mock(WC_Order_Item::class);
     $product = mockProductLine();
-    $order->allows('get_items')->andReturn([$shipping, $product]);
+    $order->allows('get_items')->andReturn([$genericItem, $product]);
 
     $items = $this->builder->build($order, $this->department);
 
@@ -67,14 +74,50 @@ it('skips non-product line items (fees, shipping, taxes)', function (): void {
 
 it('throws when an order has no fiscalisable lines', function (): void {
     $order = Mockery::mock(WC_Order::class);
-    $shipping = Mockery::mock(WC_Order_Item::class);
-    $order->allows('get_items')->andReturn([$shipping]);
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
+
+    $genericItem = Mockery::mock(WC_Order_Item::class);
+    $order->allows('get_items')->andReturn([$genericItem]);
 
     $this->builder->build($order, $this->department);
 })->throws(FiscalBuildException::class, 'no fiscalisable line items');
 
+it('rejects orders with shipping charges (not yet itemisable)', function (): void {
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_shipping_total')->andReturn('5.00');
+    $order->allows('get_shipping_tax')->andReturn('1.00');
+
+    $this->builder->build($order, $this->department);
+})->throws(FiscalBuildException::class, 'shipping charges');
+
+it('rejects orders with shipping tax even when shipping_total is zero', function (): void {
+    // Defensive: some gateways report 0 shipping but non-zero shipping
+    // tax (e.g., free shipping with separate tax line).
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0.50');
+
+    $this->builder->build($order, $this->department);
+})->throws(FiscalBuildException::class, 'shipping charges');
+
+it('rejects orders with fee lines (not yet itemisable)', function (): void {
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+
+    $fee = Mockery::mock(WC_Order_Item::class);
+    $order->allows('get_items')->with('fee')->andReturn([$fee]);
+
+    $this->builder->build($order, $this->department);
+})->throws(FiscalBuildException::class, 'fees');
+
 it('throws when a product has no SKU', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine(sku: '')]);
 
     $this->builder->build($order, $this->department);
@@ -82,6 +125,9 @@ it('throws when a product has no SKU', function (): void {
 
 it('throws when SKU is just whitespace', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine(sku: '   ')]);
 
     $this->builder->build($order, $this->department);
@@ -93,6 +139,9 @@ it('throws when the underlying product is gone', function (): void {
     $item->allows('get_name')->andReturn('Ghost');
 
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([$item]);
 
     $this->builder->build($order, $this->department);
@@ -100,6 +149,9 @@ it('throws when the underlying product is gone', function (): void {
 
 it('throws on a zero-quantity line', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine(qty: 0.0)]);
 
     $this->builder->build($order, $this->department);
@@ -107,6 +159,9 @@ it('throws on a zero-quantity line', function (): void {
 
 it('throws on a negative quantity', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine(qty: -1.0)]);
 
     $this->builder->build($order, $this->department);
@@ -114,6 +169,9 @@ it('throws on a negative quantity', function (): void {
 
 it('formats fractional quantities without trailing zeros', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([
         mockProductLine(qty: 1.5, total: '150', totalTax: '30'),
     ]);
@@ -127,6 +185,9 @@ it('formats fractional quantities without trailing zeros', function (): void {
 
 it('builds multiple lines when the order has several products', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([
         mockProductLine(sku: 'SKU-A', qty: 1.0, total: '50', totalTax: '10'),
         mockProductLine(sku: 'SKU-B', qty: 3.0, total: '300', totalTax: '60'),

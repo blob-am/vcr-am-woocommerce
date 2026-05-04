@@ -9,7 +9,6 @@ use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
-use RuntimeException;
 
 /**
  * Builds a fresh {@see SaleRegistrar} for each fiscal-job invocation.
@@ -35,17 +34,23 @@ class SaleRegistrarFactory
     ) {
     }
 
-    public function create(): SaleRegistrar
+    /**
+     * Build a registrar bound to an explicit API key.
+     *
+     * The key is passed in, not read from {@see Configuration} here, so
+     * the caller (FiscalJob) is the single source of truth for "do we
+     * have credentials". Without this split, a key that disappeared
+     * between FiscalJob's `isFullyConfigured()` gate and the factory
+     * call would surface as a generic `RuntimeException` and route to
+     * the retry path — wasting the entire backoff budget on something
+     * that needs admin intervention. The factory deliberately has no
+     * null-key fallback for that reason.
+     *
+     * Base URL still comes from configuration: it's a deployment-level
+     * setting that doesn't change per-job and has a sensible default.
+     */
+    public function create(string $apiKey): SaleRegistrar
     {
-        $apiKey = $this->configuration->apiKey();
-
-        if ($apiKey === null) {
-            // Caller (FiscalJob) is expected to gate on isFullyConfigured()
-            // before invoking us; this is belt-and-braces in case someone
-            // skips that check or wires us into a flow that doesn't.
-            throw new RuntimeException('Cannot build SaleRegistrar without an API key.');
-        }
-
         $client = $this->clientFactory->create(
             apiKey: $apiKey,
             baseUrl: $this->configuration->baseUrl(),
