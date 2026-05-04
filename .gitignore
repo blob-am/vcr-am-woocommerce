@@ -1,0 +1,43 @@
+# Dependencies (committed lock, ignored install dirs)
+/vendor/
+/vendor-prefixed/
+/node_modules/
+
+# Composer
+composer.phar
+
+# Tests / coverage
+/.phpunit.cache/
+/.phpunit.result.cache
+/.phpstan.cache/
+/.cache/
+coverage.xml
+clover.xml
+/coverage/
+.phpunit.coverage/
+
+# IDE / editor
+/.idea/
+/.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Build artefacts
+/build/
+/dist/
+/release/
+*.zip
+
+# Environment / secrets (no .env should ever land in a WP plugin, but defence in depth)
+.env
+.env.*
+!.env.example
+
+# Local dev sandboxes
+/playground/
+/wp-env.json
+.wp-env.override.json

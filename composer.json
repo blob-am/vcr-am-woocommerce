@@ -1,0 +1,82 @@
+{
+    "name": "blob-solutions/woocommerce-vcr-am",
+    "description": "Official WooCommerce plugin for the VCR.AM Virtual Cash Register — issue fiscal receipts (eHDM) to the Armenian State Revenue Committee directly from WooCommerce orders. Direct SRC integration, multi-currency, refunds, customer-facing QR.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "keywords": [
+        "vcr",
+        "vcr-am",
+        "armenia",
+        "armenian",
+        "woocommerce",
+        "wordpress",
+        "wordpress-plugin",
+        "fiscal",
+        "fiscalization",
+        "ehdm",
+        "hdm",
+        "src",
+        "tax-service",
+        "e-receipt",
+        "blob-solutions"
+    ],
+    "homepage": "https://vcr.am",
+    "support": {
+        "issues": "https://github.com/blob-am/vcr-am-woocommerce/issues",
+        "source": "https://github.com/blob-am/vcr-am-woocommerce"
+    },
+    "authors": [
+        {
+            "name": "Alex Kraiz",
+            "email": "support@blob.am",
+            "homepage": "https://blob.am",
+            "role": "Maintainer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "brain/monkey": "^2.6",
+        "laravel/pint": "^1.29",
+        "pestphp/pest": "^4.0",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-strict-rules": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "BlobSolutions\\WooCommerceVcrAm\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "BlobSolutions\\WooCommerceVcrAm\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
+        }
+    },
+    "scripts": {
+        "test": "pest --colors=always",
+        "phpstan": "phpstan analyse --no-progress --memory-limit=1G",
+        "format": "pint",
+        "format:check": "pint --test",
+        "check": [
+            "@format:check",
+            "@phpstan",
+            "@test"
+        ]
+    },
+    "scripts-descriptions": {
+        "test": "Run Pest test suite",
+        "phpstan": "Run static analysis at level max + strict rules",
+        "format": "Apply Pint code style fixes",
+        "format:check": "Verify code style without writing changes",
+        "check": "Run the full local CI pipeline (format + phpstan + test)"
+    }
+}
