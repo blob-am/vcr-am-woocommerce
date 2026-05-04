@@ -9,7 +9,7 @@ declare(strict_types=1);
  * Version:           0.1.0
  * Requires at least: 6.7
  * Tested up to:      6.9
- * Requires PHP:      8.2
+ * Requires PHP:      8.3
  * WC requires at least: 9.4
  * WC tested up to:   10.7
  * Author:            Blob Solutions

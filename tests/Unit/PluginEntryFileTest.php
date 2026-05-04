@@ -7,7 +7,7 @@ it('plugin entry file declares the WordPress plugin header', function (): void {
 
     expect($contents)
         ->toContain('Plugin Name:       VCR — Fiscal Receipts for Armenia (eHDM)')
-        ->toContain('Requires PHP:      8.2')
+        ->toContain('Requires PHP:      8.3')
         ->toContain('Requires at least: 6.7')
         ->toContain('WC requires at least: 9.4')
         ->toContain('License:           GPL-2.0-or-later')

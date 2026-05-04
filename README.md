@@ -27,7 +27,7 @@ What sets it apart from existing options:
 | --- | --- | --- |
 | WordPress | 6.7 | 6.9 |
 | WooCommerce | 9.4 | 10.7 |
-| PHP | 8.2 | 8.4 |
+| PHP | 8.3 | 8.4 |
 
 ## Installation (development)
 

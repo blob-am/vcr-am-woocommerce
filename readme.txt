@@ -3,7 +3,7 @@ Contributors: blobsolutions
 Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 6.9
-Requires PHP: 8.2
+Requires PHP: 8.3
 Stable tag: 0.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -28,7 +28,7 @@ The official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Re
 
 * WordPress 6.7 or newer
 * WooCommerce 9.4 or newer
-* PHP 8.2 or newer
+* PHP 8.3 or newer
 * A VCR.AM account and API key — sign up at [vcr.am](https://vcr.am)
 
 == Installation ==
