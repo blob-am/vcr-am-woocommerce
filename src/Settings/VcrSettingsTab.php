@@ -185,8 +185,18 @@ final class VcrSettingsTab extends WC_Settings_Page
      */
     public function interceptApiKeySave(mixed $value, array $option, string $rawValue): string
     {
-        if (is_string($value) && trim($value) !== '') {
-            $this->keyStore->put($value);
+        if (is_string($value)) {
+            // Trim before persisting. Pasted-from-clipboard credentials
+            // routinely carry leading/trailing whitespace (browsers add
+            // newlines, terminals add tabs). The SRC API rejects those
+            // verbatim, so without this every fiscal job would terminal-fail
+            // until the admin notices and re-pastes. Trim once at the
+            // boundary; downstream code can trust the stored value.
+            $trimmed = trim($value);
+
+            if ($trimmed !== '') {
+                $this->keyStore->put($trimmed);
+            }
         }
 
         return '';

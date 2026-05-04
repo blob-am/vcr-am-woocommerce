@@ -99,7 +99,7 @@ class FiscalJob
 
         if (! $this->configuration->isFullyConfigured() || $apiKey === null) {
             $reason = __(
-                'VCR plugin is not fully configured (missing API key, cashier, or department). Open WooCommerce -> Settings -> VCR to finish setup, then retry.',
+                'VCR plugin is not fully configured (missing API key, cashier, or department). Open WooCommerce → Settings → VCR to finish setup, then retry.',
                 'vcr',
             );
 

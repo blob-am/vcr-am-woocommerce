@@ -29,7 +29,12 @@ use RuntimeException;
  * environment misconfiguration that the user can't recover from at
  * runtime (libsodium missing).
  */
-final class KeyStore
+/**
+ * Not declared `final` so unit tests for ConnectionTester can mock
+ * `get()` without booting Brain Monkey + WP options for every test —
+ * there's no production extension point.
+ */
+class KeyStore
 {
     public function __construct(
         private readonly string $optionName,

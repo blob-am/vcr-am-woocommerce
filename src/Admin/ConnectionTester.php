@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Admin;
 
+use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrException;
@@ -27,7 +28,11 @@ use Throwable;
  * Authorisation: `manage_woocommerce` capability + nonce. Both are
  * required; either alone is insufficient.
  */
-final class ConnectionTester
+/**
+ * Not declared `final` so unit tests can mock — there's no production
+ * extension point.
+ */
+class ConnectionTester
 {
     private const NONCE_ACTION = 'vcr-test-connection';
 
@@ -37,7 +42,7 @@ final class ConnectionTester
 
     public function __construct(
         private readonly KeyStore $keyStore,
-        private readonly VcrClientFactory $clientFactory,
+        private readonly CashierListerFactory $listerFactory,
         private readonly string $pluginFile,
         private readonly string $version,
     ) {
@@ -128,12 +133,12 @@ final class ConnectionTester
             : '';
 
         try {
-            $client = $this->clientFactory->create(
-                apiKey: $apiKey,
-                baseUrl: $baseUrl !== '' ? $baseUrl : null,
-            );
-
-            $cashiers = $client->listCashiers();
+            // The form's base URL field — if non-empty — overrides the
+            // saved one for this single AJAX call. Lets admins probe a
+            // not-yet-saved staging endpoint before persisting.
+            $cashiers = $this->listerFactory
+                ->create($apiKey, $baseUrl !== '' ? $baseUrl : null)
+                ->listCashiers();
             $count = count($cashiers);
 
             wp_send_json_success([

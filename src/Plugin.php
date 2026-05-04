@@ -6,6 +6,7 @@ namespace BlobSolutions\WooCommerceVcrAm;
 
 use BlobSolutions\WooCommerceVcrAm\Admin\ConnectionTester;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
+use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJob;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
@@ -100,12 +101,13 @@ final class Plugin
         $keyStore = new KeyStore(self::API_KEY_OPTION);
         $config = new Configuration($keyStore);
         $clientFactory = new VcrClientFactory();
-        $cashierCatalog = new CashierCatalog($config, $clientFactory);
+        $listerFactory = new CashierListerFactory($config, $clientFactory);
+        $cashierCatalog = new CashierCatalog($config, $listerFactory);
 
         (new SettingsPage($keyStore, $cashierCatalog))->register();
         (new ConnectionTester(
             $keyStore,
-            $clientFactory,
+            $listerFactory,
             $this->pluginFile,
             $this->version,
         ))->register();

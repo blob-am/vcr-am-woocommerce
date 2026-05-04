@@ -174,3 +174,21 @@ if (! class_exists('WC_Order_Refund', false)) {
     {
     }
 }
+
+if (! class_exists('WC_Settings_Page', false)) {
+    /**
+     * Bare-bones stub of WC's settings-page base class. Real WC fires a
+     * couple of actions in its constructor; the stub stays inert so unit
+     * tests can instantiate VcrSettingsTab without a hooks frenzy.
+     */
+    class WC_Settings_Page
+    {
+        public string $id = '';
+
+        public string $label = '';
+
+        public function __construct()
+        {
+        }
+    }
+}

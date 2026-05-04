@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Catalog;
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
-use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\CashierListItem;
 use Throwable;
 
@@ -25,7 +24,11 @@ use Throwable;
  * we don't propagate exceptions because the dropdown render path
  * shouldn't kill the entire admin page.
  */
-final class CashierCatalog
+/**
+ * Not declared `final` so unit tests can mock — there's no production
+ * extension point. (Same convention as our other DI-injected services.)
+ */
+class CashierCatalog
 {
     private const TRANSIENT_KEY = 'vcr_cashiers_cache';
 
@@ -36,7 +39,7 @@ final class CashierCatalog
 
     public function __construct(
         private readonly Configuration $config,
-        private readonly VcrClientFactory $factory,
+        private readonly CashierListerFactory $listerFactory,
     ) {
     }
 
@@ -61,8 +64,7 @@ final class CashierCatalog
         }
 
         try {
-            $client = $this->factory->create($apiKey, $this->config->baseUrl());
-            $cashiers = $client->listCashiers();
+            $cashiers = $this->listerFactory->create($apiKey)->listCashiers();
         } catch (Throwable $e) {
             // Don't cache failures — a transient failure shouldn't lock
             // the admin out of seeing cashiers for the next hour.
@@ -70,7 +72,18 @@ final class CashierCatalog
         }
 
         $shaped = $this->shapeForDropdown($cashiers);
-        set_transient(self::TRANSIENT_KEY, $shaped, self::TTL_SECONDS);
+
+        // Don't cache empty results either. The "I just set up VCR but
+        // haven't created my first cashier yet" workflow is real: admin
+        // saves API key, sees empty dropdown, hops over to VCR to create
+        // a cashier, comes back. With the empty result cached for an
+        // hour they'd be staring at "no cashiers" until they think to
+        // re-save settings to invalidate the cache. Hitting the API on
+        // every settings render in this state is fine — it's a one-off
+        // bootstrap window, not a steady-state path.
+        if ($shaped !== []) {
+            set_transient(self::TRANSIENT_KEY, $shaped, self::TTL_SECONDS);
+        }
 
         return $shaped;
     }

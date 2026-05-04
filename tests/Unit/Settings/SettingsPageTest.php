@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
+use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\SettingsPage;
@@ -20,7 +21,10 @@ it('hooks into woocommerce_get_settings_pages on register', function (): void {
 
     $keyStore = new KeyStore('vcr_test_keystore_option');
     $config = new Configuration($keyStore);
-    $catalog = new CashierCatalog($config, new VcrClientFactory());
+    $catalog = new CashierCatalog(
+        $config,
+        new CashierListerFactory($config, new VcrClientFactory()),
+    );
     (new SettingsPage($keyStore, $catalog))->register();
 });
 
