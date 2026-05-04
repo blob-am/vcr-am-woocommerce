@@ -5,15 +5,12 @@ declare(strict_types=1);
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use Brain\Monkey\Functions;
 
-const TEST_OPTION_NAME = 'vcr_test_option';
-const TEST_SALT = 'salt-from-wp-config-which-is-at-least-64-chars-long-aaaaaaaaaaaaaa';
-
 /**
  * Pair of in-memory option stubs that emulate `update_option` /
  * `get_option` / `delete_option` against a single key. Reset on every
  * test via the shared `&$storage` reference.
  */
-function stubOptionStorage(string &$storage, string $optionName): void
+function vcrStubOptionStorage(string &$storage, string $optionName): void
 {
     Functions\when('update_option')->alias(
         function (string $name, mixed $value, bool $autoload = true) use (&$storage, $optionName): bool {
@@ -48,14 +45,16 @@ function stubOptionStorage(string &$storage, string $optionName): void
 }
 
 beforeEach(function (): void {
-    Functions\when('wp_salt')->justReturn(TEST_SALT);
+    Functions\when('wp_salt')->justReturn(
+        'salt-from-wp-config-which-is-at-least-64-chars-long-aaaaaaaaaaaaaa',
+    );
 });
 
 it('round-trips a plaintext value through put → get', function (): void {
     $storage = '';
-    stubOptionStorage($storage, TEST_OPTION_NAME);
+    vcrStubOptionStorage($storage, 'vcr_test_option');
 
-    $store = new KeyStore(TEST_OPTION_NAME);
+    $store = new KeyStore('vcr_test_option');
     $store->put('vcr_live_my-secret-api-key-12345');
 
     expect($store->get())->toBe('vcr_live_my-secret-api-key-12345');
@@ -63,9 +62,9 @@ it('round-trips a plaintext value through put → get', function (): void {
 
 it('returns null when the option is unset', function (): void {
     $storage = '';
-    stubOptionStorage($storage, TEST_OPTION_NAME);
+    vcrStubOptionStorage($storage, 'vcr_test_option');
 
-    $store = new KeyStore(TEST_OPTION_NAME);
+    $store = new KeyStore('vcr_test_option');
 
     expect($store->get())->toBeNull();
     expect($store->isSet())->toBeFalse();
@@ -73,9 +72,9 @@ it('returns null when the option is unset', function (): void {
 
 it('isSet returns true after a put', function (): void {
     $storage = '';
-    stubOptionStorage($storage, TEST_OPTION_NAME);
+    vcrStubOptionStorage($storage, 'vcr_test_option');
 
-    $store = new KeyStore(TEST_OPTION_NAME);
+    $store = new KeyStore('vcr_test_option');
     $store->put('any-key');
 
     expect($store->isSet())->toBeTrue();
@@ -83,9 +82,9 @@ it('isSet returns true after a put', function (): void {
 
 it('forget removes the stored ciphertext', function (): void {
     $storage = '';
-    stubOptionStorage($storage, TEST_OPTION_NAME);
+    vcrStubOptionStorage($storage, 'vcr_test_option');
 
-    $store = new KeyStore(TEST_OPTION_NAME);
+    $store = new KeyStore('vcr_test_option');
     $store->put('any-key');
     $store->forget();
 
@@ -95,44 +94,44 @@ it('forget removes the stored ciphertext', function (): void {
 
 it('returns null when the stored ciphertext is malformed', function (): void {
     $storage = 'not-base64-not-cipher!';
-    stubOptionStorage($storage, TEST_OPTION_NAME);
+    vcrStubOptionStorage($storage, 'vcr_test_option');
 
-    $store = new KeyStore(TEST_OPTION_NAME);
+    $store = new KeyStore('vcr_test_option');
 
     expect($store->get())->toBeNull();
 });
 
 it('returns null when ciphertext is too short to contain nonce + MAC', function (): void {
     $storage = base64_encode('too-short');
-    stubOptionStorage($storage, TEST_OPTION_NAME);
+    vcrStubOptionStorage($storage, 'vcr_test_option');
 
-    $store = new KeyStore(TEST_OPTION_NAME);
+    $store = new KeyStore('vcr_test_option');
 
     expect($store->get())->toBeNull();
 });
 
 it('returns null when wp_salt has rotated (ciphertext no longer decryptable)', function (): void {
     $storage = '';
-    stubOptionStorage($storage, TEST_OPTION_NAME);
+    vcrStubOptionStorage($storage, 'vcr_test_option');
 
     // Encrypt with the original salt.
-    Functions\when('wp_salt')->justReturn(TEST_SALT);
-    $store = new KeyStore(TEST_OPTION_NAME);
+    Functions\when('wp_salt')->justReturn(str_repeat('a', 64));
+    $store = new KeyStore('vcr_test_option');
     $store->put('my-secret');
 
     // Caller rotates the salt; a fresh KeyStore reads the same option but
     // can't decrypt — and returns null rather than throwing.
-    Functions\when('wp_salt')->justReturn('a-different-rotated-salt-' . str_repeat('x', 40));
-    $store2 = new KeyStore(TEST_OPTION_NAME);
+    Functions\when('wp_salt')->justReturn(str_repeat('b', 64));
+    $store2 = new KeyStore('vcr_test_option');
 
     expect($store2->get())->toBeNull();
 });
 
 it('produces different ciphertext for the same plaintext on repeat puts (random nonce)', function (): void {
     $storage = '';
-    stubOptionStorage($storage, TEST_OPTION_NAME);
+    vcrStubOptionStorage($storage, 'vcr_test_option');
 
-    $store = new KeyStore(TEST_OPTION_NAME);
+    $store = new KeyStore('vcr_test_option');
 
     $store->put('same-plaintext');
     $first = $storage;
@@ -144,3 +143,18 @@ it('produces different ciphertext for the same plaintext on repeat puts (random 
     // But both decrypt to the same value.
     expect($store->get())->toBe('same-plaintext');
 });
+
+it('refuses empty plaintext on put — caller should use forget()', function (): void {
+    $storage = '';
+    vcrStubOptionStorage($storage, 'vcr_test_option');
+
+    $store = new KeyStore('vcr_test_option');
+    $store->put('');
+})->throws(InvalidArgumentException::class, 'refuses empty plaintext');
+
+it('throws when wp_options write fails', function (): void {
+    Functions\when('update_option')->justReturn(false);
+
+    $store = new KeyStore('vcr_test_option');
+    $store->put('any-key');
+})->throws(RuntimeException::class, 'Failed to persist encrypted credential');

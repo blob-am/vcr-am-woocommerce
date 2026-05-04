@@ -114,8 +114,6 @@ final class VcrSettingsTab extends WC_Settings_Page
      */
     public function interceptApiKeySave(mixed $value, array $option, string $rawValue): string
     {
-        unset($option, $rawValue);
-
         if (is_string($value) && trim($value) !== '') {
             $this->keyStore->put($value);
         }

@@ -39,18 +39,32 @@ const PLUGIN_VERSION = '0.1.0';
 $autoload          = __DIR__ . '/vendor/autoload.php';
 $prefixed_autoload = __DIR__ . '/vendor-prefixed/autoload.php';
 
+// Both autoloaders are required for runtime. `vendor/` carries the
+// non-scoped composer artefacts (PSR contracts left unprefixed for
+// interop, Composer autoloader). `vendor-prefixed/` carries the
+// production deps (SDK + Guzzle + php-http/*) under our private
+// namespace so they don't conflict with other plugins. A partial
+// install — typical of `composer install --no-scripts` or shipping a
+// raw Git checkout without running Strauss — would silently load only
+// the first and then fatal at runtime when the SDK is referenced.
+$missing = [];
 if (! file_exists($autoload)) {
-    add_action('admin_notices', static function (): void {
-        echo '<div class="notice notice-error"><p><strong>VCR — Fiscal Receipts for Armenia</strong>: Composer dependencies are missing. Run <code>composer install</code> in the plugin directory.</p></div>';
+    $missing[] = 'composer dependencies (run <code>composer install</code>)';
+}
+if (! file_exists($prefixed_autoload)) {
+    $missing[] = 'scoped vendor (run <code>composer strauss</code>; auto-runs on <code>composer install</code>)';
+}
+
+if ($missing !== []) {
+    $list = implode(' and ', $missing);
+    add_action('admin_notices', static function () use ($list): void {
+        echo '<div class="notice notice-error"><p><strong>VCR — Fiscal Receipts for Armenia</strong>: missing ' . wp_kses_post($list) . '.</p></div>';
     });
 
     return;
 }
 
 require_once $autoload;
-
-if (file_exists($prefixed_autoload)) {
-    require_once $prefixed_autoload;
-}
+require_once $prefixed_autoload;
 
 (new Plugin(PLUGIN_FILE, PLUGIN_VERSION))->boot();

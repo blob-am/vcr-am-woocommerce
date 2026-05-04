@@ -11,6 +11,17 @@ parameters:
     treatPhpDocTypesAsCertain: false
     bootstrapFiles:
         - vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
+        # Strauss generates an independent composer-autoloader for the
+        # prefixed deps (SDK, Guzzle, php-http/*). PHPStan's discovery hits
+        # only the main vendor/autoload.php by default, so without this
+        # bootstrap it can't see classes like
+        # `BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient`
+        # and reports them as `class.notFound`. `bootstrapFiles` does not
+        # support the `(?)` optional-path marker; running `composer phpstan`
+        # without `vendor-prefixed/` present fails fast — which is the right
+        # signal that `composer install` was skipped or `composer strauss`
+        # didn't run.
+        - vendor-prefixed/autoload.php
 includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon
     - vendor/szepeviktor/phpstan-wordpress/extension.neon

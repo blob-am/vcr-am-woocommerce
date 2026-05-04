@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Settings;
 
+use InvalidArgumentException;
 use RuntimeException;
 
 /**
@@ -43,6 +44,16 @@ final class KeyStore
 
     public function put(string $plaintext): void
     {
+        // Empty plaintext would round-trip cleanly (encrypts to a valid
+        // empty-payload secretbox), but produces an internally inconsistent
+        // store — `isSet()` would return true while the value is empty.
+        // Callers that mean "clear the key" should use `forget()`.
+        if ($plaintext === '') {
+            throw new InvalidArgumentException(
+                'KeyStore::put() refuses empty plaintext — use forget() to clear the value.',
+            );
+        }
+
         $key = $this->deriveKey();
         $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
         $ciphertext = sodium_crypto_secretbox($plaintext, $nonce, $key);
@@ -50,9 +61,21 @@ final class KeyStore
 
         // autoload=false: the API key is read only on first use after request
         // boot, not on every page load. Keeps `wp_options` autoload payload lean.
-        update_option($this->optionName, $encoded, false);
+        $saved = update_option($this->optionName, $encoded, false);
 
         sodium_memzero($key);
+
+        // The nonce is fresh per write, so the stored ciphertext always
+        // changes — `update_option`'s "value-didn't-change → false" path
+        // doesn't apply here. A `false` return is therefore a real DB write
+        // failure that the admin needs to know about (silent failure would
+        // leave the admin thinking the key was saved, until the next API
+        // call fails with an auth error).
+        if ($saved === false) {
+            throw new RuntimeException(
+                "Failed to persist encrypted credential to wp_options['{$this->optionName}'].",
+            );
+        }
     }
 
     public function get(): ?string
