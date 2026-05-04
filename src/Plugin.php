@@ -6,6 +6,13 @@ namespace BlobSolutions\WooCommerceVcrAm;
 
 use BlobSolutions\WooCommerceVcrAm\Admin\ConnectionTester;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
+use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJob;
+use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
+use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
+use BlobSolutions\WooCommerceVcrAm\Fiscal\ItemBuilder;
+use BlobSolutions\WooCommerceVcrAm\Fiscal\OrderListener;
+use BlobSolutions\WooCommerceVcrAm\Fiscal\PaymentMapper;
+use BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrarFactory;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\SettingsPage;
 
@@ -102,6 +109,20 @@ final class Plugin
             $this->pluginFile,
             $this->version,
         ))->register();
+
+        $meta = new FiscalStatusMeta();
+        $registrarFactory = new SaleRegistrarFactory($config, $clientFactory);
+        $job = new FiscalJob(
+            configuration: $config,
+            registrarFactory: $registrarFactory,
+            itemBuilder: new ItemBuilder(),
+            paymentMapper: new PaymentMapper(),
+            meta: $meta,
+        );
+        $queue = new FiscalQueue($job, $meta);
+        $queue->register();
+
+        (new OrderListener($queue))->register();
     }
 
     public function showWooCommerceMissingNotice(): void

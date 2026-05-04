@@ -11,6 +11,10 @@ parameters:
     treatPhpDocTypesAsCertain: false
     bootstrapFiles:
         - vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
+        # Action Scheduler functions (`as_enqueue_async_action`,
+        # `as_schedule_single_action`, etc.) are bundled with WooCommerce
+        # but live in this separate stub file. We use them in FiscalQueue.
+        - vendor/php-stubs/woocommerce-stubs/woocommerce-packages-stubs.php
         # Strauss generates an independent composer-autoloader for the
         # prefixed deps (SDK, Guzzle, php-http/*). PHPStan's discovery hits
         # only the main vendor/autoload.php by default, so without this

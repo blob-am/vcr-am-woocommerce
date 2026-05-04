@@ -22,7 +22,11 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\GuzzleHttp\Client as GuzzleClient;
  * that aren't yet persisted. Callers that work with saved config
  * resolve the credentials themselves and pass them in.
  */
-final class VcrClientFactory
+/**
+ * Not declared `final` so unit tests can mock the factory via Mockery —
+ * there's no production extension point.
+ */
+class VcrClientFactory
 {
     /**
      * Hard ceiling on a full request round-trip including TLS handshake,

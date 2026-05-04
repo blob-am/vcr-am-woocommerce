@@ -1,0 +1,261 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
+
+use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Fiscal\Exception\FiscalBuildException;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrException;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrNetworkException;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrValidationException;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Buyer;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\CashierId;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Department;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterSaleInput;
+use Throwable;
+use WC_Order;
+
+/**
+ * One end-to-end attempt at fiscalising a WooCommerce order against the
+ * VCR.AM API. Pure orchestration — no scheduling logic (that lives in
+ * {@see FiscalQueue}).
+ *
+ * Invariants:
+ *
+ *   - **Idempotent on Success.** If the order already has
+ *     {@see FiscalStatus::Success} in meta, {@see self::run()} short-circuits
+ *     without contacting the API. Combined with the WC order hooks (which
+ *     can fire multiple times per order during the payment flow) this
+ *     prevents duplicate registrations even if the queue mis-routes.
+ *
+ *   - **Meta is always written before throwing.** The order's status meta
+ *     reflects the result of *this* attempt before the function returns,
+ *     regardless of which branch the call took. The queue layer can rely
+ *     on the returned {@see FiscalJobOutcome} alone (no second meta read).
+ *
+ *   - **Retry classification is centralised here.** HTTP 5xx, 429, network
+ *     timeouts -> retriable. HTTP 4xx (other than 429), schema validation
+ *     errors, and build errors -> terminal. {@see self::isRetriableApiError()}
+ *     is the single source of truth.
+ *
+ *   - **Max-attempts is enforced here, not in the queue.** Once the job
+ *     records the configured number of attempts, it transitions the order
+ *     to {@see FiscalStatus::Failed} regardless of error class — even a
+ *     persistent 5xx eventually stops being retried.
+ */
+/**
+ * Not declared `final` so the FiscalQueue unit tests can mock the job —
+ * there's no production extension point.
+ */
+class FiscalJob
+{
+    /**
+     * Total number of attempts before the job gives up and marks the
+     * order {@see FiscalStatus::Failed}. Includes the initial attempt.
+     * The queue's backoff schedule has `MAX_ATTEMPTS - 1` retry delays.
+     */
+    public const MAX_ATTEMPTS = 6;
+
+    public function __construct(
+        private readonly Configuration $configuration,
+        private readonly SaleRegistrarFactory $registrarFactory,
+        private readonly ItemBuilder $itemBuilder,
+        private readonly PaymentMapper $paymentMapper,
+        private readonly FiscalStatusMeta $meta,
+    ) {
+    }
+
+    public function run(int $orderId): FiscalJobOutcome
+    {
+        $order = wc_get_order($orderId);
+
+        // wc_get_order() returns WC_Order | WC_Order_Refund | false. We
+        // intentionally do NOT fiscalise refunds (they have a separate
+        // SDK call, future Phase 3e). A non-WC_Order result here means
+        // the order vanished, was an unsupported type, or is a refund —
+        // either way we have nothing valid to act on.
+        if (! $order instanceof WC_Order) {
+            return FiscalJobOutcome::failed(sprintf('Order #%d not found.', $orderId));
+        }
+
+        $existing = $this->meta->status($order);
+
+        if ($existing === FiscalStatus::Success) {
+            return FiscalJobOutcome::success();
+        }
+
+        if (! $this->configuration->isFullyConfigured()) {
+            $reason = __(
+                'VCR plugin is not fully configured (missing API key, cashier, or department). Open WooCommerce -> Settings -> VCR to finish setup, then retry.',
+                'vcr',
+            );
+
+            $this->meta->markManualRequired($order, $reason);
+
+            return FiscalJobOutcome::manualRequired($reason);
+        }
+
+        try {
+            $payload = $this->buildPayload($order);
+        } catch (FiscalBuildException $e) {
+            $this->meta->markManualRequired($order, $e->getMessage());
+
+            return FiscalJobOutcome::manualRequired($e->getMessage());
+        }
+
+        $this->meta->recordAttempt($order);
+        $attempt = $this->meta->attemptCount($order);
+
+        try {
+            $registrar = $this->registrarFactory->create();
+            $response = $registrar->registerSale($payload);
+        } catch (Throwable $e) {
+            return $this->handleFailure($order, $e, $attempt);
+        }
+
+        $this->meta->markSuccess($order, $response);
+
+        $order->add_order_note(sprintf(
+            /* translators: 1: SRC fiscal serial number, 2: customer-facing receipt URL slug. */
+            __('VCR fiscal receipt registered. Fiscal: %1$s. Receipt id: %2$s.', 'vcr'),
+            $response->fiscal,
+            $response->urlId,
+        ));
+
+        return FiscalJobOutcome::success();
+    }
+
+    /**
+     * @throws FiscalBuildException
+     */
+    private function buildPayload(WC_Order $order): RegisterSaleInput
+    {
+        $cashierId = $this->configuration->defaultCashierId();
+        $departmentId = $this->configuration->defaultDepartmentId();
+
+        // isFullyConfigured() guarantees both are non-null at this point —
+        // the asserts are belt-and-braces for readers / future refactors.
+        assert($cashierId !== null);
+        assert($departmentId !== null);
+
+        $department = new Department($departmentId);
+        $items = $this->itemBuilder->build($order, $department);
+        $amount = $this->paymentMapper->map($order);
+
+        return new RegisterSaleInput(
+            cashier: CashierId::byInternalId($cashierId),
+            items: $items,
+            amount: $amount,
+            buyer: Buyer::individual(),
+        );
+    }
+
+    private function handleFailure(WC_Order $order, Throwable $error, int $attempt): FiscalJobOutcome
+    {
+        $message = $this->describeError($error);
+        $isRetriable = $this->isRetriable($error);
+
+        if (! $isRetriable) {
+            $this->meta->markFailed($order, $message);
+            $this->logAttempt($order, $attempt, $message, terminal: true);
+
+            return FiscalJobOutcome::failed($message);
+        }
+
+        if ($attempt >= self::MAX_ATTEMPTS) {
+            // Gave it the full retry budget — flip to terminal so we stop
+            // taking up queue slots and the order shows up in admin's
+            // "needs attention" view.
+            $this->meta->markFailed($order, sprintf(
+                /* translators: 1: total number of attempts, 2: error message from the last attempt. */
+                __('Gave up after %1$d attempts. Last error: %2$s', 'vcr'),
+                $attempt,
+                $message,
+            ));
+            $this->logAttempt($order, $attempt, $message, terminal: true);
+
+            return FiscalJobOutcome::failed($message);
+        }
+
+        $this->meta->markRetriableFailure($order, $message);
+        $this->logAttempt($order, $attempt, $message, terminal: false);
+
+        return FiscalJobOutcome::retriable($message);
+    }
+
+    private function isRetriable(Throwable $error): bool
+    {
+        if ($error instanceof VcrApiException) {
+            return $this->isRetriableApiError($error);
+        }
+
+        if ($error instanceof VcrNetworkException) {
+            return true;
+        }
+
+        if ($error instanceof VcrValidationException) {
+            // Schema mismatch on the response body is not something the
+            // server will fix on a retry — treat as terminal so admin can
+            // get an SDK update.
+            return false;
+        }
+
+        if ($error instanceof VcrException) {
+            // Future SDK exception subclasses we don't know about — be
+            // conservative and treat as terminal so we don't loop on
+            // something fundamentally broken.
+            return false;
+        }
+
+        // Any other throwable (out-of-memory, plugin conflict, etc.) is
+        // treated as transient — a fresh worker tick may have a clean slate.
+        return true;
+    }
+
+    /**
+     * 5xx and 429 are the canonical "try again later" responses. Other 4xx
+     * codes mean the request itself is broken (bad payload, bad auth) and
+     * retrying without changing inputs will fail the same way — terminal.
+     */
+    private function isRetriableApiError(VcrApiException $error): bool
+    {
+        if ($error->statusCode >= 500) {
+            return true;
+        }
+
+        if ($error->statusCode === 429) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function describeError(Throwable $error): string
+    {
+        if ($error instanceof VcrApiException) {
+            return sprintf(
+                'VCR API HTTP %d%s%s',
+                $error->statusCode,
+                $error->apiErrorCode !== null ? ' [' . $error->apiErrorCode . ']' : '',
+                $error->apiErrorMessage !== null ? ': ' . $error->apiErrorMessage : '',
+            );
+        }
+
+        return $error->getMessage();
+    }
+
+    private function logAttempt(WC_Order $order, int $attempt, string $message, bool $terminal): void
+    {
+        $order->add_order_note(sprintf(
+            /* translators: 1: attempt number, 2: max attempts, 3: error message. */
+            $terminal
+                ? __('VCR fiscalisation failed (attempt %1$d/%2$d, terminal): %3$s', 'vcr')
+                : __('VCR fiscalisation failed (attempt %1$d/%2$d, will retry): %3$s', 'vcr'),
+            $attempt,
+            self::MAX_ATTEMPTS,
+            $message,
+        ));
+    }
+}

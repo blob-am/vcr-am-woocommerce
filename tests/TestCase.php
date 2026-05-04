@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Tests;
 
 use Brain\Monkey;
+use Brain\Monkey\Functions;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 
 /**
@@ -24,6 +25,12 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
         Monkey\setUp();
+
+        // WP translation helpers — Brain Monkey doesn't pre-stub these.
+        // Echo the original string so assertions on output remain stable
+        // and tests don't blow up with "undefined function __()".
+        Functions\stubTranslationFunctions();
+        Functions\stubEscapeFunctions();
     }
 
     protected function tearDown(): void

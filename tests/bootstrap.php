@@ -36,3 +36,8 @@ defined('MINUTE_IN_SECONDS') || define('MINUTE_IN_SECONDS', 60);
 defined('HOUR_IN_SECONDS') || define('HOUR_IN_SECONDS', 60 * MINUTE_IN_SECONDS);
 defined('DAY_IN_SECONDS') || define('DAY_IN_SECONDS', 24 * HOUR_IN_SECONDS);
 defined('WEEK_IN_SECONDS') || define('WEEK_IN_SECONDS', 7 * DAY_IN_SECONDS);
+
+// Minimal WC class stubs so Mockery can satisfy `WC_Order` etc. type
+// hints in unit tests. Skipped automatically when real WC is loaded
+// (e.g. in wp-env-backed integration tests in Phase 4).
+require_once __DIR__ . '/Stubs/wc-classes.php';

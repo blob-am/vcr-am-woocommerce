@@ -20,7 +20,11 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
  * KeyStore for the API key (via the WC settings filter intercept),
  * WooCommerce's settings save for the base URL and toggles.
  */
-final class Configuration
+/**
+ * Not declared `final` so the FiscalJob and CashierCatalog unit tests can
+ * mock this class via Mockery — there's no production extension point.
+ */
+class Configuration
 {
     public const OPT_BASE_URL = 'vcr_base_url';
 
