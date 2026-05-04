@@ -7,6 +7,7 @@ namespace BlobSolutions\WooCommerceVcrAm\Admin;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
+use BlobSolutions\WooCommerceVcrAm\Vendor\GuzzleHttp\Client as GuzzleClient;
 use Throwable;
 
 /**
@@ -34,6 +35,22 @@ final class ConnectionTester
     private const SCRIPT_HANDLE = 'vcr-settings';
 
     private const AJAX_ACTION = 'vcr_test_connection';
+
+    /**
+     * Hard ceiling on a full request round-trip including TLS handshake,
+     * server-side processing, and response transmission. PHP itself caps
+     * scripts at `max_execution_time` (default 30s on most hosts), so
+     * matching that here gives us a deterministic upper bound on the
+     * spinner the admin sees in the UI.
+     */
+    private const HTTP_TIMEOUT_SECONDS = 30;
+
+    /**
+     * TLS/TCP connect must complete in this window — much shorter so we
+     * fail fast on dead endpoints (typo'd base URL, firewall block) without
+     * making the admin wait the full request timeout.
+     */
+    private const HTTP_CONNECT_TIMEOUT_SECONDS = 10;
 
     public function __construct(
         private readonly KeyStore $keyStore,
@@ -79,12 +96,18 @@ final class ConnectionTester
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce(self::NONCE_ACTION),
             'action' => self::AJAX_ACTION,
+            // Browser ceiling — must exceed the server-side timeout so the
+            // server's actual error response wins the race against the
+            // client's AbortController, otherwise admins always see a
+            // generic "timed out" instead of the real error message.
+            'timeoutMs' => (self::HTTP_TIMEOUT_SECONDS + 5) * 1000,
             'i18n' => [
                 'testButton' => __('Test connection', 'vcr'),
                 'testing' => __('Testing…', 'vcr'),
                 'apiKeyRequired' => __('Enter an API key first.', 'vcr'),
                 'connectionFailed' => __('Connection failed.', 'vcr'),
                 'networkError' => __('Network error — could not reach the server.', 'vcr'),
+                'timedOut' => __('Timed out — VCR did not respond in time.', 'vcr'),
             ],
         ]);
     }
@@ -120,10 +143,17 @@ final class ConnectionTester
             ? trim(esc_url_raw(wp_unslash($_POST['base_url'])))
             : '';
 
+        $guzzle = new GuzzleClient([
+            'timeout' => self::HTTP_TIMEOUT_SECONDS,
+            'connect_timeout' => self::HTTP_CONNECT_TIMEOUT_SECONDS,
+        ]);
+
         try {
-            $client = $baseUrl !== ''
-                ? new VcrClient($apiKey, $baseUrl)
-                : new VcrClient($apiKey);
+            $client = new VcrClient(
+                apiKey: $apiKey,
+                baseUrl: $baseUrl !== '' ? $baseUrl : VcrClient::DEFAULT_BASE_URL,
+                httpClient: $guzzle,
+            );
 
             $cashiers = $client->listCashiers();
             $count = count($cashiers);

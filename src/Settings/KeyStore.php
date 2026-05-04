@@ -87,7 +87,14 @@ final class KeyStore
 
         $raw = base64_decode($encoded, true);
         $minLength = SODIUM_CRYPTO_SECRETBOX_NONCEBYTES + SODIUM_CRYPTO_SECRETBOX_MACBYTES;
-        if ($raw === false || strlen($raw) < $minLength) {
+        if ($raw === false) {
+            $this->logFailure('stored value is not valid base64');
+
+            return null;
+        }
+        if (strlen($raw) < $minLength) {
+            $this->logFailure('stored ciphertext is shorter than nonce + MAC');
+
             return null;
         }
 
@@ -98,7 +105,15 @@ final class KeyStore
         $plaintext = sodium_crypto_secretbox_open($ciphertext, $nonce, $key);
         sodium_memzero($key);
 
-        return $plaintext === false ? null : $plaintext;
+        if ($plaintext === false) {
+            $this->logFailure(
+                'sodium_crypto_secretbox_open returned false — most likely cause: wp_salt(\'auth\') has rotated since the value was written; re-enter the credential to refresh the ciphertext',
+            );
+
+            return null;
+        }
+
+        return $plaintext;
     }
 
     public function isSet(): bool
@@ -117,5 +132,29 @@ final class KeyStore
         // (`SODIUM_CRYPTO_SECRETBOX_KEYBYTES`) without depending on the
         // salt's raw length.
         return hash('sha256', wp_salt('auth'), true);
+    }
+
+    /**
+     * Surface decryption failures into the WP debug log. Gated by
+     * `WP_DEBUG_LOG` because emitting on every page load of a broken
+     * install would spam production logs; admins debugging "why does my
+     * API key not work after the security update" have to enable
+     * `WP_DEBUG` + `WP_DEBUG_LOG` to see the trail, but that's the
+     * standard WP debugging entrypoint.
+     *
+     * Never includes the ciphertext, the salt, or the derived key.
+     */
+    private function logFailure(string $reason): void
+    {
+        if (! defined('WP_DEBUG_LOG') || ! WP_DEBUG_LOG) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+        error_log(sprintf(
+            '[VCR KeyStore] failed to decrypt option "%s": %s',
+            $this->optionName,
+            $reason,
+        ));
     }
 }
