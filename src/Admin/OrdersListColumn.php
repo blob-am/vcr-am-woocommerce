@@ -110,11 +110,22 @@ class OrdersListColumn
      */
     public function renderLegacyCell($columnName, $postId): void
     {
-        if ($columnName !== self::COLUMN_KEY || ! is_int($postId)) {
+        if ($columnName !== self::COLUMN_KEY) {
             return;
         }
 
-        $order = wc_get_order($postId);
+        // WP core passes int $post_id through `manage_<post_type>_posts_custom_column`,
+        // but admin extensions like Admin Columns Pro / Smart Manager
+        // re-fire the action with stringly-typed ids harvested from
+        // $_REQUEST. Coerce so we don't silently drop their cells.
+        $id = is_int($postId)
+            ? $postId
+            : (is_string($postId) && ctype_digit($postId) ? (int) $postId : 0);
+        if ($id <= 0) {
+            return;
+        }
+
+        $order = wc_get_order($id);
         if (! $order instanceof WC_Order) {
             return;
         }
@@ -136,8 +147,9 @@ class OrdersListColumn
             // Not enqueued yet — render a low-contrast placeholder so
             // the column doesn't have an empty cell (which reads as
             // "data missing" rather than "no fiscal action").
+            // Em dash is purely decorative; not a translatable string.
             echo '<mark class="order-status" style="background:#e0e0e0;color:#555">'
-                . '<span>' . esc_html__('—', 'vcr') . '</span></mark>';
+                . '<span>—</span></mark>';
 
             return;
         }

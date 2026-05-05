@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
 
+use BlobSolutions\WooCommerceVcrAm\Currency\CurrencyConverter;
+use BlobSolutions\WooCommerceVcrAm\Currency\Exception\ExchangeRateUnavailableException;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\Exception\FiscalBuildException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\SaleAmount;
 use WC_Order;
@@ -39,6 +41,7 @@ use WC_Order;
 class PaymentMapper
 {
     public function __construct(
+        private readonly ?CurrencyConverter $converter = null,
         private readonly CashPaymentResolver $cashResolver = new CashPaymentResolver(),
     ) {
     }
@@ -68,7 +71,9 @@ class PaymentMapper
             ));
         }
 
-        $formatted = number_format($total, 2, '.', '');
+        $amd = $this->convertToAmd($order, $total);
+
+        $formatted = number_format($amd, 2, '.', '');
 
         if (str_contains($formatted, '.')) {
             $formatted = rtrim($formatted, '0');
@@ -76,5 +81,52 @@ class PaymentMapper
         }
 
         return $formatted === '' ? '0' : $formatted;
+    }
+
+    /**
+     * Convert the order total to AMD using the injected
+     * {@see CurrencyConverter}. Returns the input as-is when:
+     *
+     *   - The order is already in AMD (the converter returns identity).
+     *   - No converter was injected (tests or legacy installs that
+     *     pre-date multi-currency support — production wiring always
+     *     supplies one). In this branch we trust the order is AMD; if
+     *     it's not, fail loudly so misconfigured installs don't ship
+     *     wrong-magnitude receipts to SRC.
+     *
+     * Conversion failures convert to {@see FiscalBuildException} so the
+     * order goes to {@see FiscalStatus::ManualRequired} rather than
+     * burning the retry budget on a CBA outage. The admin can re-run
+     * once CBA recovers (or once the cached rate refreshes) via the
+     * "Fiscalize now" button.
+     *
+     * @throws FiscalBuildException
+     */
+    private function convertToAmd(WC_Order $order, float $total): float
+    {
+        $currency = strtoupper($order->get_currency());
+
+        if ($this->converter === null) {
+            if ($currency !== '' && $currency !== CurrencyConverter::HOME_CURRENCY) {
+                throw new FiscalBuildException(sprintf(
+                    'Order #%d is in %s but no CurrencyConverter is configured. Refusing to fiscalise — the receipt would otherwise be sent to SRC at the wrong magnitude.',
+                    $order->get_id(),
+                    $currency,
+                ));
+            }
+
+            return $total;
+        }
+
+        try {
+            return $this->converter->toAmd($total, $currency);
+        } catch (ExchangeRateUnavailableException $e) {
+            throw new FiscalBuildException(sprintf(
+                'Cannot convert order #%d (%s) to AMD: %s',
+                $order->get_id(),
+                $currency,
+                $e->getMessage(),
+            ), previous: $e);
+        }
     }
 }

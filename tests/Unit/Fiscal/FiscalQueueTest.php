@@ -46,13 +46,52 @@ it('enqueue skips orders already in a terminal state', function (): void {
     $this->queue->enqueue(123);
 });
 
-it('enqueue skips when an action is already scheduled (de-dupe)', function (): void {
+it('enqueue skips when a pending action is already scheduled (dedup)', function (): void {
     $order = Mockery::mock(WC_Order::class);
     $order->allows('get_type')->andReturn('shop_order');
     Functions\when('wc_get_order')->justReturn($order);
 
     $this->meta->allows('status')->with($order)->andReturn(null);
-    Functions\when('as_has_scheduled_action')->justReturn(true);
+    Functions\when('as_get_scheduled_actions')->justReturn([42]);
+
+    $this->meta->expects('initialize')->never();
+    Functions\expect('as_enqueue_async_action')->never();
+
+    $this->queue->enqueue(123);
+});
+
+it('enqueue skips when an action is already in-progress — race fix', function (): void {
+    // Regression guard for the WC payment_complete() double-fire race:
+    //   - hook A fires woocommerce_payment_complete  -> enqueue(123)
+    //   - AS picks up the action, marks it in-progress, starts the
+    //     network call to SRC
+    //   - hook B fires woocommerce_order_status_processing  -> enqueue(123)
+    //
+    // Without the in-progress half of the dedup check, hook B's enqueue
+    // would slip through (status still Pending in our meta because
+    // markSuccess hasn't run yet) and we'd transmit the same sale to SRC
+    // twice. The mock returns a non-empty result, simulating an
+    // in-progress action present at lookup time.
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_type')->andReturn('shop_order');
+    Functions\when('wc_get_order')->justReturn($order);
+
+    $this->meta->allows('status')->with($order)->andReturn(FiscalStatus::Pending);
+
+    Functions\expect('as_get_scheduled_actions')
+        ->once()
+        ->with(Mockery::on(static function (array $args): bool {
+            // Verify the call asks AS for BOTH pending and in-progress.
+            // If the implementation regresses to pending-only, this test
+            // catches it.
+            return isset($args['status'])
+                && is_array($args['status'])
+                && in_array('pending', $args['status'], true)
+                && in_array('in-progress', $args['status'], true)
+                && ($args['hook'] ?? null) === FiscalQueue::ACTION_HOOK
+                && ($args['args'] ?? null) === [123];
+        }), 'ids')
+        ->andReturn([99]); // simulating: in-progress action with id 99 exists
 
     $this->meta->expects('initialize')->never();
     Functions\expect('as_enqueue_async_action')->never();
@@ -66,12 +105,29 @@ it('enqueue initialises meta and schedules the action on a fresh order', functio
     Functions\when('wc_get_order')->justReturn($order);
 
     $this->meta->allows('status')->with($order)->andReturn(null);
-    Functions\when('as_has_scheduled_action')->justReturn(false);
+    Functions\when('as_get_scheduled_actions')->justReturn([]);
 
     $this->meta->expects('initialize')->with($order);
     Functions\expect('as_enqueue_async_action')
         ->once()
         ->with(FiscalQueue::ACTION_HOOK, [123], FiscalQueue::ACTION_GROUP);
+
+    $this->queue->enqueue(123);
+});
+
+it('hasScheduledAction tolerates a non-array AS return (defensive)', function (): void {
+    // Some AS storage backends have historically returned 0/false on
+    // empty result. The dedup check must not double-enqueue if AS hands
+    // back an unexpected falsy non-array.
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_type')->andReturn('shop_order');
+    Functions\when('wc_get_order')->justReturn($order);
+
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    Functions\when('as_get_scheduled_actions')->justReturn(0);
+
+    $this->meta->expects('initialize')->with($order);
+    Functions\expect('as_enqueue_async_action')->once();
 
     $this->queue->enqueue(123);
 });

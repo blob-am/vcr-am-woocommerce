@@ -23,6 +23,33 @@ beforeEach(function (): void {
  * integration suite (wp-env + Playwright).
  */
 
+it('settings tab title section description discloses the third-country data transfer', function (): void {
+    $keyStore = Mockery::mock(KeyStore::class);
+    $keyStore->allows('isSet')->andReturn(false);
+    $keyStore->allows('get')->andReturn(null);
+
+    $catalog = Mockery::mock(CashierCatalog::class);
+    $catalog->allows('listForDropdown')->andReturn([]);
+    $catalog->allows('list')->andReturn([]);
+
+    Functions\when('wp_kses_post')->returnArg(1);
+
+    $tab = new VcrSettingsTab($keyStore, $catalog);
+    $settings = $tab->get_settings();
+
+    // The title field at the top of the tab must carry a description
+    // that names Armenia, the SCC mechanism, and what data is sent.
+    // This is the merchant's primary GDPR notice surface — they have
+    // to see it before they paste credentials.
+    expect($settings)->toBeArray();
+    expect($settings[0]['type'])->toBe('title');
+    expect($settings[0]['desc'])
+        ->toContain('Armenia')
+        ->toContain('Standard Contractual Clauses')
+        ->toContain('NOT transmitted')
+        ->toContain('vcr.am/privacy');
+});
+
 it('interceptApiKeySave trims and persists the key into KeyStore', function (): void {
     $stored = null;
     $keyStore = Mockery::mock(KeyStore::class);

@@ -231,7 +231,12 @@ class OrderMetaBox
             return;
         }
 
-        $rawNotice = $_GET[self::NOTICE_QUERY_PARAM];
+        // wp_unslash before any other access — WP's superglobal magic
+        // quotes are still active under some hosts. sanitize_key strips
+        // anything that isn't [A-Za-z0-9_-] so a stray slash is harmless,
+        // but the WPCS / Plugin Check rule expects unslash-then-sanitize
+        // as a uniform pattern.
+        $rawNotice = wp_unslash($_GET[self::NOTICE_QUERY_PARAM]);
         if (! is_string($rawNotice)) {
             return;
         }

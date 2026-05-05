@@ -127,7 +127,8 @@
             "@format:check",
             "@phpstan",
             "@test"
-        ]
+        ],
+        "build:wporg": "bash bin/build-wporg-zip.sh"
     },
     "scripts-descriptions": {
         "bin-install": "Install Strauss into its isolated composer-bin context (vendor-bin/strauss/vendor/) so its transitive deps don't conflict with the main composer environment (Pest 4 / php-parser 5.x)",
@@ -136,6 +137,7 @@
         "phpstan": "Run static analysis at level max + strict rules with WordPress / WooCommerce stubs",
         "format": "Apply Pint code style fixes",
         "format:check": "Verify code style without writing changes",
-        "check": "Run the full local CI pipeline (format + phpstan + test)"
+        "check": "Run the full local CI pipeline (format + phpstan + test)",
+        "build:wporg": "Build a clean WP.org-ready ZIP into dist/ using .distignore as the exclusion list"
     }
 }

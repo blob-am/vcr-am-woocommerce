@@ -5,10 +5,10 @@ declare(strict_types=1);
 /**
  * Plugin Name:       VCR — Fiscal Receipts for Armenia (eHDM)
  * Plugin URI:        https://vcr.am
- * Description:       Issue fiscal receipts (eHDM) to the Armenian State Revenue Committee directly from WooCommerce orders. Multi-currency, refunds, customer-facing QR. Direct SRC integration — no third-party gateway.
+ * Description:       Issue Armenian fiscal receipts (eHDM) to the State Revenue Committee directly from WooCommerce orders. Multi-currency + refunds.
  * Version:           0.1.0
  * Requires at least: 6.7
- * Tested up to:      6.9
+ * Tested up to:      6.8
  * Requires PHP:      8.3
  * Requires Plugins:  woocommerce
  * WC requires at least: 9.4
@@ -66,5 +66,11 @@ if ($missing !== []) {
 
 require_once $autoload;
 require_once $prefixed_autoload;
+
+// Plugin lifecycle hooks. We register them here at file-scope so they
+// fire even when WooCommerce is missing (e.g. an admin deactivates WC,
+// then deactivates us — the plugin object's `onPluginsLoaded` short-
+// circuits in that case but the deactivation cleanup must still run).
+register_deactivation_hook(PLUGIN_FILE, [Plugin::class, 'onDeactivation']);
 
 (new Plugin(PLUGIN_FILE, PLUGIN_VERSION))->boot();

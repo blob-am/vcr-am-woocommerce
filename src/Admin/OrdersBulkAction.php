@@ -73,14 +73,22 @@ class OrdersBulkAction
      */
     public function renderResultNotice(): void
     {
+        // Scope to the orders screens — without this gate, an attacker
+        // can craft `wp-admin/index.php?vcr_bulk_queued=999` and our
+        // notice renders on every admin page that opens. Cosmetic
+        // spoofing rather than an exploit, but worth closing.
+        if (! $this->isOrdersScreen()) {
+            return;
+        }
+
         if (! isset($_GET['vcr_bulk_queued']) && ! isset($_GET['vcr_bulk_skipped'])) {
             return;
         }
 
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended — read-only render
-        $rawQueued = $_GET['vcr_bulk_queued'] ?? 0;
+        $rawQueued = isset($_GET['vcr_bulk_queued']) ? wp_unslash($_GET['vcr_bulk_queued']) : 0;
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        $rawSkipped = $_GET['vcr_bulk_skipped'] ?? 0;
+        $rawSkipped = isset($_GET['vcr_bulk_skipped']) ? wp_unslash($_GET['vcr_bulk_skipped']) : 0;
         $queued = is_numeric($rawQueued) ? (int) $rawQueued : 0;
         $skipped = is_numeric($rawSkipped) ? (int) $rawSkipped : 0;
 
@@ -121,6 +129,27 @@ class OrdersBulkAction
             esc_attr($cssClass),
             esc_html(implode(' ', $parts)),
         );
+    }
+
+    /**
+     * Detect WC orders screen — both legacy CPT and HPOS variants. Used
+     * to gate the post-bulk-action notice render so a crafted URL
+     * spraying our query params anywhere in wp-admin can't conjure
+     * a fake "999 orders re-queued" notice.
+     */
+    private function isOrdersScreen(): bool
+    {
+        if (! function_exists('get_current_screen')) {
+            return false;
+        }
+
+        $screen = get_current_screen();
+        if ($screen === null) {
+            return false;
+        }
+
+        // HPOS screen id, legacy CPT screen id.
+        return in_array($screen->id, ['woocommerce_page_wc-orders', 'edit-shop_order'], true);
     }
 
     /**

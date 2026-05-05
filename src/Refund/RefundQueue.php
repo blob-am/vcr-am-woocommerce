@@ -129,10 +129,27 @@ class RefundQueue
 
     private function hasScheduledAction(int $refundId): bool
     {
-        if (! function_exists('as_has_scheduled_action')) {
+        if (! function_exists('as_get_scheduled_actions')) {
             return false;
         }
 
-        return (bool) as_has_scheduled_action(self::ACTION_HOOK, [$refundId], self::ACTION_GROUP);
+        // Multi-status filter (pending + in-progress) to prevent
+        // double-registering a refund when WC fires
+        // `woocommerce_order_refunded` and a sibling hook in close
+        // succession. Same rationale as the matching check in
+        // {@see \BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue::hasScheduledAction()}
+        // — see that class's "Idempotency" doc-block.
+        $matches = as_get_scheduled_actions(
+            [
+                'hook' => self::ACTION_HOOK,
+                'args' => [$refundId],
+                'group' => self::ACTION_GROUP,
+                'status' => ['pending', 'in-progress'],
+                'per_page' => 1,
+            ],
+            'ids',
+        );
+
+        return is_array($matches) && $matches !== [];
     }
 }

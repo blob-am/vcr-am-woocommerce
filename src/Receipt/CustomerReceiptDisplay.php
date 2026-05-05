@@ -42,7 +42,15 @@ class CustomerReceiptDisplay
 
     public function register(): void
     {
-        add_action('woocommerce_email_order_meta', [$this, 'renderInEmail'], 10, 4);
+        // `woocommerce_email_after_order_table` is the canonical hook
+        // for "extra info just below the order table in transactional
+        // emails" — used by Stripe, Subscriptions, Memberships, etc.
+        // The earlier `woocommerce_email_order_meta` hook fires inside
+        // the meta-block region, which Kadence Email Designer / MailPoet
+        // / many email customizer plugins suppress or restyle, leaving
+        // the receipt link in surprising positions. Keep the signature
+        // identical — both hooks pass `(WC_Order, sent_to_admin, plain_text, WC_Email)`.
+        add_action('woocommerce_email_after_order_table', [$this, 'renderInEmail'], 10, 4);
         add_action('woocommerce_thankyou', [$this, 'renderOnThankYou'], 20);
         add_action('woocommerce_order_details_after_order_table', [$this, 'renderInOrderDetails']);
     }
@@ -65,7 +73,7 @@ class CustomerReceiptDisplay
                 echo "\n" . __('View your fiscal receipt:', 'vcr') . ' ' . $url . "\n";
             } else {
                 printf(
-                    '<p style="margin-top:1em"><strong>%s</strong> <a href="%s">%s</a></p>',
+                    '<p style="margin-top:1em"><strong>%s</strong> <a href="%s" rel="noopener noreferrer">%s</a></p>',
                     esc_html(__('Fiscal receipt:', 'vcr')),
                     esc_url($url),
                     esc_html(__('View your receipt', 'vcr')),
@@ -123,7 +131,7 @@ class CustomerReceiptDisplay
         $url = $this->urlBuilder->build($order);
         if ($url !== null) {
             printf(
-                '<p class="vcr-receipt-link"><strong>%s</strong> <a href="%s">%s</a></p>',
+                '<p class="vcr-receipt-link"><strong>%s</strong> <a href="%s" rel="noopener noreferrer">%s</a></p>',
                 esc_html(__('Fiscal receipt:', 'vcr')),
                 esc_url($url),
                 esc_html(__('View your receipt', 'vcr')),
@@ -163,7 +171,7 @@ class CustomerReceiptDisplay
 
             printf(
                 '<p class="vcr-refund-receipt-link" style="margin-top:0.5em">' .
-                '<strong>%s</strong> <a href="%s">%s</a></p>',
+                '<strong>%s</strong> <a href="%s" rel="noopener noreferrer">%s</a></p>',
                 esc_html(sprintf(
                     /* translators: 1: refund id */
                     __('Refund receipt (#%d):', 'vcr'),

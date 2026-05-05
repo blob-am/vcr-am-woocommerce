@@ -73,6 +73,7 @@ class RefundJob
         private readonly RefundStatusMeta $refundMeta,
         private readonly FiscalStatusMeta $fiscalMeta,
         private readonly Logger $logger = new Logger(),
+        private readonly RefundReasonSanitizer $reasonSanitizer = new RefundReasonSanitizer(),
     ) {
     }
 
@@ -177,7 +178,13 @@ class RefundJob
             ));
         }
 
-        $reasonText = trim($refund->get_reason());
+        // Sanitise the WC admin's free-form reason text before it
+        // leaves the merchant's site. The field is an unstructured
+        // textarea; admins routinely paste customer email / phone /
+        // dispute snippets that are not needed by SRC and would
+        // violate GDPR Art 5(1)(c) data-minimisation if forwarded.
+        // {@see RefundReasonSanitizer} for the redactor strategy.
+        $reasonNote = $this->reasonSanitizer->sanitize($refund->get_reason());
 
         return new RegisterSaleRefundInput(
             cashier: CashierId::byInternalId($cashierId),
@@ -185,7 +192,7 @@ class RefundJob
             // items=null → full refund. Partial refunds are routed to
             // ManualRequired by RefundEligibilityChecker.
             reason: $this->reasonMapper->map($refund),
-            reasonNote: $reasonText !== '' ? $reasonText : null,
+            reasonNote: $reasonNote,
             refundAmounts: $this->paymentMapper->map($parent, $refund),
             items: null,
         );

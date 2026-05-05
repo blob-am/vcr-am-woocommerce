@@ -73,12 +73,38 @@ it('enqueue skips refunds in Failed terminal state (admin must press Register Re
     $this->queue->enqueue(123);
 });
 
-it('enqueue skips when an action is already scheduled (de-dupe)', function (): void {
+it('enqueue skips when a pending action is already scheduled (dedup)', function (): void {
     $refund = Mockery::mock(WC_Order_Refund::class);
     Functions\when('wc_get_order')->justReturn($refund);
 
     $this->meta->allows('status')->with($refund)->andReturn(null);
-    Functions\when('as_has_scheduled_action')->justReturn(true);
+    Functions\when('as_get_scheduled_actions')->justReturn([42]);
+
+    $this->meta->expects('initialize')->never();
+    Functions\expect('as_enqueue_async_action')->never();
+
+    $this->queue->enqueue(123);
+});
+
+it('enqueue skips when an action is in-progress — race fix mirror of FiscalQueue', function (): void {
+    // Same race as the sale pipeline: woocommerce_order_refunded fires
+    // and a sibling hook (or a manual admin retry) fires before AS has
+    // moved the first attempt off in-progress. Without dedup on the
+    // in-progress status we'd hit SRC twice with the same refund.
+    $refund = Mockery::mock(WC_Order_Refund::class);
+    Functions\when('wc_get_order')->justReturn($refund);
+
+    $this->meta->allows('status')->with($refund)->andReturn(FiscalStatus::Pending);
+
+    Functions\expect('as_get_scheduled_actions')
+        ->once()
+        ->with(Mockery::on(static function (array $args): bool {
+            return isset($args['status'])
+                && is_array($args['status'])
+                && in_array('pending', $args['status'], true)
+                && in_array('in-progress', $args['status'], true);
+        }), 'ids')
+        ->andReturn([88]); // simulate in-progress action
 
     $this->meta->expects('initialize')->never();
     Functions\expect('as_enqueue_async_action')->never();
@@ -91,7 +117,7 @@ it('enqueue initialises meta and schedules the action on a fresh refund', functi
     Functions\when('wc_get_order')->justReturn($refund);
 
     $this->meta->allows('status')->with($refund)->andReturn(null);
-    Functions\when('as_has_scheduled_action')->justReturn(false);
+    Functions\when('as_get_scheduled_actions')->justReturn([]);
 
     $this->meta->expects('initialize')->with($refund);
     Functions\expect('as_enqueue_async_action')

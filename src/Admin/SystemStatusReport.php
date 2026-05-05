@@ -32,10 +32,25 @@ use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
  *     "Failed" / "ManualRequired" buckets. The report is shareable
  *     in support tickets — it must contain zero PII or secrets.
  *
- * Counts are computed via `wc_get_orders` with a meta query — relies
- * on WP's index over postmeta `meta_key` for performance. For shops
- * with millions of orders this is still O(matching meta rows); a future
- * elaboration could memoise via a transient.
+ * Counts are computed by a direct `SELECT meta_value, COUNT(*)` against
+ * the order-meta table. We resolve the table name at query time:
+ *
+ *   - **HPOS authoritative** (the WC default since 8.2 and a hard
+ *     requirement of any new Woo Marketplace submission): order meta
+ *     lives in `{$wpdb->prefix}wc_orders_meta`. Reading from `wp_postmeta`
+ *     would silently return zero rows on stores that have completed the
+ *     HPOS migration with sync turned off — exactly the surface support
+ *     staff paste into tickets, where a misreport is worst.
+ *   - **Legacy posts authoritative** (older stores, or those that
+ *     explicitly disabled HPOS): meta lives in `{$wpdb->postmeta}`.
+ *
+ * The detection uses `OrderUtil::custom_orders_table_usage_is_enabled()`
+ * which is the documented WC API (introduced in WC 7.1) and the same
+ * thing WC core uses internally to decide where to read order meta.
+ * Wrapped in `class_exists` so this file is safe to evaluate before WC
+ * has bootstrapped (System Status renders late in the request, after WC
+ * is fully loaded — but the guard is cheap and removes a class of "what
+ * if WC was deactivated mid-request" weirdness).
  */
 class SystemStatusReport
 {
@@ -79,7 +94,7 @@ class SystemStatusReport
         $rows = [
             __('Plugin version', 'vcr') => $this->pluginVersion,
             __('API key configured', 'vcr') => $this->config->hasCredentials() ? __('Yes', 'vcr') : __('No', 'vcr'),
-            __('Base URL', 'vcr') => $this->config->baseUrl(),
+            __('Base URL', 'vcr') => $this->stripCredentials($this->config->baseUrl()),
             __('Test mode', 'vcr') => $this->config->isTestMode() ? __('Enabled', 'vcr') : __('Disabled', 'vcr'),
             __('Default cashier configured', 'vcr') => $this->config->defaultCashierId() !== null ? __('Yes', 'vcr') : __('No', 'vcr'),
             __('Default department configured', 'vcr') => $this->config->defaultDepartmentId() !== null ? __('Yes', 'vcr') : __('No', 'vcr'),
@@ -140,19 +155,21 @@ class SystemStatusReport
             return [];
         }
 
-        // Direct postmeta query — wc_get_orders with a meta_query is
-        // slower because it fetches whole orders before counting. We
-        // need only counts grouped by status value.
+        $table = $this->orderMetaTable($wpdb);
+
+        // Direct meta query — wc_get_orders with a meta_query is slower
+        // because it fetches whole orders before counting. We need only
+        // counts grouped by status value.
         //
         // The `%i` placeholder (WP 6.2+) safely escapes the table name
         // identifier — preferred over string interpolation since it
         // produces a literal-string SQL template that PHPStan can
-        // verify, and protects against any future change in postmeta
-        // table naming. `%s` for the meta_key is the standard string
+        // verify, and protects against any future change in table
+        // naming. `%s` for the meta_key is the standard string
         // placeholder; the value is a class constant, never user input.
         $sql = $wpdb->prepare(
             'SELECT meta_value, COUNT(*) AS c FROM %i WHERE meta_key = %s GROUP BY meta_value',
-            $wpdb->postmeta,
+            $table,
             $metaKey,
         );
 
@@ -188,5 +205,58 @@ class SystemStatusReport
         }
 
         return $counts;
+    }
+
+    /**
+     * Remove `user:pass@` userinfo from a URL before exposing it via
+     * the system-status report. Most installs never have credentials
+     * embedded in the URL, but a misguided admin who pastes
+     * `https://api:secret@vcr.am/...` would otherwise leak the secret
+     * to anyone they paste the System Status report to. Strip
+     * defensively.
+     */
+    private function stripCredentials(string $url): string
+    {
+        $parts = parse_url($url);
+        if ($parts === false || ! isset($parts['scheme'], $parts['host'])) {
+            return $url;
+        }
+
+        if (! isset($parts['user']) && ! isset($parts['pass'])) {
+            return $url;
+        }
+
+        $rebuilt = $parts['scheme'] . '://' . $parts['host'];
+        if (isset($parts['port'])) {
+            $rebuilt .= ':' . $parts['port'];
+        }
+        if (isset($parts['path'])) {
+            $rebuilt .= $parts['path'];
+        }
+        if (isset($parts['query'])) {
+            $rebuilt .= '?' . $parts['query'];
+        }
+
+        return $rebuilt;
+    }
+
+    /**
+     * Resolve the order-meta table name based on whether HPOS is the
+     * authoritative store. See class doc-block for full rationale.
+     */
+    private function orderMetaTable(\wpdb $wpdb): string
+    {
+        $orderUtil = '\\Automattic\\WooCommerce\\Utilities\\OrderUtil';
+
+        if (
+            class_exists($orderUtil)
+            && is_callable([$orderUtil, 'custom_orders_table_usage_is_enabled'])
+            && $orderUtil::custom_orders_table_usage_is_enabled()
+        ) {
+            // HPOS table — see WC's `OrdersTableDataStoreMeta`.
+            return $wpdb->prefix . 'wc_orders_meta';
+        }
+
+        return $wpdb->postmeta;
     }
 }

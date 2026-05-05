@@ -6,6 +6,7 @@ namespace BlobSolutions\WooCommerceVcrAm\Settings;
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Net\SafeUrlValidator;
 use WC_Settings_Page;
 
 /**
@@ -41,6 +42,7 @@ final class VcrSettingsTab extends WC_Settings_Page
     public function __construct(
         private readonly KeyStore $keyStore,
         private readonly CashierCatalog $cashierCatalog,
+        private readonly SafeUrlValidator $urlValidator = new SafeUrlValidator(),
     ) {
         $this->id = 'vcr';
         $this->label = __('VCR', 'vcr');
@@ -54,11 +56,62 @@ final class VcrSettingsTab extends WC_Settings_Page
             3,
         );
 
+        // Sanitize + SSRF-validate the base URL on save. Without this the
+        // typed value flows straight into wp_options, and any subsequent
+        // fiscal job sends the API key to whatever URL was stored —
+        // including loopback / cloud-metadata / RFC1918 if the admin
+        // (or a hostile shop manager) typed one.
+        add_filter(
+            'woocommerce_admin_settings_sanitize_option_' . Configuration::OPT_BASE_URL,
+            [$this, 'sanitizeBaseUrlSave'],
+            10,
+            3,
+        );
+
         // Settings save flow: WC fires `woocommerce_update_options_<id>`
         // after persisting fields. Drop the cashier-cache transient so
         // a credentials change picks up a fresh list on the next render
         // instead of serving up to an hour of stale data.
         add_action('woocommerce_update_options_' . $this->id, [$this, 'invalidateCaches']);
+    }
+
+    /**
+     * WC `sanitize_option_<id>` filter for the base URL field. Empty
+     * input is allowed (means "use SDK default"). Non-empty values are
+     * normalised through `esc_url_raw` (CRLF / scheme stripping) AND
+     * checked against {@see SafeUrlValidator}; rejected URLs are
+     * persisted as the empty string and an admin notice is queued.
+     *
+     * Returning the empty string on rejection (rather than throwing) is
+     * the WC convention — settings filters can't gracefully halt a save
+     * mid-flight, and we'd rather end up at the SDK default than at a
+     * malicious URL with the API key already in the wp_options row.
+     *
+     * @param  mixed                $value
+     * @param  array<string, mixed> $option
+     * @param  mixed                $rawValue
+     */
+    public function sanitizeBaseUrlSave($value, array $option, $rawValue): string
+    {
+        $candidate = is_string($value) ? trim(esc_url_raw($value)) : '';
+        if ($candidate === '') {
+            return '';
+        }
+
+        $rejection = $this->urlValidator->reject($candidate);
+        if ($rejection !== null) {
+            add_action('admin_notices', static function () use ($rejection): void {
+                printf(
+                    '<div class="notice notice-error is-dismissible"><p><strong>%s</strong> %s</p></div>',
+                    esc_html__('VCR base URL rejected:', 'vcr'),
+                    esc_html($rejection),
+                );
+            });
+
+            return '';
+        }
+
+        return $candidate;
     }
 
     /**
@@ -78,10 +131,7 @@ final class VcrSettingsTab extends WC_Settings_Page
             [
                 'name' => __('VCR — Fiscal Receipts for Armenia', 'vcr'),
                 'type' => 'title',
-                'desc' => __(
-                    'Connect your store to the VCR.AM gateway. Fiscal receipts (e-HDM) are issued directly to the Armenian State Revenue Committee on every paid order.',
-                    'vcr',
-                ),
+                'desc' => $this->buildIntroDescription(),
                 'id' => 'vcr_section',
             ],
             [
@@ -205,6 +255,47 @@ final class VcrSettingsTab extends WC_Settings_Page
     public function invalidateCaches(): void
     {
         $this->cashierCatalog->refresh();
+    }
+
+    /**
+     * Description rendered at the top of the settings tab. Doubles as
+     * the merchant-facing GDPR / data-flow disclosure: the merchant
+     * needs to know that activating the plugin sets up an EU → Armenia
+     * data transfer (when the merchant is GDPR-subject) before they
+     * paste their API key. Keeps the legal text in the merchant's
+     * primary configuration surface so they can't miss it.
+     *
+     * The text is allow-listed `wp_kses_post` HTML — `<a>`, `<strong>`,
+     * `<p>`, `<em>` are kept; everything else is stripped by WC's
+     * settings renderer. The DPA / SCC links are intentionally
+     * informational; we don't ship hard-coded merchant-side legal docs
+     * with the plugin.
+     */
+    private function buildIntroDescription(): string
+    {
+        $body = __(
+            'Connect your store to the VCR.AM gateway. Fiscal receipts (e-HDM) are issued directly to the Armenian State Revenue Committee (SRC) on every paid order.',
+            'vcr',
+        );
+
+        $disclosure = __(
+            'GDPR / data-flow notice: activating this plugin transmits order line items, totals, and payment-method classification (cash / non-cash) to the VCR.AM gateway, which forwards them to the Armenian SRC. Customer name, email, address, and phone number are NOT transmitted. VCR.AM is established in the Republic of Armenia, which is not on the European Commission\'s adequacy list — when this site is GDPR-subject, the transfer is governed by Standard Contractual Clauses (Commission Implementing Decision (EU) 2021/914).',
+            'vcr',
+        );
+
+        $links = sprintf(
+            /* translators: 1: VCR.AM Privacy Policy URL, 2: VCR.AM Data Processing Addendum URL, 3: Standard Contractual Clauses (Commission Decision) URL */
+            __('Reference links: %1$s · %2$s · %3$s.', 'vcr'),
+            sprintf('<a href="https://vcr.am/privacy" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('VCR.AM Privacy Policy', 'vcr')),
+            sprintf('<a href="https://vcr.am/dpa" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('Data Processing Addendum (request from VCR.AM)', 'vcr')),
+            sprintf('<a href="https://eur-lex.europa.eu/eli/dec_impl/2021/914/oj" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('Standard Contractual Clauses (EU 2021/914)', 'vcr')),
+        );
+
+        return wp_kses_post(
+            '<p>' . $body . '</p>'
+            . '<p><em>' . $disclosure . '</em></p>'
+            . '<p>' . $links . '</p>',
+        );
     }
 
     /**

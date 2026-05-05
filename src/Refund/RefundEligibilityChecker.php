@@ -35,9 +35,20 @@ class RefundEligibilityChecker
 {
     /**
      * Tolerance for refund-total vs order-total float comparison —
-     * smaller than the smallest currency subunit (1 cent / 1 luma) so
-     * legitimate equal-total refunds don't get rejected for trailing-
-     * zero precision drift.
+     * smaller than the smallest currency subunit so legitimate equal-
+     * total refunds don't get rejected for trailing-zero precision
+     * drift.
+     *
+     * 0.005 is correct for AMD (zero subunit) and 2-decimal-place
+     * currencies (USD/EUR/RUB cents at 0.01 minimum).
+     *
+     * KNOWN LIMITATION: For 3-decimal-place currencies (BHD, JOD, KWD,
+     * OMR, TND) the smallest subunit is 0.001, so 0.005 is larger than
+     * the subunit and could swallow real partial refunds as if they
+     * were full. The plugin is Armenia-focused and these currencies
+     * are vanishingly rare in WC stores selling into AMD; document
+     * here rather than parameterise. If a future merchant needs 3dp
+     * currency support, narrow this to 0.0005 (or per-currency).
      */
     private const AMOUNT_EPSILON = 0.005;
 

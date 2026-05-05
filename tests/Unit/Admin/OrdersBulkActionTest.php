@@ -174,6 +174,8 @@ it('handle accepts numeric string ids (WC sometimes passes strings)', function (
 // ---------- Result notice rendering ----------
 
 it('renderResultNotice does nothing when neither query param is present', function (): void {
+    Functions\when('get_current_screen')->justReturn((object) ['id' => 'edit-shop_order']);
+
     [$action] = makeBulk();
 
     ob_start();
@@ -187,6 +189,9 @@ it('renderResultNotice emits success notice when queued > 0', function (): void 
     $_GET['vcr_bulk_queued'] = '3';
     $_GET['vcr_bulk_skipped'] = '0';
     Functions\when('_n')->alias(fn ($s, $p, int $n) => $n === 1 ? $s : $p);
+    // Stub the screen check — production gates the notice to the orders
+    // list screen to prevent crafted-URL spoofing on other admin pages.
+    Functions\when('get_current_screen')->justReturn((object) ['id' => 'edit-shop_order']);
 
     [$action] = makeBulk();
     ob_start();
@@ -202,6 +207,7 @@ it('renderResultNotice emits warning notice when only skipped > 0', function ():
     $_GET['vcr_bulk_queued'] = '0';
     $_GET['vcr_bulk_skipped'] = '5';
     Functions\when('_n')->alias(fn ($s, $p, int $n) => $n === 1 ? $s : $p);
+    Functions\when('get_current_screen')->justReturn((object) ['id' => 'woocommerce_page_wc-orders']);
 
     [$action] = makeBulk();
     ob_start();
@@ -211,4 +217,20 @@ it('renderResultNotice emits warning notice when only skipped > 0', function ():
     expect($html)
         ->toContain('notice-warning')
         ->toContain('5 orders skipped');
+});
+
+it('renderResultNotice is suppressed on non-orders admin screens (spoof guard)', function (): void {
+    // The crafted-URL attack: hit /wp-admin/?vcr_bulk_queued=999 from
+    // any page. Without screen scoping our notice would render. With
+    // it, we silently ignore the params off-screen.
+    $_GET['vcr_bulk_queued'] = '999';
+    Functions\when('_n')->alias(fn ($s, $p, int $n) => $n === 1 ? $s : $p);
+    Functions\when('get_current_screen')->justReturn((object) ['id' => 'dashboard']);
+
+    [$action] = makeBulk();
+    ob_start();
+    $action->renderResultNotice();
+    $html = (string) ob_get_clean();
+
+    expect($html)->toBe('');
 });

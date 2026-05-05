@@ -43,6 +43,19 @@ abstract class TestCase extends BaseTestCase
             {
             }
         });
+
+        // `get_user_by` is used by Privacy\PrivacyHandler::ordersForEmail
+        // for the customer_user lookup. Default to "no user found" so
+        // tests that don't care about the registered-user branch don't
+        // fail with "undefined function". Tests that exercise the
+        // user-lookup branch override with a (object) ['ID' => N] return.
+        Functions\when('get_user_by')->justReturn(false);
+
+        // wp_unslash strips magic-quote escapes from superglobal values.
+        // Brain Monkey doesn't pre-stub it. The unit-test environment
+        // never has magic quotes active, so a pass-through is the
+        // correct production-equivalent behaviour.
+        Functions\when('wp_unslash')->returnArg(1);
     }
 
     protected function tearDown(): void

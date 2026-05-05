@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Admin;
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Net\SafeUrlValidator;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrException;
@@ -45,6 +46,7 @@ class ConnectionTester
         private readonly CashierListerFactory $listerFactory,
         private readonly string $pluginFile,
         private readonly string $version,
+        private readonly SafeUrlValidator $urlValidator = new SafeUrlValidator(),
     ) {
     }
 
@@ -131,6 +133,23 @@ class ConnectionTester
         $baseUrl = isset($_POST['base_url']) && is_string($_POST['base_url'])
             ? trim(esc_url_raw(wp_unslash($_POST['base_url'])))
             : '';
+
+        // SSRF guard. The base URL the admin typed will get the API key
+        // attached to every outbound request. Refuse to proceed if the
+        // URL points at cloud-metadata services, loopback, or RFC1918
+        // ranges — see {@see SafeUrlValidator} for the full ruleset.
+        if ($baseUrl !== '') {
+            $rejection = $this->urlValidator->reject($baseUrl);
+            if ($rejection !== null) {
+                wp_send_json_error([
+                    'message' => sprintf(
+                        /* translators: %s is the SafeUrlValidator rejection reason. */
+                        __('Refusing to send your API key to that URL: %s', 'vcr'),
+                        $rejection,
+                    ),
+                ]);
+            }
+        }
 
         try {
             // The form's base URL field — if non-empty — overrides the

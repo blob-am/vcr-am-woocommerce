@@ -71,8 +71,8 @@ class OrdersListFilter
     public function renderLegacyDropdown(): void
     {
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended — read-only screen routing
-        $screen = isset($_GET['post_type']) && $_GET['post_type'] === 'shop_order';
-        if (! $screen) {
+        $postTypeRaw = isset($_GET['post_type']) ? wp_unslash($_GET['post_type']) : '';
+        if (! is_string($postTypeRaw) || $postTypeRaw !== 'shop_order') {
             return;
         }
 

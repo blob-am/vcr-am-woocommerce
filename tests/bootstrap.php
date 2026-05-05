@@ -48,3 +48,4 @@ defined('ARRAY_N') || define('ARRAY_N', 'ARRAY_N');
 // hints in unit tests. Skipped automatically when real WC is loaded
 // (e.g. in wp-env-backed integration tests in Phase 4).
 require_once __DIR__ . '/Stubs/wc-classes.php';
+require_once __DIR__ . '/Stubs/wc-namespaced-classes.php';

@@ -118,6 +118,50 @@ class RefundStatusMeta
         return is_string($raw) && $raw !== '' ? $raw : null;
     }
 
+    public function saleRefundId(WC_Order_Refund $refund): ?int
+    {
+        $raw = $refund->get_meta(self::META_SALE_REFUND_ID, true);
+
+        if (is_int($raw)) {
+            return $raw;
+        }
+
+        if (is_string($raw) && $raw !== '' && ctype_digit($raw)) {
+            return (int) $raw;
+        }
+
+        return null;
+    }
+
+    public function receiptId(WC_Order_Refund $refund): ?int
+    {
+        $raw = $refund->get_meta(self::META_RECEIPT_ID, true);
+
+        if (is_int($raw)) {
+            return $raw;
+        }
+
+        if (is_string($raw) && $raw !== '' && ctype_digit($raw)) {
+            return (int) $raw;
+        }
+
+        return null;
+    }
+
+    public function registeredAt(WC_Order_Refund $refund): ?string
+    {
+        $raw = $refund->get_meta(self::META_REGISTERED_AT, true);
+
+        return is_string($raw) && $raw !== '' ? $raw : null;
+    }
+
+    public function lastAttemptAt(WC_Order_Refund $refund): ?string
+    {
+        $raw = $refund->get_meta(self::META_LAST_ATTEMPT_AT, true);
+
+        return is_string($raw) && $raw !== '' ? $raw : null;
+    }
+
     /**
      * First-time enqueue: stamps the external id, sets initial Pending
      * status, zeroes the attempt count. No-op on subsequent calls.
@@ -189,6 +233,28 @@ class RefundStatusMeta
         $refund->delete_meta_data(self::META_STATUS);
         $refund->update_meta_data(self::META_ATTEMPT_COUNT, '0');
         $refund->update_meta_data(self::META_LAST_ERROR, '');
+        $refund->save();
+    }
+
+    /**
+     * Wipe ALL plugin-owned `_vcr_refund_*` meta from the refund. Used
+     * by the GDPR eraser path when a refund never got registered with
+     * SRC (no Success record exists). Mirror of
+     * {@see \BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta::purgeAll()}.
+     */
+    public function purgeAll(WC_Order_Refund $refund): void
+    {
+        $refund->delete_meta_data(self::META_STATUS);
+        $refund->delete_meta_data(self::META_ATTEMPT_COUNT);
+        $refund->delete_meta_data(self::META_LAST_ERROR);
+        $refund->delete_meta_data(self::META_LAST_ATTEMPT_AT);
+        $refund->delete_meta_data(self::META_EXTERNAL_ID);
+        $refund->delete_meta_data(self::META_URL_ID);
+        $refund->delete_meta_data(self::META_CRN);
+        $refund->delete_meta_data(self::META_FISCAL);
+        $refund->delete_meta_data(self::META_SALE_REFUND_ID);
+        $refund->delete_meta_data(self::META_RECEIPT_ID);
+        $refund->delete_meta_data(self::META_REGISTERED_AT);
         $refund->save();
     }
 

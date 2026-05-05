@@ -143,6 +143,35 @@ class FiscalStatusMeta
         return null;
     }
 
+    public function srcReceiptId(WC_Order $order): ?int
+    {
+        $raw = $order->get_meta(self::META_SRC_RECEIPT_ID, true);
+
+        if (is_int($raw)) {
+            return $raw;
+        }
+
+        if (is_string($raw) && $raw !== '' && ctype_digit($raw)) {
+            return (int) $raw;
+        }
+
+        return null;
+    }
+
+    public function registeredAt(WC_Order $order): ?string
+    {
+        $raw = $order->get_meta(self::META_REGISTERED_AT, true);
+
+        return is_string($raw) && $raw !== '' ? $raw : null;
+    }
+
+    public function lastAttemptAt(WC_Order $order): ?string
+    {
+        $raw = $order->get_meta(self::META_LAST_ATTEMPT_AT, true);
+
+        return is_string($raw) && $raw !== '' ? $raw : null;
+    }
+
     /**
      * First-time enqueue: stamps the external id (immutable from this
      * point), sets the initial Pending status, zeroes the attempt count.
@@ -231,6 +260,36 @@ class FiscalStatusMeta
         $order->delete_meta_data(self::META_STATUS);
         $order->update_meta_data(self::META_ATTEMPT_COUNT, '0');
         $order->update_meta_data(self::META_LAST_ERROR, '');
+        $order->save();
+    }
+
+    /**
+     * Wipe ALL plugin-owned `_vcr_*` meta from the order. Used by the
+     * GDPR eraser path when the order never resulted in a successful SRC
+     * registration (Pending / Failed / ManualRequired / no status at
+     * all) — there's no fiscal record to retain on legal-obligation
+     * grounds, so the local stale state is just incidental personal data
+     * the plugin is responsible for cleaning up.
+     *
+     * Does NOT touch `_vcr_external_id` / `_vcr_url_id` / `_vcr_crn` /
+     * `_vcr_fiscal` / `_vcr_sale_id` / `_vcr_src_receipt_id` /
+     * `_vcr_registered_at` for orders that DO have a Success record —
+     * the caller (PrivacyHandler) is responsible for the status branch.
+     * This method always wipes; gating belongs upstream.
+     */
+    public function purgeAll(WC_Order $order): void
+    {
+        $order->delete_meta_data(self::META_STATUS);
+        $order->delete_meta_data(self::META_ATTEMPT_COUNT);
+        $order->delete_meta_data(self::META_LAST_ERROR);
+        $order->delete_meta_data(self::META_LAST_ATTEMPT_AT);
+        $order->delete_meta_data(self::META_EXTERNAL_ID);
+        $order->delete_meta_data(self::META_URL_ID);
+        $order->delete_meta_data(self::META_CRN);
+        $order->delete_meta_data(self::META_FISCAL);
+        $order->delete_meta_data(self::META_SALE_ID);
+        $order->delete_meta_data(self::META_SRC_RECEIPT_ID);
+        $order->delete_meta_data(self::META_REGISTERED_AT);
         $order->save();
     }
 

@@ -46,7 +46,7 @@ function captureDisplayOutput(callable $fn): string
 }
 
 it('register hooks all three customer surfaces', function (): void {
-    Actions\expectAdded('woocommerce_email_order_meta')->once();
+    Actions\expectAdded('woocommerce_email_after_order_table')->once();
     Actions\expectAdded('woocommerce_thankyou')->once();
     Actions\expectAdded('woocommerce_order_details_after_order_table')->once();
 

@@ -39,6 +39,24 @@ use WC_Order;
  *     The "Failed" / "ManualRequired" terminal states intentionally require
  *     an admin "Fiscalize now" action (Phase 3c) to re-enqueue, so we
  *     don't silently retry orders the admin has flagged for review.
+ *
+ *   - The dedup check considers BOTH `pending` and `in-progress` AS
+ *     statuses. WC's `payment_complete()` fires
+ *     `woocommerce_payment_complete` and `woocommerce_order_status_processing`
+ *     in quick succession from the same call site; without the
+ *     `in-progress` half of the check, a slow first attempt that
+ *     reaches AS's "claimed/processing" state before the second hook
+ *     fires would let the second `enqueue()` slip through and we'd
+ *     transmit the same sale to SRC twice. `as_has_scheduled_action`
+ *     only checks pending (documented behaviour as of AS 3.x), so the
+ *     more-flexible `as_get_scheduled_actions` is required here.
+ *
+ *     Residual race: if both hooks fire in the same microsecond and
+ *     neither has yet committed an AS row, both will pass the dedup
+ *     check. This is microscopic in practice; the proper defence is
+ *     SDK-side idempotency keying (the SDK accepts an `Idempotency-Key`
+ *     header derived from the order's stable external id) — out of
+ *     scope for this WP-side fix.
  */
 /**
  * Not declared `final` so the OrderListener unit tests can mock the queue —
@@ -171,16 +189,33 @@ class FiscalQueue
 
     private function hasScheduledAction(int $orderId): bool
     {
-        if (! function_exists('as_has_scheduled_action')) {
-            // WC < 4.0 had a different helper. We require WC >= 6 in the
-            // plugin headers, so this branch is theoretical — but cheap
-            // to guard rather than to debug post-deploy.
+        if (! function_exists('as_get_scheduled_actions')) {
+            // WC < 4.0 had a different helper surface. We require WC >= 6
+            // in the plugin headers, so this branch is theoretical — but
+            // cheap to guard rather than to debug post-deploy.
             return false;
         }
 
-        // Action Scheduler historically returned bool|int|null for this
-        // call (true / action id / null). We only care about the truthy
-        // signal; coerce so the helper's return type is honest.
-        return (bool) as_has_scheduled_action(self::ACTION_HOOK, [$orderId], self::ACTION_GROUP);
+        // Multi-status filter — see class doc-block "Idempotency" for
+        // the rationale. `pending` covers the queued case; `in-progress`
+        // covers the case where the first attempt is mid-execution when
+        // a sibling hook fires. Without `in-progress`, the same sale
+        // can be transmitted to SRC twice during WC's payment_complete()
+        // hook chain.
+        //
+        // `per_page => 1` because we only need a presence signal; we
+        // never read the rows themselves.
+        $matches = as_get_scheduled_actions(
+            [
+                'hook' => self::ACTION_HOOK,
+                'args' => [$orderId],
+                'group' => self::ACTION_GROUP,
+                'status' => ['pending', 'in-progress'],
+                'per_page' => 1,
+            ],
+            'ids',
+        );
+
+        return is_array($matches) && $matches !== [];
     }
 }

@@ -84,7 +84,15 @@ class Migrator
             return;
         }
 
-        // Run each pending migration in target-version order.
+        // Run each pending migration in target-version order. On failure
+        // we stamp `vcr_plugin_version` to the highest SUCCESSFULLY
+        // applied target so the next request doesn't re-run callbacks
+        // that already executed. Migration callbacks are documented as
+        // idempotent — but defending the contract at the caller level
+        // costs us nothing and prevents one-off side-effects (token
+        // rotations, notifications) from firing twice when migration N
+        // succeeded and migration N+1 failed.
+        $highestApplied = $stored;
         $applied = [];
         foreach ($this->migrations as $targetVersion => $callback) {
             if (version_compare($stored, $targetVersion, '<')
@@ -92,16 +100,20 @@ class Migrator
                 try {
                     $callback();
                     $applied[] = $targetVersion;
+                    $highestApplied = $targetVersion;
                 } catch (\Throwable $e) {
-                    // Don't update the stored version — next request
-                    // will retry. Log the failure so admins know
-                    // there's a problem.
+                    // Stamp the highest-successful version so next
+                    // request retries from where we left off. Log the
+                    // failure so admins know there's a problem.
+                    if ($highestApplied !== $stored) {
+                        update_option(self::OPTION_INSTALLED_VERSION, $highestApplied, false);
+                    }
                     $this->logger->error(sprintf(
                         'Migration to %s failed: %s. Stored version stays at %s.',
                         $targetVersion,
                         $e->getMessage(),
-                        $stored,
-                    ), ['target_version' => $targetVersion, 'stored_version' => $stored]);
+                        $highestApplied,
+                    ), ['target_version' => $targetVersion, 'stored_version' => $highestApplied]);
 
                     return;
                 }

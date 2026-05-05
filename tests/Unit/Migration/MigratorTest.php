@@ -135,7 +135,13 @@ it('skips already-applied migrations on partial-jump runs', function (): void {
     expect($applied)->toBe(['1.2.0', '1.3.0']);
 });
 
-it('keeps stored version unchanged when a migration throws', function (): void {
+it('stamps the highest successful target on partial failure (no double-run)', function (): void {
+    // Regression guard for the partial-failure race: callbacks are
+    // documented as idempotent but real migrations sometimes have
+    // one-off side effects (token rotation, notifications). If 1.1.0
+    // succeeds and 1.2.0 throws, the stored version MUST advance to
+    // 1.1.0 so the next request retries from 1.2.0 onwards — not
+    // re-fire 1.1.0's side effects.
     $this->optionStore[Migrator::OPTION_INSTALLED_VERSION] = '1.0.0';
     $applied = [];
 
@@ -156,7 +162,26 @@ it('keeps stored version unchanged when a migration throws', function (): void {
 
     // 1.1.0 ran, 1.2.0 threw, 1.3.0 didn't run.
     expect($applied)->toBe(['1.1.0']);
-    // Stored stays at original — next request will retry from 1.0.0.
+    // Stored advanced to 1.1.0 (the highest SUCCESSFUL target) so the
+    // next request resumes from 1.2.0 instead of re-running 1.1.0.
+    expect($this->optionStore[Migrator::OPTION_INSTALLED_VERSION])->toBe('1.1.0');
+});
+
+it('keeps stored version unchanged when the FIRST migration throws (nothing succeeded)', function (): void {
+    // Edge case: if the very first applicable migration throws, no
+    // version advance happens — stored stays at the original.
+    $this->optionStore[Migrator::OPTION_INSTALLED_VERSION] = '1.0.0';
+
+    $migrator = new Migrator('1.3.0', $this->logger);
+    $migrator->addMigration('1.1.0', function () {
+        throw new RuntimeException('first one fails');
+    });
+    $migrator->addMigration('1.2.0', fn () => null);
+
+    $this->logger->expects('error')->withArgs(fn (string $msg) => str_contains($msg, '1.1.0'));
+
+    $migrator->maybeMigrate();
+
     expect($this->optionStore[Migrator::OPTION_INSTALLED_VERSION])->toBe('1.0.0');
 });
 

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Automattic\WooCommerce\Utilities\OrderUtil;
 use BlobSolutions\WooCommerceVcrAm\Admin\SystemStatusReport;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use Brain\Monkey\Actions;
@@ -11,16 +12,37 @@ beforeEach(function (): void {
     // SystemStatusReport reads $wpdb in collectRows. Provide a fake
     // global so tests don't crash; per-test cases override the
     // get_results return value when they care about counts.
+    //
+    // The fake also captures every SQL string passed to get_results so
+    // HPOS-vs-legacy tests can verify which table was queried.
     global $wpdb;
-    $wpdb = new class () {
-        public string $postmeta = 'wp_postmeta';
-
+    $wpdb = new class () extends \wpdb {
         /** @var array<int, array<string, mixed>> */
         public array $results = [];
 
-        public function prepare(string $sql): string
+        /** @var list<string> */
+        public array $queries = [];
+
+        public function prepare(string $sql, mixed ...$args): string
         {
-            return $sql;
+            // Mirror $wpdb->prepare's identifier handling so tests can
+            // assert on the resolved table name. `%i` -> backticked
+            // identifier; `%s` -> single-quoted string. Sufficient for
+            // our two-placeholder query template.
+            $prepared = $sql;
+            foreach ($args as $arg) {
+                $needle = str_contains($prepared, '%i') ? '%i' : '%s';
+                $pos = strpos($prepared, $needle);
+                if ($pos === false) {
+                    continue;
+                }
+                $replacement = $needle === '%i'
+                    ? '`' . str_replace('`', '``', (string) $arg) . '`'
+                    : "'" . str_replace("'", "\\'", (string) $arg) . "'";
+                $prepared = substr_replace($prepared, $replacement, $pos, 2);
+            }
+
+            return $prepared;
         }
 
         /**
@@ -28,16 +50,24 @@ beforeEach(function (): void {
          */
         public function get_results(string $sql, $output = null)
         {
+            $this->queries[] = $sql;
+
             return $this->results;
         }
     };
 
     Functions\when('as_get_scheduled_actions')->justReturn([]);
+
+    // Reset the HPOS toggle so each case starts in legacy mode unless it
+    // explicitly opts into HPOS. Without this, test order would leak
+    // state between cases under Pest's random-seed runner.
+    OrderUtil::$hposEnabled = false;
 });
 
 afterEach(function (): void {
     global $wpdb;
     $wpdb = null;
+    OrderUtil::$hposEnabled = false;
 });
 
 function makeReport(): array
@@ -191,4 +221,87 @@ it('renders all rows escaped — no raw HTML from config values', function (): v
     expect($html)
         ->toContain('&lt;script&gt;')
         ->not->toContain('<script>alert(1)');
+});
+
+it('queries wp_postmeta on legacy stores (HPOS disabled)', function (): void {
+    [$report, $config] = makeReport();
+    primeConfig($config);
+
+    OrderUtil::$hposEnabled = false;
+    global $wpdb;
+    $wpdb->results = [];
+
+    captureSystemStatus($report);
+
+    // Two countByStatus calls — one for sale meta, one for refund meta.
+    // Both must hit wp_postmeta when HPOS is off.
+    expect($wpdb->queries)->toHaveCount(2);
+    foreach ($wpdb->queries as $sql) {
+        expect($sql)
+            ->toContain('`wp_postmeta`')
+            ->not->toContain('wc_orders_meta');
+    }
+});
+
+it('queries wc_orders_meta when HPOS is the authoritative store', function (): void {
+    [$report, $config] = makeReport();
+    primeConfig($config);
+
+    // Flip HPOS on. SystemStatusReport::orderMetaTable() should resolve
+    // to {$wpdb->prefix}wc_orders_meta — verify by inspecting the SQL
+    // captured by the fake $wpdb.
+    OrderUtil::$hposEnabled = true;
+    global $wpdb;
+    $wpdb->results = [];
+
+    captureSystemStatus($report);
+
+    expect($wpdb->queries)->toHaveCount(2);
+    foreach ($wpdb->queries as $sql) {
+        expect($sql)
+            ->toContain('`wp_wc_orders_meta`')
+            ->not->toContain('wp_postmeta');
+    }
+});
+
+it('counts correctly on HPOS — same row data renders the same numbers', function (): void {
+    // Regression guard for the HPOS migration: the rows shape we get
+    // from wc_orders_meta is identical to what we got from wp_postmeta
+    // (both have meta_value + COUNT(*)), so the counting logic must
+    // produce the same output regardless of which table answered.
+    [$report, $config] = makeReport();
+    primeConfig($config);
+
+    OrderUtil::$hposEnabled = true;
+    global $wpdb;
+    $wpdb->results = [
+        ['meta_value' => 'pending', 'c' => '7'],
+        ['meta_value' => 'failed', 'c' => '3'],
+        ['meta_value' => 'manual_required', 'c' => '1'],
+    ];
+
+    $html = captureSystemStatus($report);
+
+    expect($html)
+        ->toContain('<td>7</td>')
+        ->toContain('<td>3</td>')
+        ->toContain('<td>1</td>');
+});
+
+it('respects $wpdb->prefix when building the HPOS table name', function (): void {
+    // Multisite or custom-prefix installs use a non-default prefix.
+    // Build the table name from $wpdb->prefix, not a hard-coded "wp_".
+    [$report, $config] = makeReport();
+    primeConfig($config);
+
+    OrderUtil::$hposEnabled = true;
+    global $wpdb;
+    $wpdb->prefix = 'custom42_';
+    $wpdb->results = [];
+
+    captureSystemStatus($report);
+
+    foreach ($wpdb->queries as $sql) {
+        expect($sql)->toContain('`custom42_wc_orders_meta`');
+    }
 });

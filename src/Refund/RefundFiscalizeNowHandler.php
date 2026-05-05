@@ -43,6 +43,16 @@ class RefundFiscalizeNowHandler
 
     public function handle(): void
     {
+        // Order: nonce -> capability -> work. Mirrors FiscalizeNowHandler;
+        // see that handler's comment for the rationale.
+        $refundIdRaw = isset($_POST['refund_id']) ? wp_unslash($_POST['refund_id']) : '';
+        $refundId = is_string($refundIdRaw) && $refundIdRaw !== '' && ctype_digit($refundIdRaw)
+            ? (int) $refundIdRaw
+            : 0;
+
+        // Pin the nonce to the refund id, same pattern as the sale handler.
+        check_admin_referer(self::NONCE_ACTION . '_' . $refundId);
+
         if (! current_user_can('edit_shop_orders')) {
             wp_die(
                 esc_html(__('You do not have permission to retry refund registration.', 'vcr')),
@@ -50,13 +60,6 @@ class RefundFiscalizeNowHandler
                 ['response' => 403, 'back_link' => true],
             );
         }
-
-        $refundId = isset($_POST['refund_id']) && is_string($_POST['refund_id']) && ctype_digit($_POST['refund_id'])
-            ? (int) $_POST['refund_id']
-            : 0;
-
-        // Pin the nonce to the refund id, same pattern as the sale handler.
-        check_admin_referer(self::NONCE_ACTION . '_' . $refundId);
 
         if ($refundId <= 0) {
             $this->redirectWithNotice(null, 'refund_invalid');

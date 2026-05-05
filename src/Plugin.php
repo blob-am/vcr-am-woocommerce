@@ -15,6 +15,9 @@ use BlobSolutions\WooCommerceVcrAm\Admin\SystemStatusReport;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
+use BlobSolutions\WooCommerceVcrAm\Currency\CachedExchangeRateProvider;
+use BlobSolutions\WooCommerceVcrAm\Currency\CbaExchangeRateProvider;
+use BlobSolutions\WooCommerceVcrAm\Currency\CurrencyConverter;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJob;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
@@ -141,13 +144,21 @@ final class Plugin
             $this->version,
         ))->register();
 
+        // Currency converter wired once per request and shared between
+        // sale + refund mappers. The cache decorator owns the WP-transient
+        // hot path so multi-currency stores see at most one CBA round-trip
+        // per day per currency.
+        $currencyConverter = new CurrencyConverter(
+            new CachedExchangeRateProvider(new CbaExchangeRateProvider()),
+        );
+
         $meta = new FiscalStatusMeta();
         $registrarFactory = new SaleRegistrarFactory($config, $clientFactory);
         $job = new FiscalJob(
             configuration: $config,
             registrarFactory: $registrarFactory,
             itemBuilder: new ItemBuilder(),
-            paymentMapper: new PaymentMapper(),
+            paymentMapper: new PaymentMapper($currencyConverter),
             meta: $meta,
         );
         $queue = new FiscalQueue($job, $meta);
@@ -162,7 +173,7 @@ final class Plugin
         $refundJob = new RefundJob(
             configuration: $config,
             registrarFactory: $refundRegistrarFactory,
-            paymentMapper: new RefundPaymentMapper(),
+            paymentMapper: new RefundPaymentMapper($currencyConverter),
             reasonMapper: new RefundReasonMapper(),
             eligibilityChecker: new RefundEligibilityChecker($meta),
             refundMeta: $refundMeta,
@@ -221,5 +232,35 @@ final class Plugin
     public function getPluginFile(): string
     {
         return $this->pluginFile;
+    }
+
+    /**
+     * Plugin deactivation hook callback. Drains pending Action Scheduler
+     * jobs in our `vcr` group so they don't fire after the plugin's
+     * action callbacks have been unregistered (which would mark them
+     * `failed` indefinitely and bloat `wp_actionscheduler_*` tables).
+     *
+     * Static so `register_deactivation_hook` can reference it without
+     * needing the plugin instance — the hook fires from a separate
+     * sub-request that doesn't have our bootstrap state.
+     *
+     * Does NOT touch:
+     *   - Plugin options (uninstall.php handles that on actual delete).
+     *   - Order meta (statutory retention applies — see PrivacyHandler).
+     *   - Action Scheduler tables themselves (cleanup is per-action).
+     */
+    public static function onDeactivation(): void
+    {
+        if (! function_exists('as_unschedule_all_actions')) {
+            return;
+        }
+
+        // Drain both pipelines explicitly. AS's `null` hook + group
+        // scoping is documented but the function signature insists on a
+        // string, so we walk our two known hooks rather than fight the
+        // type. Better in any case — a future hook that should NOT be
+        // drained on deactivation has to be added explicitly.
+        as_unschedule_all_actions(FiscalQueue::ACTION_HOOK, [], FiscalQueue::ACTION_GROUP);
+        as_unschedule_all_actions(RefundQueue::ACTION_HOOK, [], RefundQueue::ACTION_GROUP);
     }
 }

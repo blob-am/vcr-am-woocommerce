@@ -89,6 +89,11 @@ if (! class_exists('WC_Order', false)) {
             return '';
         }
 
+        public function get_currency(string $context = 'view'): string
+        {
+            return 'AMD';
+        }
+
         public function get_type(): string
         {
             return 'shop_order';
@@ -311,6 +316,50 @@ if (! class_exists('WP_CLI', false)) {
         public static function error(string $message, bool $exit = true): void
         {
             throw new RuntimeException('WP_CLI::error: ' . $message);
+        }
+    }
+}
+
+if (! class_exists('wpdb', false)) {
+    /**
+     * Bare-bones stub of WP's core `wpdb` class. We declare it so that
+     * `$wpdb instanceof \wpdb` checks in src/ resolve correctly under
+     * unit tests — anonymous classes used as fakes in the suite must
+     * extend this stub to satisfy the instanceof gate.
+     *
+     * Real `wpdb` has dozens of public properties + methods. The stub
+     * declares only what callers need to type-check; per-test fakes
+     * override the methods they actually exercise.
+     */
+    class wpdb
+    {
+        public string $prefix = 'wp_';
+
+        public string $postmeta = 'wp_postmeta';
+
+        public string $options = 'wp_options';
+
+        public string $users = 'wp_users';
+
+        public function prepare(string $query, mixed ...$args): string
+        {
+            return $query;
+        }
+
+        /**
+         * @return mixed
+         */
+        public function get_results(string $query, mixed $output = null)
+        {
+            return [];
+        }
+
+        /**
+         * @return mixed
+         */
+        public function get_var(string $query, int $x = 0, int $y = 0)
+        {
+            return null;
         }
     }
 }

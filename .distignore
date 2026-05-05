@@ -1,0 +1,72 @@
+# Files / directories excluded from the WP.org plugin ZIP.
+#
+# Consumed by `wp dist-archive .` (wp-cli) and matches gitignore syntax.
+# The presence of an entry here means it MUST NOT ship to end users.
+#
+# Rule of thumb: anything that is dev-only (tests, lint config, build
+# tooling, CI), AI scaffolding (CLAUDE.md, .claude/, .cursor/, .aider*),
+# WP.org SVN-only assets (the `/assets/` banner+icon directory lives
+# in SVN /assets/ alongside /trunk/ and /tags/ — not inside the ZIP),
+# or a duplicate of a canonical WP.org file (README.md duplicates
+# readme.txt) belongs here.
+
+# Source control
+.git
+.github
+.gitattributes
+.gitignore
+.gitkeep
+
+# IDE / editor / OS noise
+.idea
+.vscode
+.DS_Store
+*.swp
+*.swo
+*~
+
+# AI scaffolding (PCP 1.8 explicitly detects and rejects these)
+CLAUDE.md
+.claude
+.cursor
+.aider*
+
+# Tests + test scaffolding
+tests
+.phpunit.cache
+phpunit.xml.dist
+test-results
+playwright.config.mjs
+.wp-env.json
+
+# Linters / static analysis
+phpstan.neon.dist
+pint.json
+.php-cs-fixer.dist.php
+
+# Composer dev tooling (Strauss et al.)
+vendor-bin
+bin
+composer.lock
+
+# Node tooling (we don't ship JS deps; node_modules must never reach the ZIP)
+node_modules
+package.json
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Distribution / scratch
+playground
+build
+dist
+*.zip
+
+# WP.org SVN-only artefacts (live in /assets/ in SVN, not in plugin ZIP)
+assets
+
+# Duplicate documentation (readme.txt is the canonical WP.org doc)
+README.md
+
+# This file itself is harmless to ship but conventionally excluded
+.distignore

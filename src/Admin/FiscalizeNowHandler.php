@@ -50,6 +50,19 @@ class FiscalizeNowHandler
 
     public function handle(): void
     {
+        // Order: nonce -> capability -> work. The CSRF gate runs first
+        // (WC convention; matches `WC_Admin::handle_*` flows) so an
+        // attacker who somehow bypasses the cap check can't hit
+        // anything beyond a 403 from check_admin_referer's die().
+        $orderIdRaw = isset($_POST['order_id']) ? wp_unslash($_POST['order_id']) : '';
+        $orderId = is_string($orderIdRaw) && $orderIdRaw !== '' && ctype_digit($orderIdRaw)
+            ? (int) $orderIdRaw
+            : 0;
+
+        // Pin the nonce to the order id so a leaked nonce can't be
+        // replayed against an unrelated order.
+        check_admin_referer(self::NONCE_ACTION . '_' . $orderId);
+
         if (! current_user_can('edit_shop_orders')) {
             wp_die(
                 esc_html(__('You do not have permission to retry fiscalisation for this order.', 'vcr')),
@@ -57,14 +70,6 @@ class FiscalizeNowHandler
                 ['response' => 403, 'back_link' => true],
             );
         }
-
-        $orderId = isset($_POST['order_id']) && is_string($_POST['order_id']) && ctype_digit($_POST['order_id'])
-            ? (int) $_POST['order_id']
-            : 0;
-
-        // Pin the nonce to the order id so a leaked nonce can't be
-        // replayed against an unrelated order.
-        check_admin_referer(self::NONCE_ACTION . '_' . $orderId);
 
         if ($orderId <= 0) {
             $this->redirectWithNotice(null, 'fiscalize_invalid_order');
