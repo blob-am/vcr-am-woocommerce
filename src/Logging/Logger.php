@@ -34,6 +34,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Logging;
  * orchestrators (FiscalJob, RefundJob) — there's no production
  * extension point.
  */
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 class Logger
 {
     public const SOURCE = 'vcr';

@@ -8,6 +8,13 @@ use BlobSolutions\WooCommerceVcrAm\Currency\Exception\ExchangeRateUnavailableExc
 use BlobSolutions\WooCommerceVcrAm\Logging\Logger;
 use Throwable;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are diagnostic, surfaced via Logger or wp_die() (which escape themselves); per-arg esc_html on sprintf args is ritual noise.
+
+
 /**
  * Decorator: adds a WP-transient cache + 48-hour staleness gate on top of
  * any underlying {@see ExchangeRateProvider}.

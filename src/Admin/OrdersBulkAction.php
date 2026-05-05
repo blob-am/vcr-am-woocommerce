@@ -9,6 +9,11 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
 use WC_Order;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Adds a "Retry VCR fiscalisation" entry to the WC → Orders bulk-action
  * dropdown. Lets shop admins recover N orders from `Failed` /
@@ -104,7 +109,7 @@ class OrdersBulkAction
                     '%d order re-queued for VCR fiscalisation.',
                     '%d orders re-queued for VCR fiscalisation.',
                     $queued,
-                    'vcr',
+                    'vcr-am-fiscal-receipts',
                 ),
                 $queued,
             );
@@ -116,7 +121,7 @@ class OrdersBulkAction
                     '%d order skipped (not in a retriable state).',
                     '%d orders skipped (not in a retriable state).',
                     $skipped,
-                    'vcr',
+                    'vcr-am-fiscal-receipts',
                 ),
                 $skipped,
             );
@@ -169,7 +174,7 @@ class OrdersBulkAction
             }
         }
 
-        $cleaned[self::ACTION] = __('Retry VCR fiscalisation', 'vcr');
+        $cleaned[self::ACTION] = __('Retry VCR fiscalisation', 'vcr-am-fiscal-receipts');
 
         return $cleaned;
     }

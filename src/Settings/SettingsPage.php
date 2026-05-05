@@ -6,6 +6,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Settings;
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Top-level registration entry for the plugin's settings tab.
  *

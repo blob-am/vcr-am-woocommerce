@@ -9,6 +9,11 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
 use WC_Order;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * `admin-post.php` handler behind the meta box's "Fiscalize now" button.
  *
@@ -65,7 +70,7 @@ class FiscalizeNowHandler
 
         if (! current_user_can('edit_shop_orders')) {
             wp_die(
-                esc_html(__('You do not have permission to retry fiscalisation for this order.', 'vcr')),
+                esc_html(__('You do not have permission to retry fiscalisation for this order.', 'vcr-am-fiscal-receipts')),
                 '',
                 ['response' => 403, 'back_link' => true],
             );

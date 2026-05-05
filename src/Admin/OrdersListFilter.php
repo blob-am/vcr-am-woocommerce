@@ -8,6 +8,11 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
 use WP_Query;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * "Filter by fiscal status" dropdown above the WooCommerce → Orders
  * table, plus the query modification that actually narrows the result
@@ -217,12 +222,12 @@ class OrdersListFilter
     private function printDropdown(string $current): void
     {
         $options = [
-            '' => __('All fiscal statuses', 'vcr'),
-            self::NOT_ENQUEUED => __('Not enqueued', 'vcr'),
-            FiscalStatus::Pending->value => __('Queued', 'vcr'),
-            FiscalStatus::Success->value => __('Registered', 'vcr'),
-            FiscalStatus::Failed->value => __('Failed', 'vcr'),
-            FiscalStatus::ManualRequired->value => __('Needs attention', 'vcr'),
+            '' => __('All fiscal statuses', 'vcr-am-fiscal-receipts'),
+            self::NOT_ENQUEUED => __('Not enqueued', 'vcr-am-fiscal-receipts'),
+            FiscalStatus::Pending->value => __('Queued', 'vcr-am-fiscal-receipts'),
+            FiscalStatus::Success->value => __('Registered', 'vcr-am-fiscal-receipts'),
+            FiscalStatus::Failed->value => __('Failed', 'vcr-am-fiscal-receipts'),
+            FiscalStatus::ManualRequired->value => __('Needs attention', 'vcr-am-fiscal-receipts'),
         ];
 
         echo '<select name="' . esc_attr(self::QUERY_PARAM) . '" id="filter-by-vcr-fiscal-status">';

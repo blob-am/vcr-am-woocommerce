@@ -7,6 +7,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Refund;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\RefundReason;
 use WC_Order_Refund;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Translates the WC admin's free-text refund reason field into the SDK's
  * {@see RefundReason} enum (which SRC validates against a closed set).

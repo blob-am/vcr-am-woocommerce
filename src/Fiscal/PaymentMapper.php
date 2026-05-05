@@ -10,6 +10,13 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\Exception\FiscalBuildException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\SaleAmount;
 use WC_Order;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are diagnostic, surfaced via Logger or wp_die() (which escape themselves); per-arg esc_html on sprintf args is ritual noise.
+
+
 /**
  * Map a {@see WC_Order}'s payment method onto the SDK's {@see SaleAmount}
  * shape — `cash` vs `nonCash`. The decision is purely on the WC payment

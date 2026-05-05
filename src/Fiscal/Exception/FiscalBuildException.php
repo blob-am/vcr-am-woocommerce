@@ -6,6 +6,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Fiscal\Exception;
 
 use RuntimeException;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * The order can't be turned into a valid SDK payload — typically a missing
  * SKU on a line item, an empty product list, or a configuration gap that

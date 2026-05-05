@@ -7,6 +7,11 @@ namespace BlobSolutions\WooCommerceVcrAm;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
 use BlobSolutions\WooCommerceVcrAm\Vendor\GuzzleHttp\Client as GuzzleClient;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Single source of truth for `VcrClient` construction.
  *

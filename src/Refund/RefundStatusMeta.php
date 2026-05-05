@@ -8,6 +8,11 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleRefundResponse;
 use WC_Order_Refund;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Strongly-typed read/write API over the `_vcr_refund_*` meta keys we
  * attach to a {@see WC_Order_Refund}. Refunds get their OWN meta

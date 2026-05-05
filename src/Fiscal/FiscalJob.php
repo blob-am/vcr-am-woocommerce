@@ -18,6 +18,11 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterSale
 use Throwable;
 use WC_Order;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * One end-to-end attempt at fiscalising a WooCommerce order against the
  * VCR.AM API. Pure orchestration — no scheduling logic (that lives in
@@ -102,7 +107,7 @@ class FiscalJob
         if (! $this->configuration->isFullyConfigured() || $apiKey === null) {
             $reason = __(
                 'VCR plugin is not fully configured (missing API key, cashier, or department). Open WooCommerce → Settings → VCR to finish setup, then retry.',
-                'vcr',
+                'vcr-am-fiscal-receipts',
             );
 
             $this->meta->markManualRequired($order, $reason);
@@ -132,7 +137,7 @@ class FiscalJob
 
         $order->add_order_note(sprintf(
             /* translators: 1: SRC fiscal serial number, 2: customer-facing receipt URL slug. */
-            __('VCR fiscal receipt registered. Fiscal: %1$s. Receipt id: %2$s.', 'vcr'),
+            __('VCR fiscal receipt registered. Fiscal: %1$s. Receipt id: %2$s.', 'vcr-am-fiscal-receipts'),
             $response->fiscal,
             $response->urlId,
         ));
@@ -188,7 +193,7 @@ class FiscalJob
             // "needs attention" view.
             $this->meta->markFailed($order, sprintf(
                 /* translators: 1: total number of attempts, 2: error message from the last attempt. */
-                __('Gave up after %1$d attempts. Last error: %2$s', 'vcr'),
+                __('Gave up after %1$d attempts. Last error: %2$s', 'vcr-am-fiscal-receipts'),
                 $attempt,
                 $message,
             ));

@@ -25,6 +25,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
  * fiscal). All other states should have those fields cleared in meta —
  * {@see FiscalStatusMeta::markSuccess()} is the only path that writes them.
  */
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 enum FiscalStatus: string
 {
     /**

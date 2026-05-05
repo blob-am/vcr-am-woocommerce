@@ -8,6 +8,11 @@ use BlobSolutions\WooCommerceVcrAm\Refund\RefundReceiptUrlBuilder;
 use WC_Order;
 use WC_Order_Refund;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Customer-facing surfaces that show a "View your fiscal receipt" link
  * once an order has been successfully fiscalised with SRC via VCR.
@@ -70,13 +75,13 @@ class CustomerReceiptDisplay
         $url = $this->urlBuilder->build($order);
         if ($url !== null) {
             if ($plainText) {
-                echo "\n" . __('View your fiscal receipt:', 'vcr') . ' ' . $url . "\n";
+                echo "\n" . esc_html(__('View your fiscal receipt:', 'vcr-am-fiscal-receipts')) . ' ' . esc_url($url) . "\n";
             } else {
                 printf(
                     '<p style="margin-top:1em"><strong>%s</strong> <a href="%s" rel="noopener noreferrer">%s</a></p>',
-                    esc_html(__('Fiscal receipt:', 'vcr')),
+                    esc_html(__('Fiscal receipt:', 'vcr-am-fiscal-receipts')),
                     esc_url($url),
-                    esc_html(__('View your receipt', 'vcr')),
+                    esc_html(__('View your receipt', 'vcr-am-fiscal-receipts')),
                 );
             }
         }
@@ -113,9 +118,9 @@ class CustomerReceiptDisplay
         printf(
             '<section class="vcr-receipt-callout woocommerce-order-details" style="margin-top:1.5em">' .
             '<h2>%s</h2><p><a class="button" href="%s">%s</a></p></section>',
-            esc_html(__('Fiscal receipt', 'vcr')),
+            esc_html(__('Fiscal receipt', 'vcr-am-fiscal-receipts')),
             esc_url($url),
-            esc_html(__('View your receipt', 'vcr')),
+            esc_html(__('View your receipt', 'vcr-am-fiscal-receipts')),
         );
     }
 
@@ -132,9 +137,9 @@ class CustomerReceiptDisplay
         if ($url !== null) {
             printf(
                 '<p class="vcr-receipt-link"><strong>%s</strong> <a href="%s" rel="noopener noreferrer">%s</a></p>',
-                esc_html(__('Fiscal receipt:', 'vcr')),
+                esc_html(__('Fiscal receipt:', 'vcr-am-fiscal-receipts')),
                 esc_url($url),
-                esc_html(__('View your receipt', 'vcr')),
+                esc_html(__('View your receipt', 'vcr-am-fiscal-receipts')),
             );
         }
 
@@ -160,11 +165,11 @@ class CustomerReceiptDisplay
             }
 
             if ($plainText) {
-                echo "\n" . sprintf(
+                echo "\n" . esc_html(sprintf(
                     /* translators: 1: refund id */
-                    __('View your fiscal refund receipt (refund #%d):', 'vcr'),
+                    __('View your fiscal refund receipt (refund #%d):', 'vcr-am-fiscal-receipts'),
                     $refund->get_id(),
-                ) . ' ' . $refundUrl . "\n";
+                )) . ' ' . esc_url($refundUrl) . "\n";
 
                 continue;
             }
@@ -174,11 +179,11 @@ class CustomerReceiptDisplay
                 '<strong>%s</strong> <a href="%s" rel="noopener noreferrer">%s</a></p>',
                 esc_html(sprintf(
                     /* translators: 1: refund id */
-                    __('Refund receipt (#%d):', 'vcr'),
+                    __('Refund receipt (#%d):', 'vcr-am-fiscal-receipts'),
                     $refund->get_id(),
                 )),
                 esc_url($refundUrl),
-                esc_html(__('View refund receipt', 'vcr')),
+                esc_html(__('View refund receipt', 'vcr-am-fiscal-receipts')),
             );
         }
     }

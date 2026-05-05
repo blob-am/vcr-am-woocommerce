@@ -20,6 +20,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Admin;
  * form fires only for our row, so we don't have to identity-check on
  * every plugin's render.
  */
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 class PluginActionLinks
 {
     /**
@@ -69,7 +74,7 @@ class PluginActionLinks
         $settingsLink = sprintf(
             '<a href="%s">%s</a>',
             esc_url($settingsUrl),
-            esc_html(__('Settings', 'vcr')),
+            esc_html(__('Settings', 'vcr-am-fiscal-receipts')),
         );
 
         // Docs link — append after WP's "Activate / Deactivate / Delete"
@@ -77,7 +82,7 @@ class PluginActionLinks
         $docsLink = sprintf(
             '<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
             esc_url(self::DOCS_URL),
-            esc_html(__('Docs', 'vcr')),
+            esc_html(__('Docs', 'vcr-am-fiscal-receipts')),
         );
 
         return array_merge(

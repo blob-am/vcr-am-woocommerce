@@ -11,6 +11,11 @@ use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrException;
 use Throwable;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * "Test connection" AJAX endpoint surfaced under the API key field on the
  * settings page. Constructs a one-shot {@see VcrClient} from the values
@@ -93,12 +98,12 @@ class ConnectionTester
             // generic "timed out" instead of the real error message.
             'timeoutMs' => (VcrClientFactory::DEFAULT_TIMEOUT_SECONDS + 5) * 1000,
             'i18n' => [
-                'testButton' => __('Test connection', 'vcr'),
-                'testing' => __('Testing…', 'vcr'),
-                'apiKeyRequired' => __('Enter an API key first.', 'vcr'),
-                'connectionFailed' => __('Connection failed.', 'vcr'),
-                'networkError' => __('Network error — could not reach the server.', 'vcr'),
-                'timedOut' => __('Timed out — VCR did not respond in time.', 'vcr'),
+                'testButton' => __('Test connection', 'vcr-am-fiscal-receipts'),
+                'testing' => __('Testing…', 'vcr-am-fiscal-receipts'),
+                'apiKeyRequired' => __('Enter an API key first.', 'vcr-am-fiscal-receipts'),
+                'connectionFailed' => __('Connection failed.', 'vcr-am-fiscal-receipts'),
+                'networkError' => __('Network error — could not reach the server.', 'vcr-am-fiscal-receipts'),
+                'timedOut' => __('Timed out — VCR did not respond in time.', 'vcr-am-fiscal-receipts'),
             ],
         ]);
     }
@@ -109,7 +114,7 @@ class ConnectionTester
 
         if (! current_user_can('manage_woocommerce')) {
             wp_send_json_error(
-                ['message' => __('You do not have permission to test the VCR connection.', 'vcr')],
+                ['message' => __('You do not have permission to test the VCR connection.', 'vcr-am-fiscal-receipts')],
                 403,
             );
         }
@@ -126,7 +131,7 @@ class ConnectionTester
 
         if ($apiKey === '') {
             wp_send_json_error([
-                'message' => __('No API key provided and no saved key found.', 'vcr'),
+                'message' => __('No API key provided and no saved key found.', 'vcr-am-fiscal-receipts'),
             ]);
         }
 
@@ -144,7 +149,7 @@ class ConnectionTester
                 wp_send_json_error([
                     'message' => sprintf(
                         /* translators: %s is the SafeUrlValidator rejection reason. */
-                        __('Refusing to send your API key to that URL: %s', 'vcr'),
+                        __('Refusing to send your API key to that URL: %s', 'vcr-am-fiscal-receipts'),
                         $rejection,
                     ),
                 ]);
@@ -161,13 +166,13 @@ class ConnectionTester
             $count = count($cashiers);
 
             wp_send_json_success([
-                /* translators: %d is the number of cashiers visible to this API key. */
                 'message' => sprintf(
+                    /* translators: %d is the number of cashiers visible to this API key. */
                     _n(
                         'Connected. %d cashier visible to this API key.',
                         'Connected. %d cashiers visible to this API key.',
                         $count,
-                        'vcr',
+                        'vcr-am-fiscal-receipts',
                     ),
                     $count,
                 ),
@@ -179,7 +184,7 @@ class ConnectionTester
             wp_send_json_error([
                 'message' => sprintf(
                     /* translators: %s is the technical error message. */
-                    __('Unexpected error: %s', 'vcr'),
+                    __('Unexpected error: %s', 'vcr-am-fiscal-receipts'),
                     $e->getMessage(),
                 ),
             ]);

@@ -22,7 +22,9 @@ if (! defined('WP_UNINSTALL_PLUGIN')) {
     exit;
 }
 
-$options = [
+// Variables prefixed `$vcr_*` to satisfy
+// WordPress.NamingConventions.PrefixAllGlobals on the file-scope vars.
+$vcr_options = [
     // KeyStore-managed encrypted ciphertext.
     'vcr_api_key_encrypted',
 
@@ -44,8 +46,8 @@ $options = [
     'vcr_plugin_version',
 ];
 
-foreach ($options as $option) {
-    delete_option($option);
+foreach ($vcr_options as $vcr_option) {
+    delete_option($vcr_option);
 }
 
 // Cashier-list cache. Stored as a transient so wp_options OR the
@@ -56,8 +58,8 @@ delete_transient('vcr_cashiers_cache');
 // ISO code we ever cached. We don't know the full list at uninstall
 // time, so iterate the standard short-list of currencies our merchants
 // use; missing keys are no-ops.
-foreach (['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'AMD'] as $iso) {
-    delete_transient('vcr_cba_rate_' . $iso);
+foreach (['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'AMD'] as $vcr_iso) {
+    delete_transient('vcr_cba_rate_' . $vcr_iso);
 }
 
 // Cancel any pending Action Scheduler jobs in our group. Without this

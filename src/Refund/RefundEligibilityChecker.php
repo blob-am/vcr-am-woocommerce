@@ -9,6 +9,11 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
 use WC_Order;
 use WC_Order_Refund;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Decides whether a freshly-created {@see WC_Order_Refund} can be
  * auto-registered with SRC as a full refund, or whether it must be
@@ -68,7 +73,7 @@ class RefundEligibilityChecker
 
             return RefundEligibility::ineligible(sprintf(
                 /* translators: 1: current fiscal status of the parent order */
-                __('Cannot auto-register refund: parent order is in fiscal status "%s", not "success". Wait for the parent sale to register with SRC, then retry this refund.', 'vcr'),
+                __('Cannot auto-register refund: parent order is in fiscal status "%s", not "success". Wait for the parent sale to register with SRC, then retry this refund.', 'vcr-am-fiscal-receipts'),
                 $statusLabel,
             ));
         }
@@ -79,7 +84,7 @@ class RefundEligibilityChecker
             // only get here on corrupted/restored data.
             return RefundEligibility::ineligible(__(
                 'Cannot auto-register refund: parent order has no SRC saleId on record despite being marked successful. The order metadata may be corrupted — re-fiscalise the parent order first.',
-                'vcr',
+                'vcr-am-fiscal-receipts',
             ));
         }
 
@@ -89,7 +94,7 @@ class RefundEligibilityChecker
         if (count($refunds) > 1) {
             return RefundEligibility::ineligible(__(
                 'Cannot auto-register refund: this order already has another refund. The VCR plugin (v0.1) only supports a single full refund per order automatically — additional refunds must be processed manually with SRC.',
-                'vcr',
+                'vcr-am-fiscal-receipts',
             ));
         }
 
@@ -99,7 +104,7 @@ class RefundEligibilityChecker
         if (abs($refundAmount - $parentTotal) > self::AMOUNT_EPSILON) {
             return RefundEligibility::ineligible(sprintf(
                 /* translators: 1: refund amount, 2: parent order total */
-                __('Cannot auto-register refund: refund amount %1$s does not equal order total %2$s. The VCR plugin (v0.1) only supports full refunds automatically — partial refunds must be processed manually with SRC.', 'vcr'),
+                __('Cannot auto-register refund: refund amount %1$s does not equal order total %2$s. The VCR plugin (v0.1) only supports full refunds automatically — partial refunds must be processed manually with SRC.', 'vcr-am-fiscal-receipts'),
                 $refund->get_amount(),
                 $parent->get_total(),
             ));

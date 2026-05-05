@@ -28,6 +28,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Refund;
  * reason string — a discriminated enum here would be ceremony for no
  * additional type safety.
  */
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 final readonly class RefundEligibility
 {
     private function __construct(

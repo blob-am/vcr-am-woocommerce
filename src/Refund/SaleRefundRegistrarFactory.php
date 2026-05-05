@@ -10,6 +10,11 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterSale
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleRefundResponse;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Builds a fresh {@see SaleRefundRegistrar} per refund-job invocation.
  * Same rationale as {@see \BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrarFactory}:

@@ -6,6 +6,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Refund;
 
 use WC_Order_Refund;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Action Scheduler integration for refund registration. Mirrors
  * {@see \BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue} for sales:

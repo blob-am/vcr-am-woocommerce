@@ -6,6 +6,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Catalog;
 
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\CashierListItem;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * The slice of the SDK's `VcrClient` that the cashier flows actually
  * use. Carved out as an interface so {@see CashierCatalog} and

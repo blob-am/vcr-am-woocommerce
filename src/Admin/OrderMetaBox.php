@@ -12,6 +12,11 @@ use WC_Order;
 use WC_Order_Refund;
 use WP_Post;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * The "VCR Fiscal Receipt" sidebar meta box on the WooCommerce order
  * edit screen. Read-only summary of fiscalisation state plus a
@@ -55,7 +60,7 @@ class OrderMetaBox
     {
         add_meta_box(
             self::META_BOX_ID,
-            __('VCR Fiscal Receipt', 'vcr'),
+            __('VCR Fiscal Receipt', 'vcr-am-fiscal-receipts'),
             [$this, 'render'],
             // Both screens — HPOS new + legacy post type. WC core does
             // the equivalent dual-registration for its own boxes.
@@ -73,7 +78,7 @@ class OrderMetaBox
         $order = $this->resolveOrder($postOrOrder);
 
         if (! $order instanceof WC_Order) {
-            echo '<p>' . esc_html(__('Order not available.', 'vcr')) . '</p>';
+            echo '<p>' . esc_html(__('Order not available.', 'vcr-am-fiscal-receipts')) . '</p>';
 
             return;
         }
@@ -120,7 +125,7 @@ class OrderMetaBox
     {
         echo '<p>' . esc_html(__(
             'Not yet fiscalised. The plugin will queue this order automatically once payment completes.',
-            'vcr',
+            'vcr-am-fiscal-receipts',
         )) . '</p>';
     }
 
@@ -129,14 +134,17 @@ class OrderMetaBox
         $attempt = $this->meta->attemptCount($order);
         $lastError = $this->meta->lastError($order);
 
-        echo '<p><strong>' . esc_html(__('Status:', 'vcr')) . '</strong> '
-            . esc_html(__('Queued for fiscalisation', 'vcr')) . '</p>';
+        echo '<p><strong>' . esc_html(__('Status:', 'vcr-am-fiscal-receipts')) . '</strong> '
+            . esc_html(__('Queued for fiscalisation', 'vcr-am-fiscal-receipts')) . '</p>';
 
         if ($attempt > 0) {
+            // absint() is the WP-idiomatic "I promise this is a safe
+            // integer" wrapper that satisfies the EscapeOutput sniff
+            // for printf %d substitution.
             printf(
                 '<p>%s %d</p>',
-                esc_html(__('Attempts so far:', 'vcr')),
-                $attempt,
+                esc_html(__('Attempts so far:', 'vcr-am-fiscal-receipts')),
+                absint($attempt),
             );
         }
 
@@ -147,20 +155,20 @@ class OrderMetaBox
 
     private function renderSuccess(WC_Order $order): void
     {
-        echo '<p><strong>' . esc_html(__('Status:', 'vcr')) . '</strong> '
-            . esc_html(__('Registered with SRC', 'vcr')) . '</p>';
+        echo '<p><strong>' . esc_html(__('Status:', 'vcr-am-fiscal-receipts')) . '</strong> '
+            . esc_html(__('Registered with SRC', 'vcr-am-fiscal-receipts')) . '</p>';
 
         $this->renderKeyValueTable([
-            __('Fiscal serial', 'vcr') => $this->meta->fiscal($order),
-            __('CRN', 'vcr') => $this->meta->crn($order),
-            __('Receipt id', 'vcr') => $this->meta->urlId($order),
+            __('Fiscal serial', 'vcr-am-fiscal-receipts') => $this->meta->fiscal($order),
+            __('CRN', 'vcr-am-fiscal-receipts') => $this->meta->crn($order),
+            __('Receipt id', 'vcr-am-fiscal-receipts') => $this->meta->urlId($order),
         ]);
     }
 
     private function renderFailed(WC_Order $order): void
     {
-        echo '<p><strong>' . esc_html(__('Status:', 'vcr')) . '</strong> '
-            . esc_html(__('Failed (retries exhausted)', 'vcr')) . '</p>';
+        echo '<p><strong>' . esc_html(__('Status:', 'vcr-am-fiscal-receipts')) . '</strong> '
+            . esc_html(__('Failed (retries exhausted)', 'vcr-am-fiscal-receipts')) . '</p>';
 
         $lastError = $this->meta->lastError($order);
         if ($lastError !== null) {
@@ -172,8 +180,8 @@ class OrderMetaBox
 
     private function renderManualRequired(WC_Order $order): void
     {
-        echo '<p><strong>' . esc_html(__('Status:', 'vcr')) . '</strong> '
-            . esc_html(__('Needs your attention', 'vcr')) . '</p>';
+        echo '<p><strong>' . esc_html(__('Status:', 'vcr-am-fiscal-receipts')) . '</strong> '
+            . esc_html(__('Needs your attention', 'vcr-am-fiscal-receipts')) . '</p>';
 
         $lastError = $this->meta->lastError($order);
         if ($lastError !== null) {
@@ -194,13 +202,13 @@ class OrderMetaBox
         echo '<input type="hidden" name="order_id" value="' . esc_attr((string) $orderId) . '">';
         wp_nonce_field($nonceAction);
         echo '<button type="submit" class="button button-primary">'
-            . esc_html(__('Fiscalize now', 'vcr')) . '</button>';
+            . esc_html(__('Fiscalize now', 'vcr-am-fiscal-receipts')) . '</button>';
         echo '</form>';
     }
 
     private function renderErrorBlock(string $message): void
     {
-        echo '<p><strong>' . esc_html(__('Last error:', 'vcr')) . '</strong></p>';
+        echo '<p><strong>' . esc_html(__('Last error:', 'vcr-am-fiscal-receipts')) . '</strong></p>';
         echo '<p style="color:#b32d2e">' . esc_html($message) . '</p>';
     }
 
@@ -244,14 +252,14 @@ class OrderMetaBox
         $notice = sanitize_key($rawNotice);
 
         $message = match ($notice) {
-            'fiscalize_enqueued' => __('Fiscalisation re-queued. The next attempt will run shortly.', 'vcr'),
-            'fiscalize_skipped_success' => __('Order is already fiscalised — nothing to retry.', 'vcr'),
-            'fiscalize_skipped_state' => __('Order is not in a state that can be retried.', 'vcr'),
-            'fiscalize_invalid_order' => __('The selected order could not be found.', 'vcr'),
-            'refund_enqueued' => __('Refund registration re-queued. The next attempt will run shortly.', 'vcr'),
-            'refund_skipped_success' => __('Refund is already registered with SRC — nothing to retry.', 'vcr'),
-            'refund_skipped_state' => __('Refund is not in a state that can be retried.', 'vcr'),
-            'refund_invalid' => __('The selected refund could not be found.', 'vcr'),
+            'fiscalize_enqueued' => __('Fiscalisation re-queued. The next attempt will run shortly.', 'vcr-am-fiscal-receipts'),
+            'fiscalize_skipped_success' => __('Order is already fiscalised — nothing to retry.', 'vcr-am-fiscal-receipts'),
+            'fiscalize_skipped_state' => __('Order is not in a state that can be retried.', 'vcr-am-fiscal-receipts'),
+            'fiscalize_invalid_order' => __('The selected order could not be found.', 'vcr-am-fiscal-receipts'),
+            'refund_enqueued' => __('Refund registration re-queued. The next attempt will run shortly.', 'vcr-am-fiscal-receipts'),
+            'refund_skipped_success' => __('Refund is already registered with SRC — nothing to retry.', 'vcr-am-fiscal-receipts'),
+            'refund_skipped_state' => __('Refund is not in a state that can be retried.', 'vcr-am-fiscal-receipts'),
+            'refund_invalid' => __('The selected refund could not be found.', 'vcr-am-fiscal-receipts'),
             default => null,
         };
 
@@ -288,7 +296,7 @@ class OrderMetaBox
         }
 
         echo '<hr style="margin:1em 0">';
-        echo '<p><strong>' . esc_html(__('Refunds:', 'vcr')) . '</strong></p>';
+        echo '<p><strong>' . esc_html(__('Refunds:', 'vcr-am-fiscal-receipts')) . '</strong></p>';
 
         foreach ($refunds as $refund) {
             $this->renderRefundBlock($refund);
@@ -302,20 +310,20 @@ class OrderMetaBox
         echo '<div style="margin:0.5em 0;padding:0.5em;border:1px solid #dcdcde">';
         printf(
             '<p style="margin:0 0 0.3em"><strong>%s</strong> #%d (%s)</p>',
-            esc_html(__('Refund', 'vcr')),
-            $refund->get_id(),
+            esc_html(__('Refund', 'vcr-am-fiscal-receipts')),
+            absint($refund->get_id()),
             esc_html(wc_price((float) $refund->get_amount())),
         );
 
         if ($status === null) {
-            echo '<p style="margin:0">' . esc_html(__('Status: not yet enqueued.', 'vcr')) . '</p>';
+            echo '<p style="margin:0">' . esc_html(__('Status: not yet enqueued.', 'vcr-am-fiscal-receipts')) . '</p>';
             echo '</div>';
 
             return;
         }
 
         echo '<p style="margin:0 0 0.3em">';
-        echo '<strong>' . esc_html(__('Status:', 'vcr')) . '</strong> ';
+        echo '<strong>' . esc_html(__('Status:', 'vcr-am-fiscal-receipts')) . '</strong> ';
         echo esc_html($this->refundStatusLabel($status));
         echo '</p>';
 
@@ -331,13 +339,13 @@ class OrderMetaBox
 
             $bits = [];
             if ($fiscal !== null && $fiscal !== '') {
-                $bits[] = __('Fiscal:', 'vcr') . ' ' . $fiscal;
+                $bits[] = __('Fiscal:', 'vcr-am-fiscal-receipts') . ' ' . $fiscal;
             }
             if ($crn !== null && $crn !== '') {
-                $bits[] = __('CRN:', 'vcr') . ' ' . $crn;
+                $bits[] = __('CRN:', 'vcr-am-fiscal-receipts') . ' ' . $crn;
             }
             if ($urlId !== null) {
-                $bits[] = __('Receipt id:', 'vcr') . ' ' . $urlId;
+                $bits[] = __('Receipt id:', 'vcr-am-fiscal-receipts') . ' ' . $urlId;
             }
 
             if ($bits !== []) {
@@ -363,17 +371,17 @@ class OrderMetaBox
         echo '<input type="hidden" name="refund_id" value="' . esc_attr((string) $refundId) . '">';
         wp_nonce_field($nonceAction);
         echo '<button type="submit" class="button button-secondary">'
-            . esc_html(__('Register refund now', 'vcr')) . '</button>';
+            . esc_html(__('Register refund now', 'vcr-am-fiscal-receipts')) . '</button>';
         echo '</form>';
     }
 
     private function refundStatusLabel(FiscalStatus $status): string
     {
         return match ($status) {
-            FiscalStatus::Pending => __('Queued for SRC registration', 'vcr'),
-            FiscalStatus::Success => __('Registered with SRC', 'vcr'),
-            FiscalStatus::Failed => __('Failed (retries exhausted)', 'vcr'),
-            FiscalStatus::ManualRequired => __('Needs your attention', 'vcr'),
+            FiscalStatus::Pending => __('Queued for SRC registration', 'vcr-am-fiscal-receipts'),
+            FiscalStatus::Success => __('Registered with SRC', 'vcr-am-fiscal-receipts'),
+            FiscalStatus::Failed => __('Failed (retries exhausted)', 'vcr-am-fiscal-receipts'),
+            FiscalStatus::ManualRequired => __('Needs your attention', 'vcr-am-fiscal-receipts'),
         };
     }
 }

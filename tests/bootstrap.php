@@ -31,6 +31,13 @@ if (! is_file($prefixedAutoload)) {
 }
 require_once $prefixedAutoload;
 
+// ABSPATH guards in src/*.php (added for WP.org Plugin Check
+// compliance — every PHP file must refuse direct execution via URL).
+// In production WP defines this in wp-load.php; in unit tests we
+// have to fake it BEFORE any src/ class is autoloaded, otherwise
+// the guard's exit() silently kills the test runner.
+defined('ABSPATH') || define('ABSPATH', __DIR__ . '/');
+
 // WP time constants — defined as plain integers in wp-includes/default-constants.php.
 defined('MINUTE_IN_SECONDS') || define('MINUTE_IN_SECONDS', 60);
 defined('HOUR_IN_SECONDS') || define('HOUR_IN_SECONDS', 60 * MINUTE_IN_SECONDS);

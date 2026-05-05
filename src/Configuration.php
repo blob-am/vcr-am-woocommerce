@@ -7,6 +7,11 @@ namespace BlobSolutions\WooCommerceVcrAm;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Read-only view of the plugin's persisted configuration.
  *

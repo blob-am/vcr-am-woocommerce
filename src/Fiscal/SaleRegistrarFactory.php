@@ -10,6 +10,11 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterSale
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Builds a fresh {@see SaleRegistrar} for each fiscal-job invocation.
  *

@@ -9,6 +9,11 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use WC_Order;
 use WC_Order_Refund;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * `admin-post.php` handler behind the meta box's "Register refund now"
  * button. Mirrors {@see \BlobSolutions\WooCommerceVcrAm\Admin\FiscalizeNowHandler}
@@ -55,7 +60,7 @@ class RefundFiscalizeNowHandler
 
         if (! current_user_can('edit_shop_orders')) {
             wp_die(
-                esc_html(__('You do not have permission to retry refund registration.', 'vcr')),
+                esc_html(__('You do not have permission to retry refund registration.', 'vcr-am-fiscal-receipts')),
                 '',
                 ['response' => 403, 'back_link' => true],
             );

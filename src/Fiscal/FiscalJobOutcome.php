@@ -13,6 +13,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
  * another attempt — if it equals {@see FiscalStatus::Pending}, the job
  * itself decided to keep trying.
  */
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 final readonly class FiscalJobOutcome
 {
     public function __construct(

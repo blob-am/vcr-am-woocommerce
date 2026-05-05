@@ -7,6 +7,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use WC_Order;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Strongly-typed read/write API over the `_vcr_*` meta keys we attach to a
  * {@see WC_Order}. Encapsulates the meta-key namespace so callers never

@@ -7,6 +7,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * The slice of the SDK's {@see \BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient}
  * that the fiscalisation flow actually uses. Carved out as an interface

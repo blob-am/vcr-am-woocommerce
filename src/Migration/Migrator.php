@@ -6,6 +6,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Migration;
 
 use BlobSolutions\WooCommerceVcrAm\Logging\Logger;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Tracks the installed plugin version (in `vcr_plugin_version`) and
  * runs registered migration callbacks when an upgrade jumps across

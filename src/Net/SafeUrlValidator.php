@@ -38,6 +38,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Net;
  * otherwise. Callers compose this into their save / send flow and
  * decide how to surface the error.
  */
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 class SafeUrlValidator
 {
     /**
@@ -52,7 +57,7 @@ class SafeUrlValidator
             return 'URL is empty.';
         }
 
-        $parts = parse_url($url);
+        $parts = wp_parse_url($url);
         if ($parts === false || ! isset($parts['scheme'], $parts['host'])) {
             return 'URL is malformed (missing scheme or host).';
         }

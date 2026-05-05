@@ -28,6 +28,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Refund;
  * call") and the queue's gates (refund-not-already-registered, etc.)
  * authoritative.
  */
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 class OrderRefundedListener
 {
     public function __construct(

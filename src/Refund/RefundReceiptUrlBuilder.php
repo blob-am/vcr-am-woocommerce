@@ -9,6 +9,11 @@ use BlobSolutions\WooCommerceVcrAm\Receipt\ReceiptUrlBuilder;
 use WC_Order;
 use WC_Order_Refund;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Builds the public-facing receipt URL for a successfully-registered
  * refund: same `{host}/{locale}/r/{crn}/{urlId}` shape served by the

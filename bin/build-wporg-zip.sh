@@ -88,11 +88,15 @@ echo "==> Staging source into $STAGING_DIR/ ($(echo "${#RSYNC_EXCLUDES[@]} / 2" 
 rsync -a "${RSYNC_EXCLUDES[@]}" ./ "$STAGING_DIR/"
 
 # ---------------------------------------------------------------------------
-# Install production dependencies inside the staging dir. Strauss will
-# regenerate vendor-prefixed/ against the prod-only tree via the
-# post-install-cmd composer hook.
+# Install production dependencies inside the staging dir.
+#
+# We use --no-scripts to skip the post-install hook (which would try to
+# bin-install Strauss into a fresh composer-bin context — slow and
+# unnecessary because the dev tree's vendor-prefixed/ is already
+# scoped against the production dependency set). Instead we copy
+# vendor-prefixed/ verbatim from the source tree below.
 # ---------------------------------------------------------------------------
-echo "==> Installing production dependencies"
+echo "==> Installing production dependencies (skipping post-install scripts)"
 (
     cd "$STAGING_DIR"
     composer install \
@@ -101,8 +105,16 @@ echo "==> Installing production dependencies"
         --classmap-authoritative \
         --no-interaction \
         --no-progress \
+        --no-scripts \
         --quiet
 )
+
+# Copy the pre-built scoped vendor from the source tree. Strauss already
+# ran (during dev `composer install`) and produced these — re-running it
+# inside the staging dir would require composer-bin install which is
+# slow and reinstalls php-parser etc. into the temp tree.
+echo "==> Copying pre-built vendor-prefixed/ from source tree"
+rsync -a "$REPO_ROOT/vendor-prefixed/" "$STAGING_DIR/vendor-prefixed/"
 
 # Strauss leaves its bootstrap (bin/strauss) and the bin-installed tooling
 # (vendor-bin/) in place because composer-bin-plugin is a dev dependency and

@@ -21,6 +21,13 @@ use Throwable;
 use WC_Order;
 use WC_Order_Refund;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are diagnostic, surfaced via Logger or wp_die() (which escape themselves); per-arg esc_html on sprintf args is ritual noise.
+
+
 /**
  * One end-to-end attempt at registering a WooCommerce refund as a
  * sale-refund against the VCR.AM API. Mirrors {@see FiscalJob}'s
@@ -114,7 +121,7 @@ class RefundJob
         if (! $this->configuration->isFullyConfigured() || $apiKey === null) {
             $reason = __(
                 'VCR plugin is not fully configured (missing API key, cashier, or department). Open WooCommerce → Settings → VCR to finish setup, then retry this refund.',
-                'vcr',
+                'vcr-am-fiscal-receipts',
             );
             $this->refundMeta->markManualRequired($refund, $reason);
 
@@ -151,7 +158,7 @@ class RefundJob
 
         $parent->add_order_note(sprintf(
             /* translators: 1: refund id, 2: SRC fiscal serial (or "n/a"), 3: SRC receipt url id */
-            __('VCR sale refund registered for refund #%1$d. Fiscal: %2$s. Receipt id: %3$s.', 'vcr'),
+            __('VCR sale refund registered for refund #%1$d. Fiscal: %2$s. Receipt id: %3$s.', 'vcr-am-fiscal-receipts'),
             $refund->get_id(),
             $response->fiscal ?? 'n/a',
             $response->urlId,
@@ -215,7 +222,7 @@ class RefundJob
             // is exhausting MAX_ATTEMPTS. See class doc-block.
             $this->refundMeta->markFailed($refund, sprintf(
                 /* translators: 1: total attempts, 2: last error */
-                __('Gave up after %1$d attempts. Last error: %2$s', 'vcr'),
+                __('Gave up after %1$d attempts. Last error: %2$s', 'vcr-am-fiscal-receipts'),
                 $attempt,
                 $message,
             ));

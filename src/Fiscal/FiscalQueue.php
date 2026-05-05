@@ -6,6 +6,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
 
 use WC_Order;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Action Scheduler integration: enqueues a fiscalisation attempt for a WC
  * order, dispatches the {@see FiscalJob} when the action fires, and

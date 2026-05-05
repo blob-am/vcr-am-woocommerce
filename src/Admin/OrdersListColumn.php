@@ -8,6 +8,11 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
 use WC_Order;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Adds a "Fiscal" column to the WooCommerce → Orders list table so
  * shop admins can scan many orders' fiscalisation state at once
@@ -61,7 +66,7 @@ class OrdersListColumn
     public function addColumn($columns): array
     {
         if (! is_array($columns)) {
-            return [self::COLUMN_KEY => esc_html__('Fiscal', 'vcr')];
+            return [self::COLUMN_KEY => esc_html__('Fiscal', 'vcr-am-fiscal-receipts')];
         }
 
         $injected = [];
@@ -74,13 +79,13 @@ class OrdersListColumn
 
             // Insert immediately after the WC status column.
             if (! $inserted && ($stringKey === 'order_status' || $stringKey === 'status')) {
-                $injected[self::COLUMN_KEY] = esc_html__('Fiscal', 'vcr');
+                $injected[self::COLUMN_KEY] = esc_html__('Fiscal', 'vcr-am-fiscal-receipts');
                 $inserted = true;
             }
         }
 
         if (! $inserted) {
-            $injected[self::COLUMN_KEY] = esc_html__('Fiscal', 'vcr');
+            $injected[self::COLUMN_KEY] = esc_html__('Fiscal', 'vcr-am-fiscal-receipts');
         }
 
         return $injected;
@@ -175,10 +180,10 @@ class OrdersListColumn
     private static function badgeColors(FiscalStatus $status): array
     {
         return match ($status) {
-            FiscalStatus::Pending => [__('Queued', 'vcr'), '#94660c', '#f8dda7'],
-            FiscalStatus::Success => [__('Registered', 'vcr'), '#5b841b', '#c8d7e1'],
-            FiscalStatus::Failed => [__('Failed', 'vcr'), '#761919', '#eba3a3'],
-            FiscalStatus::ManualRequired => [__('Manual', 'vcr'), '#761919', '#fbcbcb'],
+            FiscalStatus::Pending => [__('Queued', 'vcr-am-fiscal-receipts'), '#94660c', '#f8dda7'],
+            FiscalStatus::Success => [__('Registered', 'vcr-am-fiscal-receipts'), '#5b841b', '#c8d7e1'],
+            FiscalStatus::Failed => [__('Failed', 'vcr-am-fiscal-receipts'), '#761919', '#eba3a3'],
+            FiscalStatus::ManualRequired => [__('Manual', 'vcr-am-fiscal-receipts'), '#761919', '#fbcbcb'],
         };
     }
 }

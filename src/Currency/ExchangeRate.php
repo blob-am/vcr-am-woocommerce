@@ -17,6 +17,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Currency;
  * the rate row is done in {@see CachedExchangeRateProvider} and tracks
  * its own `fetchedAt` separately for the 48-hour staleness gate.
  */
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 final readonly class ExchangeRate
 {
     public function __construct(

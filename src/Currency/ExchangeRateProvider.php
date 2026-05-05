@@ -6,6 +6,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Currency;
 
 use BlobSolutions\WooCommerceVcrAm\Currency\Exception\ExchangeRateUnavailableException;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Source of CBA exchange rates. Implementations:
  *

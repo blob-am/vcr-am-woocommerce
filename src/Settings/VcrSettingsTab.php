@@ -9,6 +9,11 @@ use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Net\SafeUrlValidator;
 use WC_Settings_Page;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * The "VCR" tab inside WooCommerce → Settings.
  *
@@ -45,7 +50,7 @@ final class VcrSettingsTab extends WC_Settings_Page
         private readonly SafeUrlValidator $urlValidator = new SafeUrlValidator(),
     ) {
         $this->id = 'vcr';
-        $this->label = __('VCR', 'vcr');
+        $this->label = __('VCR', 'vcr-am-fiscal-receipts');
 
         parent::__construct();
 
@@ -103,7 +108,7 @@ final class VcrSettingsTab extends WC_Settings_Page
             add_action('admin_notices', static function () use ($rejection): void {
                 printf(
                     '<div class="notice notice-error is-dismissible"><p><strong>%s</strong> %s</p></div>',
-                    esc_html__('VCR base URL rejected:', 'vcr'),
+                    esc_html__('VCR base URL rejected:', 'vcr-am-fiscal-receipts'),
                     esc_html($rejection),
                 );
             });
@@ -121,55 +126,55 @@ final class VcrSettingsTab extends WC_Settings_Page
     public function get_settings($current_section = ''): array
     {
         $apiKeyPlaceholder = $this->keyStore->isSet()
-            ? __('Saved — leave empty to keep current key', 'vcr')
-            : __('Required', 'vcr');
+            ? __('Saved — leave empty to keep current key', 'vcr-am-fiscal-receipts')
+            : __('Required', 'vcr-am-fiscal-receipts');
 
         $cashiers = $this->cashierCatalog->list();
         $cashierField = $this->buildCashierField($cashiers);
 
         return [
             [
-                'name' => __('VCR — Fiscal Receipts for Armenia', 'vcr'),
+                'name' => __('VCR — Fiscal Receipts for Armenia', 'vcr-am-fiscal-receipts'),
                 'type' => 'title',
                 'desc' => $this->buildIntroDescription(),
                 'id' => 'vcr_section',
             ],
             [
-                'name' => __('API Key', 'vcr'),
+                'name' => __('API Key', 'vcr-am-fiscal-receipts'),
                 'type' => 'password',
                 'id' => 'vcr_api_key',
                 'desc_tip' => __(
                     'Your VCR.AM API key. Stored encrypted at rest using your WordPress auth salt; never written to disk in plaintext.',
-                    'vcr',
+                    'vcr-am-fiscal-receipts',
                 ),
                 'placeholder' => $apiKeyPlaceholder,
             ],
             [
-                'name' => __('Base URL', 'vcr'),
+                'name' => __('Base URL', 'vcr-am-fiscal-receipts'),
                 'type' => 'text',
                 'id' => Configuration::OPT_BASE_URL,
                 'desc_tip' => __(
                     'Override only for staging or self-hosted VCR deployments. Leave empty to use the production endpoint.',
-                    'vcr',
+                    'vcr-am-fiscal-receipts',
                 ),
                 'default' => '',
                 'placeholder' => 'https://vcr.am/api/v1',
             ],
             [
-                'name' => __('Test mode', 'vcr'),
+                'name' => __('Test mode', 'vcr-am-fiscal-receipts'),
                 'type' => 'checkbox',
                 'id' => Configuration::OPT_TEST_MODE,
-                'desc' => __('Use test cashiers instead of production. Receipts issued in this mode are not legally valid.', 'vcr'),
+                'desc' => __('Use test cashiers instead of production. Receipts issued in this mode are not legally valid.', 'vcr-am-fiscal-receipts'),
                 'default' => 'no',
             ],
             $cashierField,
             [
-                'name' => __('Default department ID', 'vcr'),
+                'name' => __('Default department ID', 'vcr-am-fiscal-receipts'),
                 'type' => 'number',
                 'id' => Configuration::OPT_DEFAULT_DEPARTMENT_ID,
                 'desc_tip' => __(
                     'Internal id of the department to fiscalize against by default. Find it in the VCR dashboard under your cashier configuration. The SDK does not yet expose a department-listing endpoint, so this value is entered manually.',
-                    'vcr',
+                    'vcr-am-fiscal-receipts',
                 ),
                 'custom_attributes' => ['min' => 1, 'step' => 1],
                 'default' => '',
@@ -179,32 +184,32 @@ final class VcrSettingsTab extends WC_Settings_Page
                 'id' => 'vcr_section',
             ],
             [
-                'name' => __('Order line synthesis', 'vcr'),
+                'name' => __('Order line synthesis', 'vcr-am-fiscal-receipts'),
                 'type' => 'title',
                 'desc' => __(
                     'WooCommerce ships shipping and fees as separate order items. The fiscal receipt needs every line to reference a catalog offer with its own classifier code, so the plugin synthesises a SaleItem against an SKU you onboard once in the VCR dashboard. Without these SKUs configured, any order with shipping or fees is blocked from fiscalisation.',
-                    'vcr',
+                    'vcr-am-fiscal-receipts',
                 ),
                 'id' => 'vcr_synthesis_section',
             ],
             [
-                'name' => __('Shipping SKU', 'vcr'),
+                'name' => __('Shipping SKU', 'vcr-am-fiscal-receipts'),
                 'type' => 'text',
                 'id' => Configuration::OPT_SHIPPING_SKU,
                 'desc_tip' => __(
                     'External id (SKU) of a pre-onboarded "Shipping" offer in your VCR catalog. The plugin references this offer for every shipping line item; you control its classifier code, unit, and tax treatment in VCR proper.',
-                    'vcr',
+                    'vcr-am-fiscal-receipts',
                 ),
                 'default' => '',
                 'placeholder' => 'shipping',
             ],
             [
-                'name' => __('Fee SKU', 'vcr'),
+                'name' => __('Fee SKU', 'vcr-am-fiscal-receipts'),
                 'type' => 'text',
                 'id' => Configuration::OPT_FEE_SKU,
                 'desc_tip' => __(
                     'External id (SKU) of a pre-onboarded "Fee" offer in your VCR catalog. Used for every WooCommerce fee line (handling charges, surcharges, etc.).',
-                    'vcr',
+                    'vcr-am-fiscal-receipts',
                 ),
                 'default' => '',
                 'placeholder' => 'service-fee',
@@ -275,20 +280,20 @@ final class VcrSettingsTab extends WC_Settings_Page
     {
         $body = __(
             'Connect your store to the VCR.AM gateway. Fiscal receipts (e-HDM) are issued directly to the Armenian State Revenue Committee (SRC) on every paid order.',
-            'vcr',
+            'vcr-am-fiscal-receipts',
         );
 
         $disclosure = __(
             'GDPR / data-flow notice: activating this plugin transmits order line items, totals, and payment-method classification (cash / non-cash) to the VCR.AM gateway, which forwards them to the Armenian SRC. Customer name, email, address, and phone number are NOT transmitted. VCR.AM is established in the Republic of Armenia, which is not on the European Commission\'s adequacy list — when this site is GDPR-subject, the transfer is governed by Standard Contractual Clauses (Commission Implementing Decision (EU) 2021/914).',
-            'vcr',
+            'vcr-am-fiscal-receipts',
         );
 
         $links = sprintf(
             /* translators: 1: VCR.AM Privacy Policy URL, 2: VCR.AM Data Processing Addendum URL, 3: Standard Contractual Clauses (Commission Decision) URL */
-            __('Reference links: %1$s · %2$s · %3$s.', 'vcr'),
-            sprintf('<a href="https://vcr.am/privacy" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('VCR.AM Privacy Policy', 'vcr')),
-            sprintf('<a href="https://vcr.am/dpa" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('Data Processing Addendum (request from VCR.AM)', 'vcr')),
-            sprintf('<a href="https://eur-lex.europa.eu/eli/dec_impl/2021/914/oj" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('Standard Contractual Clauses (EU 2021/914)', 'vcr')),
+            __('Reference links: %1$s · %2$s · %3$s.', 'vcr-am-fiscal-receipts'),
+            sprintf('<a href="https://vcr.am/privacy" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('VCR.AM Privacy Policy', 'vcr-am-fiscal-receipts')),
+            sprintf('<a href="https://vcr.am/dpa" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('Data Processing Addendum (request from VCR.AM)', 'vcr-am-fiscal-receipts')),
+            sprintf('<a href="https://eur-lex.europa.eu/eli/dec_impl/2021/914/oj" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('Standard Contractual Clauses (EU 2021/914)', 'vcr-am-fiscal-receipts')),
         );
 
         return wp_kses_post(
@@ -314,27 +319,27 @@ final class VcrSettingsTab extends WC_Settings_Page
     {
         if ($cashiers === []) {
             $reason = $this->keyStore->isSet()
-                ? __('No cashiers found — check your API key permissions or create one in the VCR dashboard.', 'vcr')
-                : __('Save your API key first; the cashier list loads from the VCR API.', 'vcr');
+                ? __('No cashiers found — check your API key permissions or create one in the VCR dashboard.', 'vcr-am-fiscal-receipts')
+                : __('Save your API key first; the cashier list loads from the VCR API.', 'vcr-am-fiscal-receipts');
 
             return [
-                'name' => __('Default cashier', 'vcr'),
+                'name' => __('Default cashier', 'vcr-am-fiscal-receipts'),
                 'type' => 'select',
                 'id' => Configuration::OPT_DEFAULT_CASHIER_ID,
                 'options' => ['' => $reason],
-                'desc' => __('Loaded from listCashiers() and cached for one hour. Re-saving these settings forces a refresh.', 'vcr'),
+                'desc' => __('Loaded from listCashiers() and cached for one hour. Re-saving these settings forces a refresh.', 'vcr-am-fiscal-receipts'),
                 'custom_attributes' => ['disabled' => 'disabled'],
                 'default' => '',
             ];
         }
 
         return [
-            'name' => __('Default cashier', 'vcr'),
+            'name' => __('Default cashier', 'vcr-am-fiscal-receipts'),
             'type' => 'select',
             'id' => Configuration::OPT_DEFAULT_CASHIER_ID,
-            'options' => ['' => __('— select a cashier —', 'vcr')] + $cashiers,
-            'desc' => __('Loaded from listCashiers() and cached for one hour. Re-saving these settings forces a refresh.', 'vcr'),
-            'desc_tip' => __('Required before fiscal jobs will run.', 'vcr'),
+            'options' => ['' => __('— select a cashier —', 'vcr-am-fiscal-receipts')] + $cashiers,
+            'desc' => __('Loaded from listCashiers() and cached for one hour. Re-saving these settings forces a refresh.', 'vcr-am-fiscal-receipts'),
+            'desc_tip' => __('Required before fiscal jobs will run.', 'vcr-am-fiscal-receipts'),
             'default' => '',
         ];
     }

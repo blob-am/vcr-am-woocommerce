@@ -56,6 +56,14 @@ abstract class TestCase extends BaseTestCase
         // never has magic quotes active, so a pass-through is the
         // correct production-equivalent behaviour.
         Functions\when('wp_unslash')->returnArg(1);
+
+        // `wp_parse_url` is a thin wrapper around PHP's parse_url that
+        // smooths over PHP 5.x bugs. Brain Monkey doesn't stub it; in
+        // tests we just delegate to native parse_url (which on PHP 8.3+
+        // behaves identically to the WP wrapper).
+        Functions\when('wp_parse_url')->alias(static function (string $url, int $component = -1) {
+            return parse_url($url, $component);
+        });
     }
 
     protected function tearDown(): void

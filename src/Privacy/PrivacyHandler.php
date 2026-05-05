@@ -10,6 +10,11 @@ use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
 use WC_Order;
 use WC_Order_Refund;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * GDPR personal-data exporter + eraser registration. Required for any
  * WooCommerce plugin that handles customer-linked records — and our
@@ -107,40 +112,40 @@ class PrivacyHandler
 
         $intro = __(
             'This site uses the VCR plugin to issue fiscal receipts (eHDM) to the Armenian State Revenue Committee (SRC) via the VCR.AM gateway. The text below describes the data flow and lawful basis. Edit and paste the parts relevant to your store into your published privacy policy.',
-            'vcr',
+            'vcr-am-fiscal-receipts',
         );
 
         $sections = [
-            '<strong class="privacy-policy-tutorial">' . esc_html__('Suggested text:', 'vcr') . '</strong>',
+            '<strong class="privacy-policy-tutorial">' . esc_html__('Suggested text:', 'vcr-am-fiscal-receipts') . '</strong>',
 
             '<p>' . esc_html__(
                 'When you place an order, our store transmits the order line items, totals, taxes, payment method (cash / non-cash), currency, and the corresponding refund records (if any) to the VCR.AM fiscal-receipt operator (vcr.am, registered in the Republic of Armenia), which forwards them to the Armenian State Revenue Committee (SRC) so a fiscal receipt can be issued in your name.',
-                'vcr',
+                'vcr-am-fiscal-receipts',
             ) . '</p>',
 
             '<p>' . esc_html__(
                 'We do NOT transmit your name, email address, phone number, billing address, or IP address to VCR.AM or to the SRC. Fiscal receipts are issued to an anonymised buyer record. The personal data we collect at checkout (name, address, etc.) stays in this store for order fulfilment under our usual policies.',
-                'vcr',
+                'vcr-am-fiscal-receipts',
             ) . '</p>',
 
             '<p>' . esc_html__(
                 'Lawful basis: GDPR Article 6(1)(c) — processing necessary for compliance with a legal obligation. The obligation is set out in the Armenian Tax Code Article 380.1 (HO-280-N) and Government Decision 1976-N, which require electronic Cash Register (e-HDM) registration of every taxable sale.',
-                'vcr',
+                'vcr-am-fiscal-receipts',
             ) . '</p>',
 
             '<p>' . esc_html__(
                 'International transfer: VCR.AM operates from the Republic of Armenia, which is not on the European Commission\'s list of countries with an adequate level of data protection. The transfer is governed by the Standard Contractual Clauses (Commission Implementing Decision (EU) 2021/914), Module Two (controller-to-processor); ask vcr.am for a signed Data Processing Addendum incorporating those clauses before activating the plugin in production.',
-                'vcr',
+                'vcr-am-fiscal-receipts',
             ) . '</p>',
 
             '<p>' . esc_html__(
                 'Retention: fiscal records are retained for the period required by the Armenian Tax Code (typically 5 years from the year-end in which the receipt was issued, per Tax Code Article 56). Erasure requests covering fiscal records are refused on legal-obligation grounds under GDPR Article 17(3)(b); local plugin metadata for orders that never resulted in an SRC submission is erased on request.',
-                'vcr',
+                'vcr-am-fiscal-receipts',
             ) . '</p>',
 
             '<p>' . esc_html__(
                 'Sub-processor: VCR.AM acts as a processor on the merchant\'s behalf for the purpose of fiscal-receipt issuance. The Armenian SRC is an independent controller receiving the data under national tax law. Both are listed here so that a data subject can identify recipients per GDPR Article 13(1)(e).',
-                'vcr',
+                'vcr-am-fiscal-receipts',
             ) . '</p>',
         ];
 
@@ -150,7 +155,7 @@ class PrivacyHandler
             . '</div>';
 
         wp_add_privacy_policy_content(
-            __('VCR — Fiscal Receipts (Armenia)', 'vcr'),
+            __('VCR — Fiscal Receipts (Armenia)', 'vcr-am-fiscal-receipts'),
             wp_kses_post($body),
         );
     }
@@ -170,7 +175,7 @@ class PrivacyHandler
     {
         $normalised = is_array($exporters) ? $exporters : [];
         $normalised[self::EXPORTER_GROUP_ID] = [
-            'exporter_friendly_name' => __('VCR Fiscal Receipts', 'vcr'),
+            'exporter_friendly_name' => __('VCR Fiscal Receipts', 'vcr-am-fiscal-receipts'),
             'callback' => [$this, 'exportFor'],
         ];
 
@@ -187,7 +192,7 @@ class PrivacyHandler
     {
         $normalised = is_array($erasers) ? $erasers : [];
         $normalised[self::ERASER_ID] = [
-            'eraser_friendly_name' => __('VCR Fiscal Receipts', 'vcr'),
+            'eraser_friendly_name' => __('VCR Fiscal Receipts', 'vcr-am-fiscal-receipts'),
             'callback' => [$this, 'eraseFor'],
         ];
 
@@ -212,7 +217,7 @@ class PrivacyHandler
 
             $data[] = [
                 'group_id' => self::EXPORTER_GROUP_ID,
-                'group_label' => __('VCR Fiscal Receipts', 'vcr'),
+                'group_label' => __('VCR Fiscal Receipts', 'vcr-am-fiscal-receipts'),
                 'item_id' => 'order-' . $order->get_id(),
                 'data' => $rows,
             ];
@@ -227,7 +232,7 @@ class PrivacyHandler
 
                 $data[] = [
                     'group_id' => self::EXPORTER_GROUP_ID,
-                    'group_label' => __('VCR Fiscal Receipts', 'vcr'),
+                    'group_label' => __('VCR Fiscal Receipts', 'vcr-am-fiscal-receipts'),
                     'item_id' => 'refund-' . $refund->get_id(),
                     'data' => $refundRows,
                 ];
@@ -274,7 +279,7 @@ class PrivacyHandler
                 $retainedAny = true;
                 $messages[] = sprintf(
                     /* translators: %d: WC order id */
-                    __('VCR fiscal record for order #%d retained on legal-obligation grounds: GDPR Article 17(3)(b) — processing necessary for compliance with Armenian Tax Code Article 380.1 (HO-280-N), retention period per Tax Code Article 56 (typically 5 years from year-end). The SRC-side fiscal receipt is unaffected by this request.', 'vcr'),
+                    __('VCR fiscal record for order #%d retained on legal-obligation grounds: GDPR Article 17(3)(b) — processing necessary for compliance with Armenian Tax Code Article 380.1 (HO-280-N), retention period per Tax Code Article 56 (typically 5 years from year-end). The SRC-side fiscal receipt is unaffected by this request.', 'vcr-am-fiscal-receipts'),
                     $order->get_id(),
                 );
             }
@@ -454,34 +459,34 @@ class PrivacyHandler
         }
 
         $rows = [
-            ['name' => __('Fiscal status', 'vcr'), 'value' => $status->value],
-            ['name' => __('External id', 'vcr'), 'value' => $this->fiscalMeta->externalId($order)],
-            ['name' => __('Attempt count', 'vcr'), 'value' => (string) $this->fiscalMeta->attemptCount($order)],
+            ['name' => __('Fiscal status', 'vcr-am-fiscal-receipts'), 'value' => $status->value],
+            ['name' => __('External id', 'vcr-am-fiscal-receipts'), 'value' => $this->fiscalMeta->externalId($order)],
+            ['name' => __('Attempt count', 'vcr-am-fiscal-receipts'), 'value' => (string) $this->fiscalMeta->attemptCount($order)],
         ];
 
         if (($lastAttempt = $this->fiscalMeta->lastAttemptAt($order)) !== null) {
-            $rows[] = ['name' => __('Last attempt at', 'vcr'), 'value' => $lastAttempt];
+            $rows[] = ['name' => __('Last attempt at', 'vcr-am-fiscal-receipts'), 'value' => $lastAttempt];
         }
         if (($lastError = $this->fiscalMeta->lastError($order)) !== null) {
-            $rows[] = ['name' => __('Last error', 'vcr'), 'value' => $lastError];
+            $rows[] = ['name' => __('Last error', 'vcr-am-fiscal-receipts'), 'value' => $lastError];
         }
         if (($registeredAt = $this->fiscalMeta->registeredAt($order)) !== null) {
-            $rows[] = ['name' => __('Registered at', 'vcr'), 'value' => $registeredAt];
+            $rows[] = ['name' => __('Registered at', 'vcr-am-fiscal-receipts'), 'value' => $registeredAt];
         }
         if (($crn = $this->fiscalMeta->crn($order)) !== null) {
-            $rows[] = ['name' => __('SRC CRN', 'vcr'), 'value' => $crn];
+            $rows[] = ['name' => __('SRC CRN', 'vcr-am-fiscal-receipts'), 'value' => $crn];
         }
         if (($fiscal = $this->fiscalMeta->fiscal($order)) !== null) {
-            $rows[] = ['name' => __('SRC fiscal serial', 'vcr'), 'value' => $fiscal];
+            $rows[] = ['name' => __('SRC fiscal serial', 'vcr-am-fiscal-receipts'), 'value' => $fiscal];
         }
         if (($urlId = $this->fiscalMeta->urlId($order)) !== null) {
-            $rows[] = ['name' => __('SRC receipt url id', 'vcr'), 'value' => $urlId];
+            $rows[] = ['name' => __('SRC receipt url id', 'vcr-am-fiscal-receipts'), 'value' => $urlId];
         }
         if (($saleId = $this->fiscalMeta->saleId($order)) !== null) {
-            $rows[] = ['name' => __('SRC sale id', 'vcr'), 'value' => (string) $saleId];
+            $rows[] = ['name' => __('SRC sale id', 'vcr-am-fiscal-receipts'), 'value' => (string) $saleId];
         }
         if (($srcReceiptId = $this->fiscalMeta->srcReceiptId($order)) !== null) {
-            $rows[] = ['name' => __('SRC receipt id', 'vcr'), 'value' => (string) $srcReceiptId];
+            $rows[] = ['name' => __('SRC receipt id', 'vcr-am-fiscal-receipts'), 'value' => (string) $srcReceiptId];
         }
 
         return $rows;
@@ -503,34 +508,34 @@ class PrivacyHandler
         }
 
         $rows = [
-            ['name' => __('Refund fiscal status', 'vcr'), 'value' => $status->value],
-            ['name' => __('Refund external id', 'vcr'), 'value' => $this->refundMeta->externalId($refund)],
-            ['name' => __('Refund attempt count', 'vcr'), 'value' => (string) $this->refundMeta->attemptCount($refund)],
+            ['name' => __('Refund fiscal status', 'vcr-am-fiscal-receipts'), 'value' => $status->value],
+            ['name' => __('Refund external id', 'vcr-am-fiscal-receipts'), 'value' => $this->refundMeta->externalId($refund)],
+            ['name' => __('Refund attempt count', 'vcr-am-fiscal-receipts'), 'value' => (string) $this->refundMeta->attemptCount($refund)],
         ];
 
         if (($lastAttempt = $this->refundMeta->lastAttemptAt($refund)) !== null) {
-            $rows[] = ['name' => __('Refund last attempt at', 'vcr'), 'value' => $lastAttempt];
+            $rows[] = ['name' => __('Refund last attempt at', 'vcr-am-fiscal-receipts'), 'value' => $lastAttempt];
         }
         if (($lastError = $this->refundMeta->lastError($refund)) !== null) {
-            $rows[] = ['name' => __('Refund last error', 'vcr'), 'value' => $lastError];
+            $rows[] = ['name' => __('Refund last error', 'vcr-am-fiscal-receipts'), 'value' => $lastError];
         }
         if (($registeredAt = $this->refundMeta->registeredAt($refund)) !== null) {
-            $rows[] = ['name' => __('Refund registered at', 'vcr'), 'value' => $registeredAt];
+            $rows[] = ['name' => __('Refund registered at', 'vcr-am-fiscal-receipts'), 'value' => $registeredAt];
         }
         if (($crn = $this->refundMeta->crn($refund)) !== null) {
-            $rows[] = ['name' => __('SRC refund CRN', 'vcr'), 'value' => $crn];
+            $rows[] = ['name' => __('SRC refund CRN', 'vcr-am-fiscal-receipts'), 'value' => $crn];
         }
         if (($fiscal = $this->refundMeta->fiscal($refund)) !== null) {
-            $rows[] = ['name' => __('SRC refund fiscal serial', 'vcr'), 'value' => $fiscal];
+            $rows[] = ['name' => __('SRC refund fiscal serial', 'vcr-am-fiscal-receipts'), 'value' => $fiscal];
         }
         if (($urlId = $this->refundMeta->urlId($refund)) !== null) {
-            $rows[] = ['name' => __('SRC refund url id', 'vcr'), 'value' => $urlId];
+            $rows[] = ['name' => __('SRC refund url id', 'vcr-am-fiscal-receipts'), 'value' => $urlId];
         }
         if (($saleRefundId = $this->refundMeta->saleRefundId($refund)) !== null) {
-            $rows[] = ['name' => __('SRC sale-refund id', 'vcr'), 'value' => (string) $saleRefundId];
+            $rows[] = ['name' => __('SRC sale-refund id', 'vcr-am-fiscal-receipts'), 'value' => (string) $saleRefundId];
         }
         if (($receiptId = $this->refundMeta->receiptId($refund)) !== null) {
-            $rows[] = ['name' => __('SRC refund receipt id', 'vcr'), 'value' => (string) $receiptId];
+            $rows[] = ['name' => __('SRC refund receipt id', 'vcr-am-fiscal-receipts'), 'value' => (string) $receiptId];
         }
 
         return $rows;

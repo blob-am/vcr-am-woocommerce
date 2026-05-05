@@ -12,6 +12,13 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RefundAmount
 use WC_Order;
 use WC_Order_Refund;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are diagnostic, surfaced via Logger or wp_die() (which escape themselves); per-arg esc_html on sprintf args is ritual noise.
+
+
 /**
  * Maps a {@see WC_Order_Refund}'s amount onto the SDK's {@see RefundAmount}
  * — the cash/nonCash counterpart of {@see \BlobSolutions\WooCommerceVcrAm\Fiscal\PaymentMapper}.

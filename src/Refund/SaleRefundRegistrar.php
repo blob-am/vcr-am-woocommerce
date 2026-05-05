@@ -7,6 +7,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Refund;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterSaleRefundInput;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleRefundResponse;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * The slice of the SDK's {@see \BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient}
  * that the refund flow uses. Mirrors the {@see \BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrar}

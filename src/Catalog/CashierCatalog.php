@@ -8,6 +8,11 @@ use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\CashierListItem;
 use Throwable;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Cached, dropdown-friendly view of the cashiers the admin's API key
  * has access to.

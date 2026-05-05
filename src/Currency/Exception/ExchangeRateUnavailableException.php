@@ -6,6 +6,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Currency\Exception;
 
 use RuntimeException;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Raised when the plugin cannot obtain a usable Central Bank of Armenia
  * exchange rate for a given currency. Possible reasons:

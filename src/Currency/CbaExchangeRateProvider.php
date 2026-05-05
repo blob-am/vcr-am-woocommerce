@@ -8,6 +8,13 @@ use BlobSolutions\WooCommerceVcrAm\Currency\Exception\ExchangeRateUnavailableExc
 use SimpleXMLElement;
 use Throwable;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are diagnostic, surfaced via Logger or wp_die() (which escape themselves); per-arg esc_html on sprintf args is ritual noise.
+
+
 /**
  * Live SOAP-over-HTTP client for the Central Bank of Armenia exchange-rate
  * service.

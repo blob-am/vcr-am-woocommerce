@@ -9,6 +9,11 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
 use WC_Order;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Builds the public-facing VCR receipt URL for a fiscalised WooCommerce
  * order: `{host}/{locale}/r/{crn}/{urlId}` — the same shape served by the
@@ -106,7 +111,7 @@ class ReceiptUrlBuilder
     public function host(): string
     {
         $apiBase = $this->config->baseUrl();
-        $parts = parse_url($apiBase);
+        $parts = wp_parse_url($apiBase);
 
         if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
             // Garbled config — let the filter still get a crack at it,

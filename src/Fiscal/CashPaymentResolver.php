@@ -18,6 +18,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
  * (manual admin-created orders) -> `nonCash` so we err toward the
  * more common online case.
  */
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 class CashPaymentResolver
 {
     /** @var list<string> Built-in WC gateway ids that settle as cash. */

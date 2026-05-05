@@ -11,6 +11,11 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundQueue;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Renders a "VCR — Fiscal Receipts" section on the WooCommerce → Status
  * → System Status report page. Standard WC convention for plugins to
@@ -71,7 +76,7 @@ class SystemStatusReport
 
         echo '<table class="wc_status_table widefat" cellspacing="0">';
         echo '<thead><tr><th colspan="3" data-export-label="VCR Fiscal Receipts">'
-            . '<h2>' . esc_html__('VCR — Fiscal Receipts (Armenia)', 'vcr') . '</h2>'
+            . '<h2>' . esc_html__('VCR — Fiscal Receipts (Armenia)', 'vcr-am-fiscal-receipts') . '</h2>'
             . '</th></tr></thead><tbody>';
 
         foreach ($rows as $label => $value) {
@@ -92,35 +97,35 @@ class SystemStatusReport
     private function collectRows(): array
     {
         $rows = [
-            __('Plugin version', 'vcr') => $this->pluginVersion,
-            __('API key configured', 'vcr') => $this->config->hasCredentials() ? __('Yes', 'vcr') : __('No', 'vcr'),
-            __('Base URL', 'vcr') => $this->stripCredentials($this->config->baseUrl()),
-            __('Test mode', 'vcr') => $this->config->isTestMode() ? __('Enabled', 'vcr') : __('Disabled', 'vcr'),
-            __('Default cashier configured', 'vcr') => $this->config->defaultCashierId() !== null ? __('Yes', 'vcr') : __('No', 'vcr'),
-            __('Default department configured', 'vcr') => $this->config->defaultDepartmentId() !== null ? __('Yes', 'vcr') : __('No', 'vcr'),
-            __('Shipping SKU configured', 'vcr') => $this->config->shippingSku() !== null ? __('Yes', 'vcr') : __('No', 'vcr'),
-            __('Fee SKU configured', 'vcr') => $this->config->feeSku() !== null ? __('Yes', 'vcr') : __('No', 'vcr'),
-            __('Fully configured', 'vcr') => $this->config->isFullyConfigured() ? __('Yes', 'vcr') : __('No', 'vcr'),
+            __('Plugin version', 'vcr-am-fiscal-receipts') => $this->pluginVersion,
+            __('API key configured', 'vcr-am-fiscal-receipts') => $this->config->hasCredentials() ? __('Yes', 'vcr-am-fiscal-receipts') : __('No', 'vcr-am-fiscal-receipts'),
+            __('Base URL', 'vcr-am-fiscal-receipts') => $this->stripCredentials($this->config->baseUrl()),
+            __('Test mode', 'vcr-am-fiscal-receipts') => $this->config->isTestMode() ? __('Enabled', 'vcr-am-fiscal-receipts') : __('Disabled', 'vcr-am-fiscal-receipts'),
+            __('Default cashier configured', 'vcr-am-fiscal-receipts') => $this->config->defaultCashierId() !== null ? __('Yes', 'vcr-am-fiscal-receipts') : __('No', 'vcr-am-fiscal-receipts'),
+            __('Default department configured', 'vcr-am-fiscal-receipts') => $this->config->defaultDepartmentId() !== null ? __('Yes', 'vcr-am-fiscal-receipts') : __('No', 'vcr-am-fiscal-receipts'),
+            __('Shipping SKU configured', 'vcr-am-fiscal-receipts') => $this->config->shippingSku() !== null ? __('Yes', 'vcr-am-fiscal-receipts') : __('No', 'vcr-am-fiscal-receipts'),
+            __('Fee SKU configured', 'vcr-am-fiscal-receipts') => $this->config->feeSku() !== null ? __('Yes', 'vcr-am-fiscal-receipts') : __('No', 'vcr-am-fiscal-receipts'),
+            __('Fully configured', 'vcr-am-fiscal-receipts') => $this->config->isFullyConfigured() ? __('Yes', 'vcr-am-fiscal-receipts') : __('No', 'vcr-am-fiscal-receipts'),
         ];
 
         // Action Scheduler queue health — pending action counts per hook.
         // Using as_get_scheduled_actions because it's the documented API
         // and works regardless of which AS storage backend is active.
-        $rows[__('Pending sale jobs', 'vcr')] = (string) $this->countPendingActions(FiscalQueue::ACTION_HOOK);
-        $rows[__('Pending refund jobs', 'vcr')] = (string) $this->countPendingActions(RefundQueue::ACTION_HOOK);
+        $rows[__('Pending sale jobs', 'vcr-am-fiscal-receipts')] = (string) $this->countPendingActions(FiscalQueue::ACTION_HOOK);
+        $rows[__('Pending refund jobs', 'vcr-am-fiscal-receipts')] = (string) $this->countPendingActions(RefundQueue::ACTION_HOOK);
 
         // Fiscal status counts — answer "are there orders piling up?"
         // Class constants accessed directly (not through $this->meta) for
         // PHPStan: instance property access via :: makes the type opaque.
         $saleCounts = $this->countByStatus(FiscalStatusMeta::META_STATUS);
-        $rows[__('Sale orders — Pending', 'vcr')] = (string) ($saleCounts[FiscalStatus::Pending->value] ?? 0);
-        $rows[__('Sale orders — Failed', 'vcr')] = (string) ($saleCounts[FiscalStatus::Failed->value] ?? 0);
-        $rows[__('Sale orders — Manual required', 'vcr')] = (string) ($saleCounts[FiscalStatus::ManualRequired->value] ?? 0);
+        $rows[__('Sale orders — Pending', 'vcr-am-fiscal-receipts')] = (string) ($saleCounts[FiscalStatus::Pending->value] ?? 0);
+        $rows[__('Sale orders — Failed', 'vcr-am-fiscal-receipts')] = (string) ($saleCounts[FiscalStatus::Failed->value] ?? 0);
+        $rows[__('Sale orders — Manual required', 'vcr-am-fiscal-receipts')] = (string) ($saleCounts[FiscalStatus::ManualRequired->value] ?? 0);
 
         $refundCounts = $this->countByStatus(RefundStatusMeta::META_STATUS);
-        $rows[__('Refunds — Pending', 'vcr')] = (string) ($refundCounts[FiscalStatus::Pending->value] ?? 0);
-        $rows[__('Refunds — Failed', 'vcr')] = (string) ($refundCounts[FiscalStatus::Failed->value] ?? 0);
-        $rows[__('Refunds — Manual required', 'vcr')] = (string) ($refundCounts[FiscalStatus::ManualRequired->value] ?? 0);
+        $rows[__('Refunds — Pending', 'vcr-am-fiscal-receipts')] = (string) ($refundCounts[FiscalStatus::Pending->value] ?? 0);
+        $rows[__('Refunds — Failed', 'vcr-am-fiscal-receipts')] = (string) ($refundCounts[FiscalStatus::Failed->value] ?? 0);
+        $rows[__('Refunds — Manual required', 'vcr-am-fiscal-receipts')] = (string) ($refundCounts[FiscalStatus::ManualRequired->value] ?? 0);
 
         return $rows;
     }
@@ -177,6 +182,12 @@ class SystemStatusReport
             return [];
         }
 
+        // $sql was just produced by $wpdb->prepare() above with %i (table)
+        // and %s (meta key) placeholders — both safe. PCP can't track
+        // the data flow across the `is_string` narrowing, hence the
+        // ignore. The cache-comment-style ignore is the documented
+        // WPCS escape hatch for this exact pattern.
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is the literal output of $wpdb->prepare() above.
         $results = $wpdb->get_results($sql, ARRAY_A);
         if (! is_array($results)) {
             return [];
@@ -217,7 +228,7 @@ class SystemStatusReport
      */
     private function stripCredentials(string $url): string
     {
-        $parts = parse_url($url);
+        $parts = wp_parse_url($url);
         if ($parts === false || ! isset($parts['scheme'], $parts['host'])) {
             return $url;
         }

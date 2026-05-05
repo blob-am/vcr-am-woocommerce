@@ -13,6 +13,11 @@ use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
 use WC_Order;
 use WP_CLI;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * `wp vcr ...` commands. Loaded only when `WP_CLI` is defined (the
  * standard WP-CLI bootstrap pattern). Provides operational tools for

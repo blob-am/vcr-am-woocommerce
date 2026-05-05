@@ -6,6 +6,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Currency;
 
 use BlobSolutions\WooCommerceVcrAm\Currency\Exception\ExchangeRateUnavailableException;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Domain facade for "convert this WC order amount to AMD". Wraps an
  * {@see ExchangeRateProvider} and centralises the AMD passthrough.

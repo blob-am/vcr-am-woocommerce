@@ -8,6 +8,11 @@ use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
 /**
  * Builds a fresh {@see CashierLister} for each call. Mirrors
  * {@see \BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrarFactory}'s

@@ -14,6 +14,13 @@ use WC_Order_Item_Fee;
 use WC_Order_Item_Product;
 use WC_Product;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are diagnostic, surfaced via Logger or wp_die() (which escape themselves); per-arg esc_html on sprintf args is ritual noise.
+
+
 /**
  * Convert a {@see WC_Order}'s line items into the SDK's {@see SaleItem}
  * shape.

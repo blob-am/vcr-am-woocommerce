@@ -42,6 +42,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
  * SDK call ({@see \BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient::registerSaleRefund()})
  * with their own listener (Phase 3e).
  */
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 final class OrderListener
 {
     public function __construct(

@@ -44,6 +44,11 @@ namespace BlobSolutions\WooCommerceVcrAm\Refund;
  *     hook for stores that want to substitute their own redactor or
  *     a localised placeholder vocabulary.
  */
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 class RefundReasonSanitizer
 {
     public const DEFAULT_MAX_LENGTH = 200;
