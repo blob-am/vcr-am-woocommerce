@@ -6,7 +6,10 @@ namespace BlobSolutions\WooCommerceVcrAm\Admin;
 
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
+use BlobSolutions\WooCommerceVcrAm\Refund\RefundFiscalizeNowHandler;
+use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
 use WC_Order;
+use WC_Order_Refund;
 use WP_Post;
 
 /**
@@ -39,6 +42,7 @@ class OrderMetaBox
 
     public function __construct(
         private readonly FiscalStatusMeta $meta,
+        private readonly RefundStatusMeta $refundMeta,
     ) {
     }
 
@@ -90,6 +94,8 @@ class OrderMetaBox
             FiscalStatus::Failed => $this->renderFailed($order),
             FiscalStatus::ManualRequired => $this->renderManualRequired($order),
         };
+
+        $this->renderRefundsSection($order);
     }
 
     /**
@@ -237,6 +243,10 @@ class OrderMetaBox
             'fiscalize_skipped_success' => __('Order is already fiscalised — nothing to retry.', 'vcr'),
             'fiscalize_skipped_state' => __('Order is not in a state that can be retried.', 'vcr'),
             'fiscalize_invalid_order' => __('The selected order could not be found.', 'vcr'),
+            'refund_enqueued' => __('Refund registration re-queued. The next attempt will run shortly.', 'vcr'),
+            'refund_skipped_success' => __('Refund is already registered with SRC — nothing to retry.', 'vcr'),
+            'refund_skipped_state' => __('Refund is not in a state that can be retried.', 'vcr'),
+            'refund_invalid' => __('The selected refund could not be found.', 'vcr'),
             default => null,
         };
 
@@ -244,12 +254,121 @@ class OrderMetaBox
             return;
         }
 
-        $cssClass = $notice === 'fiscalize_enqueued' ? 'notice-success' : 'notice-warning';
+        $cssClass = ($notice === 'fiscalize_enqueued' || $notice === 'refund_enqueued')
+            ? 'notice-success'
+            : 'notice-warning';
 
         printf(
             '<div class="notice %s inline" style="padding:0.5em;margin:0 0 1em"><p>%s</p></div>',
             esc_attr($cssClass),
             esc_html($message),
         );
+    }
+
+    /**
+     * Render a per-refund fiscal status block under the main sale block.
+     * Each WC refund the order has gets its own mini-section showing
+     * registration state and a "Register refund now" button when
+     * appropriate.
+     *
+     * Renders nothing if the order has no refunds — keeps the meta box
+     * compact for the typical "no refunds yet" case.
+     */
+    private function renderRefundsSection(WC_Order $order): void
+    {
+        $refunds = $order->get_refunds();
+
+        if ($refunds === []) {
+            return;
+        }
+
+        echo '<hr style="margin:1em 0">';
+        echo '<p><strong>' . esc_html(__('Refunds:', 'vcr')) . '</strong></p>';
+
+        foreach ($refunds as $refund) {
+            $this->renderRefundBlock($refund);
+        }
+    }
+
+    private function renderRefundBlock(WC_Order_Refund $refund): void
+    {
+        $status = $this->refundMeta->status($refund);
+
+        echo '<div style="margin:0.5em 0;padding:0.5em;border:1px solid #dcdcde">';
+        printf(
+            '<p style="margin:0 0 0.3em"><strong>%s</strong> #%d (%s)</p>',
+            esc_html(__('Refund', 'vcr')),
+            $refund->get_id(),
+            esc_html(wc_price((float) $refund->get_amount())),
+        );
+
+        if ($status === null) {
+            echo '<p style="margin:0">' . esc_html(__('Status: not yet enqueued.', 'vcr')) . '</p>';
+            echo '</div>';
+
+            return;
+        }
+
+        echo '<p style="margin:0 0 0.3em">';
+        echo '<strong>' . esc_html(__('Status:', 'vcr')) . '</strong> ';
+        echo esc_html($this->refundStatusLabel($status));
+        echo '</p>';
+
+        $lastError = $this->refundMeta->lastError($refund);
+        if ($lastError !== null) {
+            echo '<p style="margin:0 0 0.3em;color:#b32d2e">' . esc_html($lastError) . '</p>';
+        }
+
+        if ($status === FiscalStatus::Success) {
+            $fiscal = $this->refundMeta->fiscal($refund);
+            $crn = $this->refundMeta->crn($refund);
+            $urlId = $this->refundMeta->urlId($refund);
+
+            $bits = [];
+            if ($fiscal !== null && $fiscal !== '') {
+                $bits[] = __('Fiscal:', 'vcr') . ' ' . $fiscal;
+            }
+            if ($crn !== null && $crn !== '') {
+                $bits[] = __('CRN:', 'vcr') . ' ' . $crn;
+            }
+            if ($urlId !== null) {
+                $bits[] = __('Receipt id:', 'vcr') . ' ' . $urlId;
+            }
+
+            if ($bits !== []) {
+                echo '<p style="margin:0;font-size:0.9em">' . esc_html(implode(' · ', $bits)) . '</p>';
+            }
+        }
+
+        if ($status === FiscalStatus::Failed || $status === FiscalStatus::ManualRequired) {
+            $this->renderRegisterRefundNowForm($refund);
+        }
+
+        echo '</div>';
+    }
+
+    private function renderRegisterRefundNowForm(WC_Order_Refund $refund): void
+    {
+        $refundId = $refund->get_id();
+        $action = RefundFiscalizeNowHandler::ACTION;
+        $nonceAction = RefundFiscalizeNowHandler::NONCE_ACTION . '_' . $refundId;
+
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin-top:0.5em">';
+        echo '<input type="hidden" name="action" value="' . esc_attr($action) . '">';
+        echo '<input type="hidden" name="refund_id" value="' . esc_attr((string) $refundId) . '">';
+        wp_nonce_field($nonceAction);
+        echo '<button type="submit" class="button button-secondary">'
+            . esc_html(__('Register refund now', 'vcr')) . '</button>';
+        echo '</form>';
+    }
+
+    private function refundStatusLabel(FiscalStatus $status): string
+    {
+        return match ($status) {
+            FiscalStatus::Pending => __('Queued for SRC registration', 'vcr'),
+            FiscalStatus::Success => __('Registered with SRC', 'vcr'),
+            FiscalStatus::Failed => __('Failed (retries exhausted)', 'vcr'),
+            FiscalStatus::ManualRequired => __('Needs your attention', 'vcr'),
+        };
     }
 }

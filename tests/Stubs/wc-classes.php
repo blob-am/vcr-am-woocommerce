@@ -98,6 +98,19 @@ if (! class_exists('WC_Order', false)) {
         {
             return 0;
         }
+
+        /**
+         * @return array<int, WC_Order_Refund>
+         */
+        public function get_refunds(): array
+        {
+            return [];
+        }
+
+        public function get_remaining_refund_amount(): float
+        {
+            return 0.0;
+        }
     }
 }
 
@@ -170,8 +183,53 @@ if (! class_exists('WC_Product', false)) {
 }
 
 if (! class_exists('WC_Order_Refund', false)) {
-    class WC_Order_Refund extends WC_Order
+    /**
+     * Real WooCommerce ships this as `class WC_Order_Refund extends WC_Abstract_Order`
+     * — NOT a subclass of `WC_Order`. We mirror that shape so unit tests
+     * catch any code path that wrongly assumes refunds satisfy `instanceof
+     * WC_Order` (the rigor lesson from Phase 3b).
+     *
+     * In our stub, both `WC_Order` and `WC_Order_Refund` extend `WC_Data`
+     * directly (we don't model `WC_Abstract_Order` — that intermediate
+     * abstract class adds nothing the tests can exercise). The
+     * non-WC_Order pedigree is what matters.
+     */
+    class WC_Order_Refund extends WC_Data
     {
+        public function get_id(): int
+        {
+            return 0;
+        }
+
+        public function get_type(): string
+        {
+            return 'shop_order_refund';
+        }
+
+        /**
+         * @return array<int, WC_Order_Item>
+         */
+        public function get_items(string|array $types = 'line_item'): array
+        {
+            return [];
+        }
+
+        /** Refund total — stored as `_refund_amount` post-meta on real WC. */
+        public function get_amount(string $context = 'view'): string
+        {
+            return '0';
+        }
+
+        /** Free-text reason an admin entered when creating the refund. */
+        public function get_reason(string $context = 'view'): string
+        {
+            return '';
+        }
+
+        public function get_parent_id(string $context = 'view'): int
+        {
+            return 0;
+        }
     }
 }
 

@@ -38,45 +38,20 @@ use WC_Order;
  */
 class PaymentMapper
 {
-    /** @var list<string> Built-in WC gateway ids that settle as cash. */
-    private const DEFAULT_CASH_METHODS = ['cod', 'cheque'];
+    public function __construct(
+        private readonly CashPaymentResolver $cashResolver = new CashPaymentResolver(),
+    ) {
+    }
 
     public function map(WC_Order $order): SaleAmount
     {
         $totalString = $this->orderTotalString($order);
 
-        if ($this->isCashMethod($order->get_payment_method())) {
+        if ($this->cashResolver->isCash($order->get_payment_method())) {
             return new SaleAmount(cash: $totalString);
         }
 
         return new SaleAmount(nonCash: $totalString);
-    }
-
-    private function isCashMethod(string $methodId): bool
-    {
-        if ($methodId === '') {
-            // Manual orders (admin-created) often have no payment method.
-            // We can't know the tender — treat as nonCash so we err toward
-            // the more common online case rather than silently mis-recording.
-            return false;
-        }
-
-        $cashMethods = self::DEFAULT_CASH_METHODS;
-
-        $filtered = apply_filters('vcr_cash_payment_method_ids', $cashMethods);
-
-        if (! is_array($filtered)) {
-            return in_array($methodId, $cashMethods, true);
-        }
-
-        // Cheap defensive narrowing — a misbehaving filter that returns
-        // mixed values shouldn't escalate into a TypeError downstream.
-        $cashMethods = array_values(array_filter(
-            $filtered,
-            static fn ($value): bool => is_string($value) && $value !== '',
-        ));
-
-        return in_array($methodId, $cashMethods, true);
     }
 
     private function orderTotalString(WC_Order $order): string

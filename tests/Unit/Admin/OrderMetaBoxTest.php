@@ -5,6 +5,7 @@ declare(strict_types=1);
 use BlobSolutions\WooCommerceVcrAm\Admin\OrderMetaBox;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
+use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
 
@@ -25,14 +26,46 @@ afterEach(function (): void {
 });
 
 /**
+ * Default refund-meta mock for tests that don't care about refund
+ * rendering — a permissive double that won't choke on any call.
+ * Phase-3e Refund test file exercises the refund render paths
+ * directly with a strict double; this helper is for the sale-status
+ * tests that just need OrderMetaBox to *not* crash on the new
+ * second constructor arg.
+ */
+function defaultRefundMeta(): RefundStatusMeta
+{
+    return Mockery::mock(RefundStatusMeta::class);
+}
+
+/**
+ * Build an OrderMetaBox with both meta deps. Optional refund meta lets
+ * a test inject a strict double to assert refund-section behaviour;
+ * default is the permissive helper above.
+ */
+function makeBox(FiscalStatusMeta $meta, ?RefundStatusMeta $refundMeta = null): OrderMetaBox
+{
+    return new OrderMetaBox($meta, $refundMeta ?? defaultRefundMeta());
+}
+
+/**
  * Captures the meta box HTML output via ob_start/ob_get_clean so tests
  * can assert against it as a string. Yes, asserting HTML substrings is
  * brittle; for v1 it's the cheapest signal that "the right status
  * fragment got rendered for the right state". A future refactor to
  * template files would let us assert template-name selection instead.
+ *
+ * If `$arg` is a WC_Order mock without a `get_refunds` stub, we add a
+ * default empty-array stub here — the Phase-3e additions to OrderMetaBox
+ * always iterate refunds, so any sale-status test that doesn't care
+ * about refunds would otherwise blow up on a missing-method call.
  */
 function captureRender(OrderMetaBox $box, mixed $arg): string
 {
+    if ($arg instanceof WC_Order) {
+        $arg->allows('get_refunds')->andReturn([])->byDefault();
+    }
+
     ob_start();
     $box->render($arg);
 
@@ -43,7 +76,7 @@ it('register hooks add_meta_boxes once', function (): void {
     Actions\expectAdded('add_meta_boxes')->once();
 
     $meta = Mockery::mock(FiscalStatusMeta::class);
-    (new OrderMetaBox($meta))->register();
+    (makeBox($meta))->register();
 });
 
 it('addMetaBox calls add_meta_box with the dual-screen target list', function (): void {
@@ -60,7 +93,7 @@ it('addMetaBox calls add_meta_box with the dual-screen target list', function ()
     });
 
     $meta = Mockery::mock(FiscalStatusMeta::class);
-    (new OrderMetaBox($meta))->addMetaBox();
+    (makeBox($meta))->addMetaBox();
 
     expect($captured['id'])->toBe(OrderMetaBox::META_BOX_ID)
         // HPOS first, legacy second — keeps the new path primary.
@@ -71,7 +104,7 @@ it('addMetaBox calls add_meta_box with the dual-screen target list', function ()
 
 it('renders an "order not available" message when given a non-order argument', function (): void {
     $meta = Mockery::mock(FiscalStatusMeta::class);
-    $box = new OrderMetaBox($meta);
+    $box = makeBox($meta);
 
     $html = captureRender($box, 'not-an-order');
 
@@ -86,7 +119,7 @@ it('resolves a WP_Post via wc_get_order on the legacy edit screen', function ():
     Functions\when('wc_get_order')->alias(fn (int $id) => $id === 42 ? $order : null);
 
     $post = new WP_Post(ID: 42);
-    $html = captureRender(new OrderMetaBox($meta), $post);
+    $html = captureRender(makeBox($meta), $post);
 
     expect($html)->toContain('Not yet fiscalised');
 });
@@ -96,7 +129,7 @@ it('renders the "not yet fiscalised" placeholder when meta status is null', func
     $meta = Mockery::mock(FiscalStatusMeta::class);
     $meta->expects('status')->with($order)->andReturn(null);
 
-    $html = captureRender(new OrderMetaBox($meta), $order);
+    $html = captureRender(makeBox($meta), $order);
 
     expect($html)
         ->toContain('Not yet fiscalised')
@@ -110,7 +143,7 @@ it('renders pending status with attempt count and last error', function (): void
     $meta->allows('attemptCount')->with($order)->andReturn(2);
     $meta->allows('lastError')->with($order)->andReturn('VCR API HTTP 503');
 
-    $html = captureRender(new OrderMetaBox($meta), $order);
+    $html = captureRender(makeBox($meta), $order);
 
     expect($html)
         ->toContain('Queued for fiscalisation')
@@ -127,7 +160,7 @@ it('renders success with fiscal serial, CRN, and receipt id', function (): void 
     $meta->allows('crn')->with($order)->andReturn('CRN-7');
     $meta->allows('urlId')->with($order)->andReturn('rcpt-abc-123');
 
-    $html = captureRender(new OrderMetaBox($meta), $order);
+    $html = captureRender(makeBox($meta), $order);
 
     expect($html)
         ->toContain('Registered with SRC')
@@ -144,7 +177,7 @@ it('renders failed status with the Fiscalize-now button', function (): void {
     $meta->expects('status')->with($order)->andReturn(FiscalStatus::Failed);
     $meta->allows('lastError')->with($order)->andReturn('Gave up after 6 attempts.');
 
-    $html = captureRender(new OrderMetaBox($meta), $order);
+    $html = captureRender(makeBox($meta), $order);
 
     expect($html)
         ->toContain('Failed')
@@ -162,7 +195,7 @@ it('renders manual_required with the Fiscalize-now button', function (): void {
     $meta->expects('status')->with($order)->andReturn(FiscalStatus::ManualRequired);
     $meta->allows('lastError')->with($order)->andReturn('Product "Foo" has no SKU.');
 
-    $html = captureRender(new OrderMetaBox($meta), $order);
+    $html = captureRender(makeBox($meta), $order);
 
     expect($html)
         ->toContain('Needs your attention')
@@ -177,7 +210,7 @@ it('renders the success notice when the redirect query param is present', functi
     $meta = Mockery::mock(FiscalStatusMeta::class);
     $meta->allows('status')->with($order)->andReturn(null);
 
-    $html = captureRender(new OrderMetaBox($meta), $order);
+    $html = captureRender(makeBox($meta), $order);
 
     expect($html)
         ->toContain('notice-success')
@@ -194,7 +227,7 @@ it('renders the warning notice when the retry was skipped', function (): void {
     $meta->allows('crn')->with($order)->andReturn(null);
     $meta->allows('urlId')->with($order)->andReturn(null);
 
-    $html = captureRender(new OrderMetaBox($meta), $order);
+    $html = captureRender(makeBox($meta), $order);
 
     expect($html)
         ->toContain('notice-warning')
@@ -208,7 +241,7 @@ it('ignores unknown notice values silently', function (): void {
     $meta = Mockery::mock(FiscalStatusMeta::class);
     $meta->allows('status')->with($order)->andReturn(null);
 
-    $html = captureRender(new OrderMetaBox($meta), $order);
+    $html = captureRender(makeBox($meta), $order);
 
     // No notice-* div, just the regular content.
     expect($html)->not->toContain('notice-');

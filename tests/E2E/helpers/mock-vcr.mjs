@@ -17,7 +17,7 @@ export async function resetMockLog() {
  * Override the canned response for a single endpoint. Status defaults
  * to 200 if omitted; body to whatever the default plan has.
  *
- * @param {'listCashiers'|'registerSale'} endpoint
+ * @param {'listCashiers'|'registerSale'|'registerSaleRefund'} endpoint
  * @param {{ status?: number, body?: unknown }} update
  */
 export async function setMockPlan(endpoint, update) {

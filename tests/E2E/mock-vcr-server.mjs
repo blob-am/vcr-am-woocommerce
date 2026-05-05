@@ -53,6 +53,16 @@ const responsePlan = {
             fiscal: 'FISCAL-TEST',
         },
     },
+    registerSaleRefund: {
+        status: 200,
+        body: {
+            urlId: 'rfd-test-1',
+            saleRefundId: 1,
+            crn: 'REF-CRN-TEST',
+            receiptId: 1,
+            fiscal: 'REF-FISCAL-TEST',
+        },
+    },
 };
 
 /** Audit log of inbound requests — exposed via `/__test/log` for assertions. */
@@ -112,6 +122,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.url === '/api/v1/sales' && req.method === 'POST') {
         const plan = responsePlan.registerSale;
+        return jsonResponse(res, plan.status, plan.body);
+    }
+
+    if (req.url === '/api/v1/sales/refund' && req.method === 'POST') {
+        const plan = responsePlan.registerSaleRefund;
         return jsonResponse(res, plan.status, plan.body);
     }
 

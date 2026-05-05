@@ -18,6 +18,16 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\PaymentMapper;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrarFactory;
 use BlobSolutions\WooCommerceVcrAm\Receipt\CustomerReceiptDisplay;
 use BlobSolutions\WooCommerceVcrAm\Receipt\ReceiptUrlBuilder;
+use BlobSolutions\WooCommerceVcrAm\Refund\OrderRefundedListener;
+use BlobSolutions\WooCommerceVcrAm\Refund\RefundEligibilityChecker;
+use BlobSolutions\WooCommerceVcrAm\Refund\RefundFiscalizeNowHandler;
+use BlobSolutions\WooCommerceVcrAm\Refund\RefundJob;
+use BlobSolutions\WooCommerceVcrAm\Refund\RefundPaymentMapper;
+use BlobSolutions\WooCommerceVcrAm\Refund\RefundQueue;
+use BlobSolutions\WooCommerceVcrAm\Refund\RefundReasonMapper;
+use BlobSolutions\WooCommerceVcrAm\Refund\RefundReceiptUrlBuilder;
+use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
+use BlobSolutions\WooCommerceVcrAm\Refund\SaleRefundRegistrarFactory;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\SettingsPage;
 
@@ -129,11 +139,32 @@ final class Plugin
         $queue->register();
 
         (new OrderListener($queue))->register();
-        (new OrderMetaBox($meta))->register();
         (new FiscalizeNowHandler($meta, $queue))->register();
 
+        // Refund flow (Phase 3e) — separate but parallel pipeline.
+        $refundMeta = new RefundStatusMeta();
+        $refundRegistrarFactory = new SaleRefundRegistrarFactory($config, $clientFactory);
+        $refundJob = new RefundJob(
+            configuration: $config,
+            registrarFactory: $refundRegistrarFactory,
+            paymentMapper: new RefundPaymentMapper(),
+            reasonMapper: new RefundReasonMapper(),
+            eligibilityChecker: new RefundEligibilityChecker($meta),
+            refundMeta: $refundMeta,
+            fiscalMeta: $meta,
+        );
+        $refundQueue = new RefundQueue($refundJob, $refundMeta);
+        $refundQueue->register();
+        (new OrderRefundedListener($refundQueue))->register();
+        (new RefundFiscalizeNowHandler($refundMeta, $refundQueue))->register();
+
+        // OrderMetaBox renders BOTH sale and refund fiscal status — wired
+        // after refund meta is constructed so the per-refund block has data.
+        (new OrderMetaBox($meta, $refundMeta))->register();
+
         $receiptUrlBuilder = new ReceiptUrlBuilder($config, $meta);
-        (new CustomerReceiptDisplay($receiptUrlBuilder))->register();
+        $refundReceiptUrlBuilder = new RefundReceiptUrlBuilder($receiptUrlBuilder, $refundMeta);
+        (new CustomerReceiptDisplay($receiptUrlBuilder, $refundReceiptUrlBuilder))->register();
     }
 
     public function showWooCommerceMissingNotice(): void

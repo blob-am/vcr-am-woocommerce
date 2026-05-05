@@ -59,16 +59,7 @@ class ReceiptUrlBuilder
             return null;
         }
 
-        $host = $this->host();
-        $locale = $this->locale($order);
-
-        $url = sprintf(
-            '%s/%s/r/%s/%s',
-            $host,
-            rawurlencode($locale),
-            rawurlencode($crn),
-            rawurlencode($urlId),
-        );
+        $url = $this->composeUrl($crn, $urlId, $order);
 
         /**
          * Allow stores to swap the entire URL — e.g. a multisite running
@@ -78,6 +69,28 @@ class ReceiptUrlBuilder
         $filtered = apply_filters('vcr_receipt_url', $url, $order);
 
         return is_string($filtered) && $filtered !== '' ? $filtered : $url;
+    }
+
+    /**
+     * Pure URL-assembly: `{host}/{locale}/r/{crn}/{urlId}`. Exposed so
+     * sibling builders for other entity kinds (refunds, prepayments)
+     * can share the same host and locale-derivation logic without
+     * duplicating it. Does NOT fire the `vcr_receipt_url` filter — that
+     * filter is sale-specific; sibling builders fire their own.
+     *
+     * `$localeContext` is passed through to {@see self::locale()} so
+     * the `vcr_receipt_locale` filter receives the entity that has the
+     * customer-language signal (the parent order, for refunds).
+     */
+    public function composeUrl(string $crn, string $urlId, WC_Order $localeContext): string
+    {
+        return sprintf(
+            '%s/%s/r/%s/%s',
+            $this->host(),
+            rawurlencode($this->locale($localeContext)),
+            rawurlencode($crn),
+            rawurlencode($urlId),
+        );
     }
 
     /**

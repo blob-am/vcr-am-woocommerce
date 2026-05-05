@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Receipt;
 
+use BlobSolutions\WooCommerceVcrAm\Refund\RefundReceiptUrlBuilder;
 use WC_Order;
+use WC_Order_Refund;
 
 /**
  * Customer-facing surfaces that show a "View your fiscal receipt" link
@@ -34,6 +36,7 @@ class CustomerReceiptDisplay
 {
     public function __construct(
         private readonly ReceiptUrlBuilder $urlBuilder,
+        private readonly RefundReceiptUrlBuilder $refundUrlBuilder,
     ) {
     }
 
@@ -55,25 +58,29 @@ class CustomerReceiptDisplay
             return;
         }
 
+        // Sale receipt link (when order is registered with SRC).
         $url = $this->urlBuilder->build($order);
-        if ($url === null) {
-            return;
+        if ($url !== null) {
+            if ($plainText) {
+                echo "\n" . __('View your fiscal receipt:', 'vcr') . ' ' . $url . "\n";
+            } else {
+                printf(
+                    '<p style="margin-top:1em"><strong>%s</strong> <a href="%s">%s</a></p>',
+                    esc_html(__('Fiscal receipt:', 'vcr')),
+                    esc_url($url),
+                    esc_html(__('View your receipt', 'vcr')),
+                );
+            }
         }
 
-        if ($plainText) {
-            // WC's plain-text emails are mostly bare \n-separated lines —
-            // mimic that style so we don't disrupt the visual flow.
-            echo "\n" . __('View your fiscal receipt:', 'vcr') . ' ' . $url . "\n";
-
-            return;
-        }
-
-        printf(
-            '<p style="margin-top:1em"><strong>%s</strong> <a href="%s">%s</a></p>',
-            esc_html(__('Fiscal receipt:', 'vcr')),
-            esc_url($url),
-            esc_html(__('View your receipt', 'vcr')),
-        );
+        // Refund receipt links (when refunds exist and are registered).
+        // We render ALL successfully-registered refunds, not just one,
+        // so a customer who got two partial refunds sees both links.
+        // The `customer-refunded-order` email naturally surfaces these
+        // alongside the original receipt link above; the `customer-
+        // processing-order` email won't have any refunds yet so this
+        // section will simply render nothing.
+        $this->renderRefundReceiptLinks($order, $plainText);
     }
 
     /**
@@ -114,15 +121,57 @@ class CustomerReceiptDisplay
         }
 
         $url = $this->urlBuilder->build($order);
-        if ($url === null) {
-            return;
+        if ($url !== null) {
+            printf(
+                '<p class="vcr-receipt-link"><strong>%s</strong> <a href="%s">%s</a></p>',
+                esc_html(__('Fiscal receipt:', 'vcr')),
+                esc_url($url),
+                esc_html(__('View your receipt', 'vcr')),
+            );
         }
 
-        printf(
-            '<p class="vcr-receipt-link"><strong>%s</strong> <a href="%s">%s</a></p>',
-            esc_html(__('Fiscal receipt:', 'vcr')),
-            esc_url($url),
-            esc_html(__('View your receipt', 'vcr')),
-        );
+        $this->renderRefundReceiptLinks($order, plainText: false);
+    }
+
+    /**
+     * Iterate the order's refunds, render a receipt link for each one
+     * that has been successfully registered with SRC. Used in both the
+     * email and order-details surfaces (the thank-you page is checkout-
+     * time only, no refunds exist yet).
+     */
+    private function renderRefundReceiptLinks(WC_Order $order, bool $plainText): void
+    {
+        foreach ($order->get_refunds() as $refund) {
+            if (! $refund instanceof WC_Order_Refund) {
+                continue;
+            }
+
+            $refundUrl = $this->refundUrlBuilder->build($refund);
+            if ($refundUrl === null) {
+                continue;
+            }
+
+            if ($plainText) {
+                echo "\n" . sprintf(
+                    /* translators: 1: refund id */
+                    __('View your fiscal refund receipt (refund #%d):', 'vcr'),
+                    $refund->get_id(),
+                ) . ' ' . $refundUrl . "\n";
+
+                continue;
+            }
+
+            printf(
+                '<p class="vcr-refund-receipt-link" style="margin-top:0.5em">' .
+                '<strong>%s</strong> <a href="%s">%s</a></p>',
+                esc_html(sprintf(
+                    /* translators: 1: refund id */
+                    __('Refund receipt (#%d):', 'vcr'),
+                    $refund->get_id(),
+                )),
+                esc_url($refundUrl),
+                esc_html(__('View refund receipt', 'vcr')),
+            );
+        }
     }
 }

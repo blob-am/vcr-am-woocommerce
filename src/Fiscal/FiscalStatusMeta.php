@@ -124,6 +124,26 @@ class FiscalStatusMeta
     }
 
     /**
+     * SRC's server-side sale id assigned by `registerSale`. Required
+     * input for `registerSaleRefund`. Returns null if the parent order
+     * was never successfully registered.
+     */
+    public function saleId(WC_Order $order): ?int
+    {
+        $raw = $order->get_meta(self::META_SALE_ID, true);
+
+        if (is_int($raw)) {
+            return $raw;
+        }
+
+        if (is_string($raw) && $raw !== '' && ctype_digit($raw)) {
+            return (int) $raw;
+        }
+
+        return null;
+    }
+
+    /**
      * First-time enqueue: stamps the external id (immutable from this
      * point), sets the initial Pending status, zeroes the attempt count.
      * No-op on subsequent calls — we don't reset the status of an
