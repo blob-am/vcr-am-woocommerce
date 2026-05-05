@@ -16,6 +16,8 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\ItemBuilder;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\OrderListener;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\PaymentMapper;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrarFactory;
+use BlobSolutions\WooCommerceVcrAm\Receipt\CustomerReceiptDisplay;
+use BlobSolutions\WooCommerceVcrAm\Receipt\ReceiptUrlBuilder;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\SettingsPage;
 
@@ -129,6 +131,9 @@ final class Plugin
         (new OrderListener($queue))->register();
         (new OrderMetaBox($meta))->register();
         (new FiscalizeNowHandler($meta, $queue))->register();
+
+        $receiptUrlBuilder = new ReceiptUrlBuilder($config, $meta);
+        (new CustomerReceiptDisplay($receiptUrlBuilder))->register();
     }
 
     public function showWooCommerceMissingNotice(): void
