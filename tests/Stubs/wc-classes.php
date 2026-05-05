@@ -249,6 +249,72 @@ if (! class_exists('WP_Post', false)) {
     }
 }
 
+if (! class_exists('WP_Query', false)) {
+    /**
+     * Bare-bones stub of WP's main query class for OrdersListFilter
+     * legacy-path tests. Real WP_Query has 100+ methods; we declare
+     * only the four `OrdersListFilter` reads/writes via Mockery.
+     */
+    class WP_Query
+    {
+        /**
+         * @return mixed
+         */
+        public function get(string $query_var, $default_value = '')
+        {
+            return $default_value;
+        }
+
+        /**
+         * @param mixed $value
+         */
+        public function set(string $query_var, $value): void
+        {
+        }
+
+        public function is_main_query(): bool
+        {
+            return false;
+        }
+    }
+}
+
+if (! class_exists('WP_CLI', false)) {
+    /**
+     * Stub of the WP-CLI runner. Real `WP_CLI::error()` calls `exit()`
+     * which kills the test runner; we throw a recognisable
+     * `RuntimeException` instead so test cases can `expect()->toThrow()`.
+     *
+     * Real `WP_CLI::add_command()` registers the command — we just
+     * ignore registration since CliCommandsTest exercises the handler
+     * methods directly. `WP_CLI::log()` and `success()` echo (so tests
+     * can assert on output via ob_start) — same shape as real WP-CLI's
+     * STDOUT path.
+     */
+    class WP_CLI
+    {
+        public static function add_command(string $name, $callable, array $args = []): bool
+        {
+            return true;
+        }
+
+        public static function log(string $message): void
+        {
+            echo $message . "\n";
+        }
+
+        public static function success(string $message): void
+        {
+            echo $message . "\n";
+        }
+
+        public static function error(string $message, bool $exit = true): void
+        {
+            throw new RuntimeException('WP_CLI::error: ' . $message);
+        }
+    }
+}
+
 if (! class_exists('WC_Settings_Page', false)) {
     /**
      * Bare-bones stub of WC's settings-page base class. Real WC fires a

@@ -42,6 +42,13 @@ beforeEach(function (): void {
     $this->eligibility = Mockery::mock(RefundEligibilityChecker::class);
     $this->refundMeta = Mockery::mock(RefundStatusMeta::class);
     $this->fiscalMeta = Mockery::mock(FiscalStatusMeta::class);
+    // Permissive logger; tests assert logger calls when relevant.
+    // `byDefault()` lets per-test expects() override the permissive allows
+    // (otherwise allows consumes the call and expects fails its count).
+    $this->logger = Mockery::mock(\BlobSolutions\WooCommerceVcrAm\Logging\Logger::class);
+    $this->logger->allows('warning')->byDefault();
+    $this->logger->allows('error')->byDefault();
+    $this->logger->allows('info')->byDefault();
 
     $this->job = new RefundJob(
         configuration: $this->config,
@@ -51,6 +58,7 @@ beforeEach(function (): void {
         eligibilityChecker: $this->eligibility,
         refundMeta: $this->refundMeta,
         fiscalMeta: $this->fiscalMeta,
+        logger: $this->logger,
     );
 });
 

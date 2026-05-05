@@ -42,6 +42,15 @@ beforeEach(function (): void {
     $this->itemBuilder = Mockery::mock(ItemBuilder::class);
     $this->paymentMapper = Mockery::mock(PaymentMapper::class);
     $this->meta = Mockery::mock(FiscalStatusMeta::class);
+    // Logger is permissive by default — tests that assert on log
+    // routing layer their own expects() on top. `byDefault()` makes
+    // the allows yield to per-test expects() of the same method
+    // (otherwise the allows consumes the call and the expects fails
+    // its count check).
+    $this->logger = Mockery::mock(\BlobSolutions\WooCommerceVcrAm\Logging\Logger::class);
+    $this->logger->allows('warning')->byDefault();
+    $this->logger->allows('error')->byDefault();
+    $this->logger->allows('info')->byDefault();
 
     $this->job = new FiscalJob(
         configuration: $this->config,
@@ -49,6 +58,7 @@ beforeEach(function (): void {
         itemBuilder: $this->itemBuilder,
         paymentMapper: $this->paymentMapper,
         meta: $this->meta,
+        logger: $this->logger,
     );
 });
 
@@ -63,6 +73,10 @@ function makeOrderMockReturnedByWcGetOrder(int $orderId = 123): WC_Order
     // Default: a real shop order (not a refund). Tests that want to
     // exercise the refund-filter branch override this allow().
     $order->allows('get_type')->andReturn('shop_order');
+    // get_id() is read by FiscalJob::logAttempt for the wc_get_logger
+    // line context. Stubbed by default so failure-path tests don't
+    // need to wire it individually.
+    $order->allows('get_id')->andReturn($orderId);
     Functions\when('wc_get_order')->alias(static fn (int $id): ?WC_Order => $id === $orderId ? $order : null);
 
     return $order;
@@ -253,7 +267,9 @@ it('classifies HTTP 5xx as retriable when the budget allows', function (): void 
     $this->registrarFactory->expects('create')->andReturn($registrar);
 
     $this->meta->expects('markRetriableFailure')->with($order, Mockery::pattern('/HTTP 503/'));
-    $order->expects('add_order_note')->with(Mockery::pattern('/will retry/'));
+    // Retry mechanics go to wc_get_logger (source: vcr), NOT to order notes —
+    // notes are reserved for customer-relevant outcomes.
+    $this->logger->expects('warning')->with(Mockery::pattern('/will retry/'), Mockery::type('array'));
 
     $outcome = $this->job->run(123);
 
@@ -273,7 +289,8 @@ it('classifies HTTP 4xx (other than 429) as terminal failure', function (): void
     $this->registrarFactory->expects('create')->andReturn($registrar);
 
     $this->meta->expects('markFailed')->with($order, Mockery::pattern('/HTTP 422/'));
-    $order->expects('add_order_note')->with(Mockery::pattern('/terminal/'));
+    // Terminal failures go to logger at error level (vs warning for retriable).
+    $this->logger->expects('error')->with(Mockery::pattern('/TERMINAL/'), Mockery::type('array'));
 
     $outcome = $this->job->run(123);
 

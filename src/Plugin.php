@@ -7,8 +7,14 @@ namespace BlobSolutions\WooCommerceVcrAm;
 use BlobSolutions\WooCommerceVcrAm\Admin\ConnectionTester;
 use BlobSolutions\WooCommerceVcrAm\Admin\FiscalizeNowHandler;
 use BlobSolutions\WooCommerceVcrAm\Admin\OrderMetaBox;
+use BlobSolutions\WooCommerceVcrAm\Admin\OrdersBulkAction;
+use BlobSolutions\WooCommerceVcrAm\Admin\OrdersListColumn;
+use BlobSolutions\WooCommerceVcrAm\Admin\OrdersListFilter;
+use BlobSolutions\WooCommerceVcrAm\Admin\PluginActionLinks;
+use BlobSolutions\WooCommerceVcrAm\Admin\SystemStatusReport;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJob;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
@@ -16,6 +22,8 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\ItemBuilder;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\OrderListener;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\PaymentMapper;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrarFactory;
+use BlobSolutions\WooCommerceVcrAm\Migration\Migrator;
+use BlobSolutions\WooCommerceVcrAm\Privacy\PrivacyHandler;
 use BlobSolutions\WooCommerceVcrAm\Receipt\CustomerReceiptDisplay;
 use BlobSolutions\WooCommerceVcrAm\Receipt\ReceiptUrlBuilder;
 use BlobSolutions\WooCommerceVcrAm\Refund\OrderRefundedListener;
@@ -112,11 +120,18 @@ final class Plugin
             dirname(plugin_basename($this->pluginFile)) . '/languages',
         );
 
+        // Migration handler runs first so any schema/option changes
+        // a future version needs are in place before downstream
+        // services touch them.
+        (new Migrator($this->version))->maybeMigrate();
+
         $keyStore = new KeyStore(self::API_KEY_OPTION);
         $config = new Configuration($keyStore);
         $clientFactory = new VcrClientFactory();
         $listerFactory = new CashierListerFactory($config, $clientFactory);
         $cashierCatalog = new CashierCatalog($config, $listerFactory);
+
+        (new PluginActionLinks($this->pluginFile))->register();
 
         (new SettingsPage($keyStore, $cashierCatalog))->register();
         (new ConnectionTester(
@@ -161,6 +176,25 @@ final class Plugin
         // OrderMetaBox renders BOTH sale and refund fiscal status — wired
         // after refund meta is constructed so the per-refund block has data.
         (new OrderMetaBox($meta, $refundMeta))->register();
+
+        // Orders list table — fiscal status column visible at WC → Orders.
+        (new OrdersListColumn($meta))->register();
+        (new OrdersListFilter())->register();
+        (new OrdersBulkAction($meta, $queue))->register();
+
+        // WooCommerce → Status → System Status — surface plugin config +
+        // queue health for support staff.
+        (new SystemStatusReport($this->version, $config))->register();
+
+        // GDPR personal-data exporter + eraser. We always retain fiscal
+        // records (Armenian tax law mandates retention) and report
+        // accordingly via WP's privacy tooling.
+        (new PrivacyHandler($meta, $refundMeta))->register();
+
+        // WP-CLI commands (only loaded under wp-cli).
+        if (defined('WP_CLI') && WP_CLI) {
+            (new CliCommands($config, $meta, $queue, $refundMeta, $refundQueue))->register();
+        }
 
         $receiptUrlBuilder = new ReceiptUrlBuilder($config, $meta);
         $refundReceiptUrlBuilder = new RefundReceiptUrlBuilder($receiptUrlBuilder, $refundMeta);

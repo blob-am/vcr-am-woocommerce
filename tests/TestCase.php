@@ -31,6 +31,18 @@ abstract class TestCase extends BaseTestCase
         // and tests don't blow up with "undefined function __()".
         Functions\stubTranslationFunctions();
         Functions\stubEscapeFunctions();
+
+        // `wc_get_logger` is referenced by Logging\Logger and indirectly
+        // by KeyStore::logFailure on decryption failure. Stubbed to a
+        // no-op object so any code that triggers a log line in tests
+        // (decryption errors, fiscal/refund job retries) doesn't crash
+        // with "undefined function wc_get_logger". Tests that need to
+        // assert on log routing override this with a Mockery double.
+        Functions\when('wc_get_logger')->justReturn(new class () {
+            public function log(string $level, string $message, array $context): void
+            {
+            }
+        });
     }
 
     protected function tearDown(): void

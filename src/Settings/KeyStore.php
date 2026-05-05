@@ -140,24 +140,19 @@ class KeyStore
     }
 
     /**
-     * Surface decryption failures into the WP debug log. Gated by
-     * `WP_DEBUG_LOG` because emitting on every page load of a broken
-     * install would spam production logs; admins debugging "why does my
-     * API key not work after the security update" have to enable
-     * `WP_DEBUG` + `WP_DEBUG_LOG` to see the trail, but that's the
-     * standard WP debugging entrypoint.
+     * Surface decryption failures into the WC operational log channel
+     * (WooCommerce → Status → Logs, source `vcr`). Routed there rather
+     * than the WP debug log because that's where shop admins look for
+     * plugin diagnostics — the WP debug log is a developer tool, the
+     * WC log is operations-facing.
      *
      * Never includes the ciphertext, the salt, or the derived key.
      */
     private function logFailure(string $reason): void
     {
-        if (! defined('WP_DEBUG_LOG') || ! WP_DEBUG_LOG) {
-            return;
-        }
-
-        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        error_log(sprintf(
-            '[VCR KeyStore] failed to decrypt option "%s": %s',
+        $logger = new \BlobSolutions\WooCommerceVcrAm\Logging\Logger();
+        $logger->error(sprintf(
+            'KeyStore failed to decrypt option "%s": %s',
             $this->optionName,
             $reason,
         ));

@@ -6,6 +6,7 @@ namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\Exception\FiscalBuildException;
+use BlobSolutions\WooCommerceVcrAm\Logging\Logger;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrNetworkException;
@@ -64,6 +65,7 @@ class FiscalJob
         private readonly ItemBuilder $itemBuilder,
         private readonly PaymentMapper $paymentMapper,
         private readonly FiscalStatusMeta $meta,
+        private readonly Logger $logger = new Logger(),
     ) {
     }
 
@@ -262,16 +264,32 @@ class FiscalJob
         return $error->getMessage();
     }
 
+    /**
+     * Operational log entry routed to `wc_get_logger()` (source: 'vcr',
+     * visible at WooCommerce → Status → Logs). NOT an order note — retry
+     * mechanics are internal diagnostics, not customer-facing audit
+     * trail. The order note channel is reserved for outcomes the customer
+     * would care about (Success, ManualRequired requiring admin review).
+     *
+     * Terminal failures are logged at `error` level so they show up in
+     * any "show me only errors" filter; retriable mid-attempts are
+     * `warning`-level (worth noting, not an emergency).
+     */
     private function logAttempt(WC_Order $order, int $attempt, string $message, bool $terminal): void
     {
-        $order->add_order_note(sprintf(
-            /* translators: 1: attempt number, 2: max attempts, 3: error message. */
-            $terminal
-                ? __('VCR fiscalisation failed (attempt %1$d/%2$d, terminal): %3$s', 'vcr')
-                : __('VCR fiscalisation failed (attempt %1$d/%2$d, will retry): %3$s', 'vcr'),
+        $line = sprintf(
+            'Order #%d fiscalisation attempt %d/%d %s: %s',
+            $order->get_id(),
             $attempt,
             self::MAX_ATTEMPTS,
+            $terminal ? 'TERMINAL' : 'will retry',
             $message,
-        ));
+        );
+
+        if ($terminal) {
+            $this->logger->error($line, ['order_id' => $order->get_id(), 'attempt' => $attempt]);
+        } else {
+            $this->logger->warning($line, ['order_id' => $order->get_id(), 'attempt' => $attempt]);
+        }
     }
 }

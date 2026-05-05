@@ -10,6 +10,7 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJob;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJobOutcome;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
+use BlobSolutions\WooCommerceVcrAm\Logging\Logger;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrNetworkException;
@@ -71,6 +72,7 @@ class RefundJob
         private readonly RefundEligibilityChecker $eligibilityChecker,
         private readonly RefundStatusMeta $refundMeta,
         private readonly FiscalStatusMeta $fiscalMeta,
+        private readonly Logger $logger = new Logger(),
     ) {
     }
 
@@ -260,19 +262,34 @@ class RefundJob
         return $error->getMessage();
     }
 
+    /**
+     * Operational log entry routed to `wc_get_logger()` (source: 'vcr').
+     * Same rationale as {@see FiscalJob::logAttempt()} — internal retry
+     * mechanics belong in the WC Status → Logs view, not in the
+     * customer-visible order notes channel.
+     */
     private function logAttempt(WC_Order $parent, WC_Order_Refund $refund, int $attempt, string $message, bool $terminal): void
     {
-        // Note goes on the PARENT order — that's where admins look. The
-        // refund itself doesn't have a notes UI in WC admin.
-        $parent->add_order_note(sprintf(
-            /* translators: 1: refund id, 2: attempt number, 3: max attempts, 4: error message. */
-            $terminal
-                ? __('VCR refund #%1$d registration failed (attempt %2$d/%3$d, terminal): %4$s', 'vcr')
-                : __('VCR refund #%1$d registration failed (attempt %2$d/%3$d, will retry): %4$s', 'vcr'),
+        $line = sprintf(
+            'Refund #%d (parent order #%d) registration attempt %d/%d %s: %s',
             $refund->get_id(),
+            $parent->get_id(),
             $attempt,
             self::MAX_ATTEMPTS,
+            $terminal ? 'TERMINAL' : 'will retry',
             $message,
-        ));
+        );
+
+        $context = [
+            'order_id' => $parent->get_id(),
+            'refund_id' => $refund->get_id(),
+            'attempt' => $attempt,
+        ];
+
+        if ($terminal) {
+            $this->logger->error($line, $context);
+        } else {
+            $this->logger->warning($line, $context);
+        }
     }
 }
