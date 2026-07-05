@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { wpCli, wpCliJson } from './helpers/wp-cli.mjs';
-import { resetMockLog, setMockPlan } from './helpers/mock-vcr.mjs';
+import { resetMockLog, resetMockPlan, setMockPlan } from './helpers/mock-vcr.mjs';
 
 /**
  * E2E: GDPR personal-data exporter end-to-end.
@@ -23,6 +23,7 @@ test.describe('GDPR personal-data exporter', () => {
 
     test.beforeEach(async () => {
         await resetMockLog();
+        await resetMockPlan();
         await setMockPlan('registerSale', {
             status: 200,
             body: {
