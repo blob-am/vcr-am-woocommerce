@@ -14,6 +14,18 @@ export async function resetMockLog() {
 }
 
 /**
+ * Restore every endpoint to its pristine default. Call this first in a
+ * beforeEach so a prior spec's failure override (e.g. registerSale 5xx)
+ * can't leak in; then layer only the overrides this spec needs.
+ */
+export async function resetMockPlan() {
+    const res = await fetch(`${MOCK_BASE}/__test/plan/reset`, { method: 'POST' });
+    if (!res.ok) {
+        throw new Error(`mock plan reset failed: HTTP ${res.status}`);
+    }
+}
+
+/**
  * Override the canned response for a single endpoint. Status defaults
  * to 200 if omitted; body to whatever the default plan has.
  *

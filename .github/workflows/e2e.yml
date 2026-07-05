@@ -17,6 +17,9 @@ jobs:
   e2e:
     name: Playwright (PHP ${{ matrix.php }} · WP ${{ matrix.wp }} · WC ${{ matrix.wc }})
     runs-on: ubuntu-latest
+    # Hard cap so a stuck wp-env/Docker startup fails within minutes
+    # instead of burning the 6h GitHub default before anyone notices.
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -82,14 +85,21 @@ jobs:
           "
 
       - name: Start wp-env
+        timeout-minutes: 10
         run: npm run env:start
 
       - name: Wait for wp-env to settle
         # wp-env's own readiness signal isn't exposed; poll until
-        # WC's REST is responsive.
+        # WC's REST is responsive. Per-step timeout is a backstop: the
+        # curl flags below already bound each probe, but a hung Docker
+        # network could still stall the loop otherwise.
+        timeout-minutes: 3
         run: |
           for i in {1..30}; do
-            if curl -sf http://localhost:8888/wp-json/wc/v3 -o /dev/null; then
+            # --connect-timeout/--max-time are load-bearing: without them
+            # a socket that accepts but never answers (PHP-FPM not ready
+            # yet) blocks curl forever, defeating the loop's own bound.
+            if curl -sf --connect-timeout 5 --max-time 10 http://localhost:8888/wp-json/wc/v3 -o /dev/null; then
               echo "WC REST responding"
               exit 0
             fi

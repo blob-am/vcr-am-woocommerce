@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { wpCli, wpCliJson } from './helpers/wp-cli.mjs';
-import { getMockLog, resetMockLog, setMockPlan } from './helpers/mock-vcr.mjs';
+import { getMockLog, resetMockLog, resetMockPlan, setMockPlan } from './helpers/mock-vcr.mjs';
 
 /**
  * End-to-end happy path for the Phase 3e refund flow:
@@ -33,8 +33,9 @@ import { getMockLog, resetMockLog, setMockPlan } from './helpers/mock-vcr.mjs';
 test.describe('VCR refund flow (happy path)', () => {
     test.beforeEach(async () => {
         await resetMockLog();
+        await resetMockPlan();
 
-        // Reset both endpoint plans to the sane defaults.
+        // Override the two endpoints this spec asserts on.
         await setMockPlan('registerSale', {
             status: 200,
             body: {
