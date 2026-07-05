@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { wpCli, wpCliJson } from './helpers/wp-cli.mjs';
-import { resetMockLog, setMockPlan, getMockLog } from './helpers/mock-vcr.mjs';
+import { resetMockLog, resetMockPlan, setMockPlan, getMockLog } from './helpers/mock-vcr.mjs';
 
 /**
  * E2E: failure → retry → terminal Failed.
@@ -28,6 +28,7 @@ import { resetMockLog, setMockPlan, getMockLog } from './helpers/mock-vcr.mjs';
 test.describe('VCR fiscal flow (failure → retry → Failed)', () => {
     test.beforeEach(async () => {
         await resetMockLog();
+        await resetMockPlan();
         await setMockPlan('registerSale', {
             status: 503,
             body: { error: 'gateway timeout (mock)' },

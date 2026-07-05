@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { wpCli, wpCliJson } from './helpers/wp-cli.mjs';
-import { getMockLog, resetMockLog, setMockPlan } from './helpers/mock-vcr.mjs';
+import { getMockLog, resetMockLog, resetMockPlan, setMockPlan } from './helpers/mock-vcr.mjs';
 
 /**
  * End-to-end happy path: create a paid order against the mock VCR
@@ -27,6 +27,7 @@ import { getMockLog, resetMockLog, setMockPlan } from './helpers/mock-vcr.mjs';
 test.describe('VCR fiscal flow (happy path)', () => {
     test.beforeEach(async () => {
         await resetMockLog();
+        await resetMockPlan();
         await setMockPlan('registerSale', {
             status: 200,
             body: {

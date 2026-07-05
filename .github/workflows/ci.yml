@@ -17,6 +17,7 @@ jobs:
   lint:
     name: Pint (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -47,6 +48,7 @@ jobs:
   phpstan:
     name: PHPStan (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -77,6 +79,7 @@ jobs:
   test:
     name: Pest (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:

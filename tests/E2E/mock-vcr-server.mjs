@@ -28,11 +28,14 @@ const PORT = Number(process.env.MOCK_VCR_PORT ?? 9876);
 const HOST = process.env.MOCK_VCR_HOST ?? '0.0.0.0';
 
 /**
- * Default response plan. Each entry can be overridden via POST to
- * `/__test/plan` with `{ "endpoint": "registerSale", "status": 503 }`
- * style payload.
+ * Pristine baseline response plan. `responsePlan` (below) is cloned
+ * from this; individual entries can be overridden via POST to
+ * `/__test/plan` (`{ "endpoint": "registerSale", "status": 503 }`), and
+ * POST to `/__test/plan/reset` restores this exact baseline. DEFAULT_PLAN
+ * itself is never mutated, so a reset always recovers a clean slate —
+ * without it, one test's 5xx override would leak into every later spec.
  */
-const responsePlan = {
+const DEFAULT_PLAN = {
     listCashiers: {
         status: 200,
         body: [
@@ -65,6 +68,13 @@ const responsePlan = {
     },
 };
 
+/**
+ * Live plan the request handler reads. Mutated in place by `/__test/plan`
+ * overrides; reassigned to a fresh deep clone of DEFAULT_PLAN by
+ * `/__test/plan/reset`.
+ */
+let responsePlan = structuredClone(DEFAULT_PLAN);
+
 /** Audit log of inbound requests — exposed via `/__test/log` for assertions. */
 const requestLog = [];
 
@@ -74,15 +84,18 @@ function jsonResponse(res, status, body) {
     res.end(JSON.stringify(body));
 }
 
-async function readBody(req) {
-    return new Promise((resolve) => {
+function readBody(req) {
+    return new Promise((resolve, reject) => {
         const chunks = [];
         req.on('data', (chunk) => chunks.push(chunk));
         req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+        // Without this a mid-stream socket error leaves the promise — and
+        // the request handler awaiting it — hanging forever.
+        req.on('error', reject);
     });
 }
 
-const server = http.createServer(async (req, res) => {
+async function handleRequest(req, res) {
     const body = await readBody(req);
 
     requestLog.push({
@@ -98,6 +111,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.url === '/__test/log/reset' && req.method === 'POST') {
         requestLog.length = 0;
+        return jsonResponse(res, 200, { ok: true });
+    }
+
+    if (req.url === '/__test/plan/reset' && req.method === 'POST') {
+        responsePlan = structuredClone(DEFAULT_PLAN);
         return jsonResponse(res, 200, { ok: true });
     }
 
@@ -131,6 +149,19 @@ const server = http.createServer(async (req, res) => {
     }
 
     jsonResponse(res, 404, { error: 'unknown endpoint', url: req.url });
+}
+
+const server = http.createServer((req, res) => {
+    // Fire-and-forget with a terminal .catch: a rejected readBody (socket
+    // error) becomes a logged 500 rather than an unhandledRejection crash.
+    handleRequest(req, res).catch((error) => {
+        console.error('[mock-vcr] request handler failed', error);
+        if (res.headersSent) {
+            res.end();
+        } else {
+            jsonResponse(res, 500, { error: 'mock handler failure' });
+        }
+    });
 });
 
 function safeJsonParse(text) {

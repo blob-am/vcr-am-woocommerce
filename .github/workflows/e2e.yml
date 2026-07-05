@@ -17,6 +17,9 @@ jobs:
   e2e:
     name: Playwright (PHP ${{ matrix.php }} · WP ${{ matrix.wp }} · WC ${{ matrix.wc }})
     runs-on: ubuntu-latest
+    # Hard cap so a stuck wp-env/Docker startup fails within minutes
+    # instead of burning the 6h GitHub default before anyone notices.
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -82,21 +85,39 @@ jobs:
           "
 
       - name: Start wp-env
+        timeout-minutes: 10
         run: npm run env:start
 
       - name: Wait for wp-env to settle
-        # wp-env's own readiness signal isn't exposed; poll until
-        # WC's REST is responsive.
+        # wp-env start is synchronous, but the site isn't always HTTP-
+        # reachable the instant it returns — poll the REST root until it
+        # answers. Per-step timeout is a backstop in case a hung Docker
+        # network stalls the loop despite the curl bounds below.
+        timeout-minutes: 3
         run: |
           for i in {1..30}; do
-            if curl -sf http://localhost:8888/wp-json/wc/v3 -o /dev/null; then
-              echo "WC REST responding"
+            # Probe the REST index via ?rest_route=, NOT /wp-json/wc/v3:
+            # wp-env ships WordPress with PLAIN permalinks, so the pretty
+            # /wp-json/ rewrite never exists and every /wp-json/* request
+            # 404s forever — that is exactly what stalled this job on every
+            # run before (WordPress was up; the probe URL was wrong). The
+            # ?rest_route= form is permalink-agnostic and returns the public
+            # REST index (200). /wc/v3 would also need auth (401), so the
+            # core REST root is the right readiness signal.
+            # --connect-timeout/--max-time are load-bearing: without them a
+            # socket that accepts but never answers (PHP-FPM not ready yet)
+            # blocks curl forever, defeating the loop's own bound.
+            if curl -sf --connect-timeout 5 --max-time 10 "http://localhost:8888/?rest_route=/" -o /dev/null; then
+              echo "WordPress REST responding"
               exit 0
             fi
             sleep 2
           done
-          echo "WC REST never responded"
-          npx wp-env logs all
+          echo "WordPress REST never responded"
+          # --watch=false: wp-env logs follows (tails) by default, which
+          # would hang this step until its timeout instead of dumping and
+          # exiting. We want the snapshot, then a clean non-zero exit.
+          npx wp-env logs all --watch=false || true
           exit 1
 
       - name: Run Playwright tests
@@ -104,7 +125,10 @@ jobs:
 
       - name: Capture wp-env logs on failure
         if: failure()
-        run: npx wp-env logs all || true
+        # --watch=false so this dumps a snapshot and exits; per-step
+        # timeout is a backstop in case a wp-env version ignores the flag.
+        timeout-minutes: 2
+        run: npx wp-env logs all --watch=false || true
 
       - name: Upload Playwright report on failure
         if: failure()
