@@ -44,9 +44,11 @@ if (! defined('ABSPATH')) {
  *   Content-Type: text/xml; charset=utf-8
  *   SOAPAction: "http://www.cba.am/ExchangeRatesByDateAndISO"
  *
- * The plugin always queries by today's date; CBA returns the most-recent
- * rate published on or before that date (so weekends and holidays
- * naturally fall back to Friday's rate).
+ * Per Tax Code Art. 16 (ՀՕ-234-Ն / HO-234-N, in force 2026-07-01) the AMD
+ * tax base uses the CBA mid-market rate published the PREVIOUS business day.
+ * So we query CBA for the previous Yerevan calendar day; CBA returns the
+ * most-recent rate published on or before that date, so weekends and
+ * holidays resolve to the prior business day automatically.
  *
  * What this class does NOT do (intentionally):
  *
@@ -69,7 +71,15 @@ class CbaExchangeRateProvider implements ExchangeRateProvider
     private const TIMEOUT_SECONDS = 8;
 
     /**
-     * Return today's published rate for the given ISO currency.
+     * Timezone the "business day" is reckoned in. The rate basis is an
+     * Armenian legal concept, so it is always Yerevan (UTC+4, no DST) —
+     * independent of the WordPress server's own timezone.
+     */
+    private const RATE_TIMEZONE = 'Asia/Yerevan';
+
+    /**
+     * Return the applicable rate — the one published the previous business
+     * day, per HO-234-N — for the given ISO currency.
      *
      * @throws ExchangeRateUnavailableException
      */
@@ -103,13 +113,35 @@ class CbaExchangeRateProvider implements ExchangeRateProvider
         return $url !== '' ? $url : self::ENDPOINT;
     }
 
+    /**
+     * Current instant. Seam for deterministic tests (mirrors
+     * {@see CachedExchangeRateProvider::now()}); production returns wall time.
+     */
+    protected function now(): \DateTimeImmutable
+    {
+        return new \DateTimeImmutable('now');
+    }
+
+    /**
+     * The CBA date to query: the previous Yerevan calendar day. Per HO-234-N
+     * the tax base is the rate published the previous BUSINESS day;
+     * subtracting one calendar day and letting CBA walk back to its most
+     * recent on-or-before publication yields exactly that (a Monday sale asks
+     * for Sunday and receives Friday's rate).
+     */
+    protected function rateDate(): string
+    {
+        $yerevanNow = $this->now()->setTimezone(new \DateTimeZone(self::RATE_TIMEZONE));
+
+        return $yerevanNow->modify('-1 day')->format('Y-m-d\TH:i:s');
+    }
+
     private function buildEnvelope(string $iso): string
     {
-        // CBA's `ExchangeRatesByDateAndISO` accepts an ISO 8601 date.
-        // Use today's date in the server's timezone — CBA publishes on
-        // Yerevan time but accepts any date and returns the most recent
-        // rate at-or-before. Accept clock skew within a day.
-        $date = gmdate('Y-m-d\TH:i:s');
+        // CBA's `ExchangeRatesByDateAndISO` accepts an ISO 8601 date and
+        // returns the most recent rate at-or-before it. We ask for the
+        // previous Yerevan business day — see the class docblock (HO-234-N).
+        $date = $this->rateDate();
 
         return '<?xml version="1.0" encoding="utf-8"?>'
             . '<soap:Envelope'

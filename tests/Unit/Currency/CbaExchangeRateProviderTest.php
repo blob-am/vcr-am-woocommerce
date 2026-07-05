@@ -169,6 +169,80 @@ it('throws when CBA returns a non-positive amount', function (): void {
         ->toThrow(ExchangeRateUnavailableException::class, 'non-positive rate');
 });
 
+it('queries the previous Yerevan calendar day, not today (HO-234-N)', function (): void {
+    // Monday 2026-07-06 10:00 Yerevan. The rate basis is the previous
+    // business day, so we ask CBA for the previous calendar day (Sunday the
+    // 5th) and let CBA walk back to Friday's publication.
+    $provider = new class (new DateTimeImmutable('2026-07-06T10:00:00', new DateTimeZone('Asia/Yerevan'))) extends CbaExchangeRateProvider {
+        public function __construct(private DateTimeImmutable $fixedNow)
+        {
+        }
+
+        protected function now(): DateTimeImmutable
+        {
+            return $this->fixedNow;
+        }
+
+        public function exposedRateDate(): string
+        {
+            return $this->rateDate();
+        }
+    };
+
+    expect($provider->exposedRateDate())->toStartWith('2026-07-05');
+});
+
+it('reckons the previous business day in Yerevan time, not UTC', function (): void {
+    // 2026-07-06 21:00 UTC is already 2026-07-07 01:00 in Yerevan (+4). The
+    // Yerevan date is Tuesday the 7th, so its previous day is the 6th — not
+    // the 5th we would get from the UTC calendar date.
+    $provider = new class (new DateTimeImmutable('2026-07-06T21:00:00', new DateTimeZone('UTC'))) extends CbaExchangeRateProvider {
+        public function __construct(private DateTimeImmutable $fixedNow)
+        {
+        }
+
+        protected function now(): DateTimeImmutable
+        {
+            return $this->fixedNow;
+        }
+
+        public function exposedRateDate(): string
+        {
+            return $this->rateDate();
+        }
+    };
+
+    expect($provider->exposedRateDate())->toStartWith('2026-07-06');
+});
+
+it('sends the previous-day date in the SOAP envelope', function (): void {
+    $captured = null;
+    Functions\when('wp_remote_post')->alias(function (string $url, array $args) use (&$captured): array {
+        $captured = $args['body'];
+
+        return ['response' => ['code' => 200], 'body' => cbaSoapResponse()];
+    });
+    Functions\when('is_wp_error')->justReturn(false);
+    Functions\when('wp_remote_retrieve_response_code')->alias(fn (array $r): int => $r['response']['code']);
+    Functions\when('wp_remote_retrieve_body')->alias(fn (array $r): string => $r['body']);
+    Functions\when('esc_html')->returnArg(1);
+
+    $provider = new class (new DateTimeImmutable('2026-07-05T12:00:00', new DateTimeZone('Asia/Yerevan'))) extends CbaExchangeRateProvider {
+        public function __construct(private DateTimeImmutable $fixedNow)
+        {
+        }
+
+        protected function now(): DateTimeImmutable
+        {
+            return $this->fixedNow;
+        }
+    };
+
+    $provider->getRate('USD');
+
+    expect($captured)->toContain('<date>2026-07-04');
+});
+
 it('respects the vcr_cba_endpoint filter override', function (): void {
     Functions\when('apply_filters')
         ->alias(fn (string $hook, mixed $value, mixed ...$args): mixed =>
