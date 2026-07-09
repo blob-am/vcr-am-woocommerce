@@ -50,6 +50,15 @@ if (! defined('ABSPATH')) {
  * pass the inclusive unit price to the SDK; the SRC infers the VAT split
  * from the cashier's tax regime. Sending `(total + total_tax) / qty`
  * matches that convention regardless of how WC displays prices.
+ *
+ * Currency: prices are emitted in the **store currency**, untouched. When
+ * the store isn't AMD, every item carries `currency` (the ISO 4217 store
+ * currency) and the VCR converts each line to AMD server-side at the
+ * previous-business-day CBA rate (HO-234-N) — recording the foreign-input
+ * audit trail. The plugin performs no client-side conversion on the sale
+ * path; the whole AMD total is derived and settled server-side via
+ * {@see PaymentMapper}'s auto-settle. AMD stores omit `currency` and behave
+ * exactly as before.
  */
 /**
  * Not declared `final` so unit tests can mock this builder when testing
@@ -65,6 +74,13 @@ class ItemBuilder
      * benefit from the room).
      */
     private const DECIMAL_PRECISION = 8;
+
+    /**
+     * The native currency of every Armenian fiscal receipt. An order in this
+     * currency (or with no currency set) is a native line — its prices are
+     * already AMD and no `currency` tag is sent.
+     */
+    private const NATIVE_CURRENCY = 'AMD';
 
     /**
      * Build the SDK SaleItem list for an order.
@@ -116,6 +132,11 @@ class ItemBuilder
             );
         }
 
+        // Store currency, tagged on every line so the sale stays a single
+        // currency (the SDK / server reject a mix). `null` for an AMD store —
+        // a native line, byte-identical to the pre-currency behaviour.
+        $currency = $this->resolveCurrency($order);
+
         $built = [];
 
         foreach ($order->get_items() as $item) {
@@ -126,7 +147,7 @@ class ItemBuilder
                 continue;
             }
 
-            $built[] = $this->buildOne($item, $department);
+            $built[] = $this->buildOne($item, $department, $currency);
         }
 
         if ($shippingTotal > 0.0) {
@@ -140,6 +161,7 @@ class ItemBuilder
                 // entry's defaultMeasureUnit is what actually renders
                 // on the receipt.
                 unit: Unit::Other,
+                currency: $currency,
             );
         }
 
@@ -164,6 +186,7 @@ class ItemBuilder
                 quantity: '1',
                 price: $this->formatDecimal($amount),
                 unit: Unit::Other,
+                currency: $currency,
             );
         }
 
@@ -176,7 +199,24 @@ class ItemBuilder
         return $built;
     }
 
-    private function buildOne(WC_Order_Item_Product $item, Department $department): SaleItem
+    /**
+     * Resolve the order's ISO 4217 currency for tagging line items. Returns
+     * `null` for an AMD store (or an order with no currency set) — a native
+     * line needs no `currency` tag. WooCommerce stores 3-letter ISO codes, so
+     * the value is passed through as-is; the SDK validates the shape.
+     */
+    private function resolveCurrency(WC_Order $order): ?string
+    {
+        $currency = strtoupper(trim($order->get_currency()));
+
+        if ($currency === '' || $currency === self::NATIVE_CURRENCY) {
+            return null;
+        }
+
+        return $currency;
+    }
+
+    private function buildOne(WC_Order_Item_Product $item, Department $department, ?string $currency): SaleItem
     {
         $product = $item->get_product();
 
@@ -217,6 +257,7 @@ class ItemBuilder
             quantity: $quantity,
             price: $price,
             unit: Unit::Piece,
+            currency: $currency,
         );
     }
 

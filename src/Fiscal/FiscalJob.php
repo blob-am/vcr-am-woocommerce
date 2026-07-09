@@ -165,12 +165,16 @@ class FiscalJob
             shippingSku: $this->configuration->shippingSku(),
             feeSku: $this->configuration->feeSku(),
         );
-        $amount = $this->paymentMapper->map($order);
 
-        return new RegisterSaleInput(
+        // Auto-settle: the VCR derives the whole AMD cart total (converting any
+        // foreign-currency lines server-side) and charges it to the resolved
+        // tender. The plugin never computes the AMD total itself.
+        $autoSettle = $this->paymentMapper->map($order);
+
+        return RegisterSaleInput::withAutoSettle(
             cashier: CashierId::byInternalId($cashierId),
             items: $items,
-            amount: $amount,
+            autoSettle: $autoSettle,
             buyer: Buyer::individual(),
         );
     }

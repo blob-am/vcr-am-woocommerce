@@ -15,7 +15,7 @@ What sets it apart from existing options:
 
 - **Direct SRC integration** — talks to the official VCR.AM gateway, not to a third-party reseller. No per-receipt rake from intermediaries.
 - **Asynchronous fiscalization** — uses WooCommerce's Action Scheduler. Customer checkout is never blocked by SRC slowness; failed transmissions retry automatically with exponential backoff.
-- **Multi-currency first-class** — orders in USD/EUR/RUB convert to AMD using the Central Bank of Armenia rate at the moment of fiscalization (with cached rates and stale-rate guards).
+- **Multi-currency first-class** — orders in USD/EUR/RUB are sent to the VCR per-line in their own currency; the VCR converts each line to AMD server-side at the previous-business-day Central Bank of Armenia rate and records the HO-234-N foreign-input audit trail. The whole AMD total is derived and settled server-side (auto-settle), so the plugin never guesses the AMD magnitude. (Refunds, which reverse an already-AMD receipt, resolve the AMD amount through the plugin's own cached CBA rate with stale-rate guards.)
 - **Refund-aware** — `woocommerce_order_refunded` triggers a partial-reversal receipt automatically.
 - **Customer-facing receipt** — QR code and public verification URL on the thank-you page and in transactional emails.
 - **HPOS + Cart/Checkout Blocks compatible** out of the box.

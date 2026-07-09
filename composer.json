@@ -37,7 +37,7 @@
         "php": "^8.3",
         "ext-json": "*",
         "ext-sodium": "*",
-        "blob-solutions/vcr-am-sdk": "^0.3.0",
+        "blob-solutions/vcr-am-sdk": "^0.5.0",
         "guzzlehttp/guzzle": "^7.8"
     },
     "require-dev": {

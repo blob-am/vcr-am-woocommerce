@@ -151,10 +151,14 @@ final class Plugin
             $this->version,
         ))->register();
 
-        // Currency converter wired once per request and shared between
-        // sale + refund mappers. The cache decorator owns the WP-transient
-        // hot path so multi-currency stores see at most one CBA round-trip
-        // per day per currency.
+        // Currency converter wired once per request for the REFUND path only.
+        // The sale path no longer converts client-side: foreign-currency sales
+        // send per-item `currency` and let the VCR convert + record the
+        // HO-234-N trail server-side (see ItemBuilder / PaymentMapper). Refunds
+        // reverse an already-AMD receipt through the AMD-based refund endpoint,
+        // so they still resolve the AMD magnitude here. The cache decorator
+        // owns the WP-transient hot path so multi-currency stores see at most
+        // one CBA round-trip per day per currency.
         $currencyConverter = new CurrencyConverter(
             new CachedExchangeRateProvider(new CbaExchangeRateProvider()),
         );
@@ -165,7 +169,7 @@ final class Plugin
             configuration: $config,
             registrarFactory: $registrarFactory,
             itemBuilder: new ItemBuilder(),
-            paymentMapper: new PaymentMapper($currencyConverter),
+            paymentMapper: new PaymentMapper(),
             meta: $meta,
         );
         $queue = new FiscalQueue($job, $meta);
