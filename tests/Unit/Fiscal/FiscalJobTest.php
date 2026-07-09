@@ -13,12 +13,13 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\ItemBuilder;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\PaymentMapper;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrar;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrarFactory;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\AutoSettleTender;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrNetworkException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrValidationException;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\AutoSettle;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Department;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Offer;
-use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\SaleAmount;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\SaleItem;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Unit;
@@ -134,7 +135,7 @@ function primeBuildable(): void
 
     /** @var \Mockery\MockInterface $paymentMapper */
     $paymentMapper = test()->paymentMapper;
-    $paymentMapper->allows('map')->andReturn(new SaleAmount(nonCash: '100'));
+    $paymentMapper->allows('map')->andReturn(new AutoSettle(AutoSettleTender::NonCash));
 }
 
 it('returns failed when wc_get_order returns null', function (): void {

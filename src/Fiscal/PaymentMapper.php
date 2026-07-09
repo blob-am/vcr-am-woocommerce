@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
 
-use BlobSolutions\WooCommerceVcrAm\Currency\CurrencyConverter;
-use BlobSolutions\WooCommerceVcrAm\Currency\Exception\ExchangeRateUnavailableException;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\Exception\FiscalBuildException;
-use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\SaleAmount;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\AutoSettleTender;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\AutoSettle;
 use WC_Order;
 
 if (! defined('ABSPATH')) {
@@ -18,10 +17,18 @@ if (! defined('ABSPATH')) {
 
 
 /**
- * Map a {@see WC_Order}'s payment method onto the SDK's {@see SaleAmount}
- * shape — `cash` vs `nonCash`. The decision is purely on the WC payment
- * method id; mixed payments and split tenders aren't modelled (single
- * payment method per WC order is the norm).
+ * Map a {@see WC_Order}'s payment method onto the SDK's {@see AutoSettle}
+ * shape — the single tender (`cash` vs `nonCash`) the VCR settles the whole
+ * sale on. The decision is purely on the WC payment method id; mixed payments
+ * and split tenders aren't modelled (single payment method per WC order is
+ * the norm).
+ *
+ * Auto-settle, not an explicit AMD amount: the VCR derives the whole cart
+ * total server-side from the (possibly foreign-currency) line items and
+ * charges it to this tender. That is what makes foreign-currency sales work —
+ * the plugin never needs to know the AMD total up front — and it removes the
+ * "does the payment amount match the item sum?" rounding class of bug for AMD
+ * stores too, since the settled amount *is* the item sum by construction.
  *
  * Default classification (built-in WC gateways that settle in person):
  *
@@ -35,12 +42,6 @@ if (! defined('ABSPATH')) {
  * regional gateways (Idram cash points, custom cash plugins) without
  * recompiling.
  *
- * Open intentionally:
- *   - `prepayment` and `compensation` buckets are not used yet; the
- *     prepayment flow has its own SDK endpoint and will get its own
- *     mapper in a later phase.
- */
-/**
  * Not declared `final` so unit tests can mock this mapper when testing
  * downstream orchestrators (FiscalJob) — there's no production extension
  * point.
@@ -48,29 +49,22 @@ if (! defined('ABSPATH')) {
 class PaymentMapper
 {
     public function __construct(
-        private readonly ?CurrencyConverter $converter = null,
         private readonly CashPaymentResolver $cashResolver = new CashPaymentResolver(),
     ) {
     }
 
-    public function map(WC_Order $order): SaleAmount
+    /**
+     * @throws FiscalBuildException when the order total is non-positive
+     *                              (zero or negative — nothing to fiscalise)
+     */
+    public function map(WC_Order $order): AutoSettle
     {
-        $totalString = $this->orderTotalString($order);
-
-        if ($this->cashResolver->isCash($order->get_payment_method())) {
-            return new SaleAmount(cash: $totalString);
-        }
-
-        return new SaleAmount(nonCash: $totalString);
-    }
-
-    private function orderTotalString(WC_Order $order): string
-    {
+        // Zero-total orders (free trials, 100% coupons) aren't sales for
+        // fiscal purposes — there's no money to record. Guard here, before
+        // the VCR is asked to settle an empty cart.
         $total = (float) $order->get_total();
 
         if ($total <= 0.0) {
-            // Zero-total orders (free trials, 100% coupons) aren't sales
-            // for fiscal purposes — there's no money to record.
             throw new FiscalBuildException(sprintf(
                 'Order #%d has a non-positive total (%s); nothing to fiscalise.',
                 $order->get_id(),
@@ -78,62 +72,10 @@ class PaymentMapper
             ));
         }
 
-        $amd = $this->convertToAmd($order, $total);
+        $tender = $this->cashResolver->isCash($order->get_payment_method())
+            ? AutoSettleTender::Cash
+            : AutoSettleTender::NonCash;
 
-        $formatted = number_format($amd, 2, '.', '');
-
-        if (str_contains($formatted, '.')) {
-            $formatted = rtrim($formatted, '0');
-            $formatted = rtrim($formatted, '.');
-        }
-
-        return $formatted === '' ? '0' : $formatted;
-    }
-
-    /**
-     * Convert the order total to AMD using the injected
-     * {@see CurrencyConverter}. Returns the input as-is when:
-     *
-     *   - The order is already in AMD (the converter returns identity).
-     *   - No converter was injected (tests or legacy installs that
-     *     pre-date multi-currency support — production wiring always
-     *     supplies one). In this branch we trust the order is AMD; if
-     *     it's not, fail loudly so misconfigured installs don't ship
-     *     wrong-magnitude receipts to SRC.
-     *
-     * Conversion failures convert to {@see FiscalBuildException} so the
-     * order goes to {@see FiscalStatus::ManualRequired} rather than
-     * burning the retry budget on a CBA outage. The admin can re-run
-     * once CBA recovers (or once the cached rate refreshes) via the
-     * "Fiscalize now" button.
-     *
-     * @throws FiscalBuildException
-     */
-    private function convertToAmd(WC_Order $order, float $total): float
-    {
-        $currency = strtoupper($order->get_currency());
-
-        if ($this->converter === null) {
-            if ($currency !== '' && $currency !== CurrencyConverter::HOME_CURRENCY) {
-                throw new FiscalBuildException(sprintf(
-                    'Order #%d is in %s but no CurrencyConverter is configured. Refusing to fiscalise — the receipt would otherwise be sent to SRC at the wrong magnitude.',
-                    $order->get_id(),
-                    $currency,
-                ));
-            }
-
-            return $total;
-        }
-
-        try {
-            return $this->converter->toAmd($total, $currency);
-        } catch (ExchangeRateUnavailableException $e) {
-            throw new FiscalBuildException(sprintf(
-                'Cannot convert order #%d (%s) to AMD: %s',
-                $order->get_id(),
-                $currency,
-                $e->getMessage(),
-            ), previous: $e);
-        }
+        return new AutoSettle($tender);
     }
 }

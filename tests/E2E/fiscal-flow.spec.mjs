@@ -108,7 +108,11 @@ test.describe('VCR fiscal flow (happy path)', () => {
             department: { id: 1 },
             quantity: '1',
         });
-        // SaleAmount must be either cash or nonCash, sum > 0.
-        expect(payload.amount.nonCash ?? payload.amount.cash).toBeDefined();
+        // Sale path uses server-side auto-settle: the plugin sends the
+        // tender and the VCR derives the AMD total from the items. No
+        // client-computed `amount` block on the wire. The fixture pays via
+        // `bacs`, which CashPaymentResolver maps to nonCash.
+        expect(payload.amount).toBeUndefined();
+        expect(payload.autoSettle).toEqual({ tender: 'nonCash' });
     });
 });

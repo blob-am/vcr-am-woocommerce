@@ -42,6 +42,7 @@ function mockProductLine(string $sku = 'SKU-1', float $qty = 1.0, string $total 
 
 it('converts a single product line into a SaleItem with VAT-inclusive unit price', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -60,6 +61,7 @@ it('converts a single product line into a SaleItem with VAT-inclusive unit price
 
 it('skips non-product line items inside the items list', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -75,6 +77,7 @@ it('skips non-product line items inside the items list', function (): void {
 
 it('throws when an order has no fiscalisable lines', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -87,6 +90,7 @@ it('throws when an order has no fiscalisable lines', function (): void {
 
 it('rejects orders with shipping charges when no shipping SKU is configured', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('5.00');
     $order->allows('get_shipping_tax')->andReturn('1.00');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -98,6 +102,7 @@ it('rejects orders with shipping tax even when shipping_total is zero', function
     // Defensive: some gateways report 0 shipping but non-zero shipping
     // tax (e.g., free shipping with separate tax line).
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0.50');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -107,6 +112,7 @@ it('rejects orders with shipping tax even when shipping_total is zero', function
 
 it('rejects orders with fee lines when no fee SKU is configured', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
 
@@ -118,6 +124,7 @@ it('rejects orders with fee lines when no fee SKU is configured', function (): v
 
 it('throws when a product has no SKU', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -128,6 +135,7 @@ it('throws when a product has no SKU', function (): void {
 
 it('throws when SKU is just whitespace', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -142,6 +150,7 @@ it('throws when the underlying product is gone', function (): void {
     $item->allows('get_name')->andReturn('Ghost');
 
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -152,6 +161,7 @@ it('throws when the underlying product is gone', function (): void {
 
 it('throws on a zero-quantity line', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -162,6 +172,7 @@ it('throws on a zero-quantity line', function (): void {
 
 it('throws on a negative quantity', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -172,6 +183,7 @@ it('throws on a negative quantity', function (): void {
 
 it('formats fractional quantities without trailing zeros', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -188,6 +200,7 @@ it('formats fractional quantities without trailing zeros', function (): void {
 
 it('builds multiple lines when the order has several products', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -207,6 +220,7 @@ it('builds multiple lines when the order has several products', function (): voi
 
 it('synthesises a shipping SaleItem when shippingSku is configured', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('20');
     $order->allows('get_shipping_tax')->andReturn('4');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -224,6 +238,7 @@ it('synthesises a shipping SaleItem when shippingSku is configured', function ()
 
 it('skips the shipping line when shipping_total + shipping_tax is zero', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([]);
@@ -246,6 +261,7 @@ it('synthesises one fee SaleItem per WC fee item when feeSku is configured', fun
     $fee2->allows('get_total_tax')->andReturn('2');
 
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([$fee1, $fee2]);
@@ -273,6 +289,7 @@ it('skips zero-and-negative fee items even when feeSku is configured', function 
     $zero->allows('get_total_tax')->andReturn('0');
 
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('0');
     $order->allows('get_shipping_tax')->andReturn('0');
     $order->allows('get_items')->with('fee')->andReturn([$negative, $zero]);
@@ -282,4 +299,52 @@ it('skips zero-and-negative fee items even when feeSku is configured', function 
 
     expect($items)->toHaveCount(1)
         ->and($items[0]->offer->externalId)->toBe('SKU-1');
+});
+
+it('leaves currency null for an AMD store (native line)', function (): void {
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
+    $order->allows('get_items')->andReturn([mockProductLine()]);
+
+    $items = $this->builder->build($order, $this->department);
+
+    expect($items[0]->currency)->toBeNull();
+});
+
+it('tags every line with the store currency for a non-AMD order — product, shipping and fee', function (): void {
+    $fee = Mockery::mock(WC_Order_Item_Fee::class);
+    $fee->allows('get_total')->andReturn('5');
+    $fee->allows('get_total_tax')->andReturn('1');
+
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('USD');
+    $order->allows('get_shipping_total')->andReturn('20');
+    $order->allows('get_shipping_tax')->andReturn('4');
+    $order->allows('get_items')->with('fee')->andReturn([$fee]);
+    // Price stays in the store currency, untouched — the VCR converts to AMD.
+    $order->allows('get_items')->andReturn([mockProductLine(qty: 1.0, total: '10', totalTax: '0')]);
+
+    $items = $this->builder->build($order, $this->department, shippingSku: 'ship-001', feeSku: 'svc-fee');
+
+    expect($items)->toHaveCount(3)
+        ->and($items[0]->currency)->toBe('USD')
+        ->and($items[0]->price)->toBe('10')
+        ->and($items[1]->currency)->toBe('USD')
+        ->and($items[2]->currency)->toBe('USD');
+});
+
+it('normalises a lowercase currency code to uppercase', function (): void {
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('eur');
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
+    $order->allows('get_items')->andReturn([mockProductLine()]);
+
+    $items = $this->builder->build($order, $this->department);
+
+    expect($items[0]->currency)->toBe('EUR');
 });
