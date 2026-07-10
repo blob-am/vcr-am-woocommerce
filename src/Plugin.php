@@ -18,6 +18,7 @@ use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
 use BlobSolutions\WooCommerceVcrAm\Currency\CachedExchangeRateProvider;
 use BlobSolutions\WooCommerceVcrAm\Currency\CbaExchangeRateProvider;
 use BlobSolutions\WooCommerceVcrAm\Currency\CurrencyConverter;
+use BlobSolutions\WooCommerceVcrAm\Fiscal\CommentBuilder;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJob;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
@@ -170,6 +171,7 @@ final class Plugin
             registrarFactory: $registrarFactory,
             itemBuilder: new ItemBuilder(),
             paymentMapper: new PaymentMapper(),
+            commentBuilder: new CommentBuilder(),
             meta: $meta,
         );
         $queue = new FiscalQueue($job, $meta);

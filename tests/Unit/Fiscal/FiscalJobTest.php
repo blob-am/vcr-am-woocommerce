@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Tests\Unit\Fiscal;
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Fiscal\CommentBuilder;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\Exception\FiscalBuildException;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJob;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
@@ -42,6 +43,7 @@ beforeEach(function (): void {
     $this->registrarFactory = Mockery::mock(SaleRegistrarFactory::class);
     $this->itemBuilder = Mockery::mock(ItemBuilder::class);
     $this->paymentMapper = Mockery::mock(PaymentMapper::class);
+    $this->commentBuilder = Mockery::mock(CommentBuilder::class);
     $this->meta = Mockery::mock(FiscalStatusMeta::class);
     // Logger is permissive by default — tests that assert on log
     // routing layer their own expects() on top. `byDefault()` makes
@@ -58,6 +60,7 @@ beforeEach(function (): void {
         registrarFactory: $this->registrarFactory,
         itemBuilder: $this->itemBuilder,
         paymentMapper: $this->paymentMapper,
+        commentBuilder: $this->commentBuilder,
         meta: $this->meta,
         logger: $this->logger,
     );
@@ -118,7 +121,7 @@ function stubSaleItems(): array
  * mapping and reach the registrar. Caller still controls what the
  * registrar returns / throws.
  */
-function primeBuildable(): void
+function primeBuildable(?string $comment = null): void
 {
     /** @var \Mockery\MockInterface $config */
     $config = test()->config;
@@ -128,6 +131,7 @@ function primeBuildable(): void
     $config->allows('defaultDepartmentId')->andReturn(7);
     $config->allows('shippingSku')->andReturn(null);
     $config->allows('feeSku')->andReturn(null);
+    $config->allows('commentSource')->andReturn(Configuration::COMMENT_SOURCE_ORDER_NUMBER);
 
     /** @var \Mockery\MockInterface $itemBuilder */
     $itemBuilder = test()->itemBuilder;
@@ -136,6 +140,10 @@ function primeBuildable(): void
     /** @var \Mockery\MockInterface $paymentMapper */
     $paymentMapper = test()->paymentMapper;
     $paymentMapper->allows('map')->andReturn(new AutoSettle(AutoSettleTender::NonCash));
+
+    /** @var \Mockery\MockInterface $commentBuilder */
+    $commentBuilder = test()->commentBuilder;
+    $commentBuilder->allows('build')->andReturn($comment);
 }
 
 it('returns failed when wc_get_order returns null', function (): void {
@@ -253,6 +261,41 @@ it('writes Success meta and adds an order note on a clean registerSale', functio
     $outcome = $this->job->run(123);
 
     expect($outcome->status)->toBe(FiscalStatus::Success);
+});
+
+it('passes the built comment through to the sale payload', function (): void {
+    $order = makeOrderMockReturnedByWcGetOrder();
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    primeBuildable('WooCommerce #123');
+
+    $this->meta->allows('recordAttempt')->with($order);
+    $this->meta->allows('attemptCount')->with($order)->andReturn(1);
+    $this->meta->allows('markSuccess');
+    $order->allows('add_order_note');
+
+    $response = new RegisterSaleResponse(
+        urlId: 'r-1',
+        saleId: 1,
+        crn: 'C',
+        srcReceiptId: 1,
+        fiscal: 'F',
+    );
+
+    $captured = null;
+    $registrar = Mockery::mock(SaleRegistrar::class);
+    $registrar->expects('registerSale')
+        ->with(Mockery::on(function ($input) use (&$captured): bool {
+            $captured = $input;
+
+            return true;
+        }))
+        ->andReturn($response);
+    $this->registrarFactory->expects('create')->andReturn($registrar);
+
+    $this->job->run(123);
+
+    expect($captured)->not->toBeNull()
+        ->and($captured->comment)->toBe('WooCommerce #123');
 });
 
 it('classifies HTTP 5xx as retriable when the budget allows', function (): void {
