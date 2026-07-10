@@ -122,3 +122,27 @@ it('feeSku returns the trimmed value when set', function (): void {
 
     expect((new Configuration(new KeyStore('vcr_x')))->feeSku())->toBe('srv-fee');
 });
+
+it('commentSource defaults to the order number when unset', function (): void {
+    withOptionMap([]);
+
+    expect((new Configuration(new KeyStore('vcr_x')))->commentSource())
+        ->toBe(Configuration::COMMENT_SOURCE_ORDER_NUMBER);
+});
+
+it('commentSource returns a valid stored value verbatim', function (): void {
+    withOptionMap([Configuration::OPT_COMMENT_SOURCE => Configuration::COMMENT_SOURCE_TRANSACTION_ID]);
+    expect((new Configuration(new KeyStore('vcr_x')))->commentSource())
+        ->toBe(Configuration::COMMENT_SOURCE_TRANSACTION_ID);
+
+    withOptionMap([Configuration::OPT_COMMENT_SOURCE => Configuration::COMMENT_SOURCE_OFF]);
+    expect((new Configuration(new KeyStore('vcr_x')))->commentSource())
+        ->toBe(Configuration::COMMENT_SOURCE_OFF);
+});
+
+it('commentSource falls back to the default for a stray stored value', function (): void {
+    withOptionMap([Configuration::OPT_COMMENT_SOURCE => 'legacy_unknown_value']);
+
+    expect((new Configuration(new KeyStore('vcr_x')))->commentSource())
+        ->toBe(Configuration::DEFAULT_COMMENT_SOURCE);
+});

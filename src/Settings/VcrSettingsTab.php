@@ -218,6 +218,35 @@ final class VcrSettingsTab extends WC_Settings_Page
                 'type' => 'sectionend',
                 'id' => 'vcr_synthesis_section',
             ],
+            [
+                'name' => __('Reconciliation', 'vcr-am-fiscal-receipts'),
+                'type' => 'title',
+                'desc' => __(
+                    'Attach a reference to each fiscal receipt so you can match it back to the WooCommerce order from your VCR dashboard. This note is internal to you — it is never shown to the customer and never sent to the tax authority.',
+                    'vcr-am-fiscal-receipts',
+                ),
+                'id' => 'vcr_reconciliation_section',
+            ],
+            [
+                'name' => __('Receipt comment', 'vcr-am-fiscal-receipts'),
+                'type' => 'select',
+                'id' => Configuration::OPT_COMMENT_SOURCE,
+                'options' => [
+                    Configuration::COMMENT_SOURCE_ORDER_NUMBER => __('WooCommerce order number', 'vcr-am-fiscal-receipts'),
+                    Configuration::COMMENT_SOURCE_TRANSACTION_ID => __('Payment transaction ID', 'vcr-am-fiscal-receipts'),
+                    Configuration::COMMENT_SOURCE_ORDER_AND_TRANSACTION => __('Order number + transaction ID', 'vcr-am-fiscal-receipts'),
+                    Configuration::COMMENT_SOURCE_OFF => __('No comment', 'vcr-am-fiscal-receipts'),
+                ],
+                'desc_tip' => __(
+                    'The transaction ID is your payment gateway\'s own reference (e.g. a Stripe pi_… id) and is only available once the payment has cleared.',
+                    'vcr-am-fiscal-receipts',
+                ),
+                'default' => Configuration::DEFAULT_COMMENT_SOURCE,
+            ],
+            [
+                'type' => 'sectionend',
+                'id' => 'vcr_reconciliation_section',
+            ],
         ];
     }
 

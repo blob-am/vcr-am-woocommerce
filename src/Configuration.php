@@ -43,6 +43,31 @@ class Configuration
 
     public const OPT_FEE_SKU = 'vcr_fee_sku';
 
+    /**
+     * What the plugin writes into the sale's merchant-internal `comment` so the
+     * VCR receipt can be reconciled back to the WooCommerce order. The comment
+     * is internal only — VCR never prints it on the buyer's receipt nor sends
+     * it to the tax authority. {@see Fiscal\CommentBuilder} turns the chosen
+     * source into the actual string.
+     */
+    public const OPT_COMMENT_SOURCE = 'vcr_comment_source';
+
+    public const COMMENT_SOURCE_OFF = 'off';
+
+    public const COMMENT_SOURCE_ORDER_NUMBER = 'order_number';
+
+    public const COMMENT_SOURCE_TRANSACTION_ID = 'transaction_id';
+
+    public const COMMENT_SOURCE_ORDER_AND_TRANSACTION = 'order_and_transaction';
+
+    /**
+     * The WooCommerce order number is always present and is already the
+     * plugin's reconciliation key (see FiscalStatusMeta's external id), so it's
+     * the safe, useful default. A gateway transaction id is only set once the
+     * payment clears and some gateways never set one, so it isn't the default.
+     */
+    public const DEFAULT_COMMENT_SOURCE = self::COMMENT_SOURCE_ORDER_NUMBER;
+
     public function __construct(
         private readonly KeyStore $keyStore,
     ) {
@@ -130,6 +155,25 @@ class Configuration
     public function feeSku(): ?string
     {
         return $this->nonEmptyStringOption(self::OPT_FEE_SKU);
+    }
+
+    /**
+     * Which reference goes into the fiscal comment. Always one of the
+     * `COMMENT_SOURCE_*` values — an unset or stray stored value falls back to
+     * {@see self::DEFAULT_COMMENT_SOURCE}, so callers never have to re-validate.
+     */
+    public function commentSource(): string
+    {
+        $stored = get_option(self::OPT_COMMENT_SOURCE, self::DEFAULT_COMMENT_SOURCE);
+
+        $allowed = [
+            self::COMMENT_SOURCE_OFF,
+            self::COMMENT_SOURCE_ORDER_NUMBER,
+            self::COMMENT_SOURCE_TRANSACTION_ID,
+            self::COMMENT_SOURCE_ORDER_AND_TRANSACTION,
+        ];
+
+        return in_array($stored, $allowed, true) ? $stored : self::DEFAULT_COMMENT_SOURCE;
     }
 
     public function hasCredentials(): bool

@@ -69,6 +69,7 @@ class FiscalJob
         private readonly SaleRegistrarFactory $registrarFactory,
         private readonly ItemBuilder $itemBuilder,
         private readonly PaymentMapper $paymentMapper,
+        private readonly CommentBuilder $commentBuilder,
         private readonly FiscalStatusMeta $meta,
         private readonly Logger $logger = new Logger(),
     ) {
@@ -171,11 +172,17 @@ class FiscalJob
         // tender. The plugin never computes the AMD total itself.
         $autoSettle = $this->paymentMapper->map($order);
 
+        // Merchant-internal reconciliation note (order number / gateway txn id,
+        // admin-configurable). `null` when disabled or unavailable — the VCR
+        // never shows it to the buyer nor forwards it to the tax authority.
+        $comment = $this->commentBuilder->build($order, $this->configuration->commentSource());
+
         return RegisterSaleInput::withAutoSettle(
             cashier: CashierId::byInternalId($cashierId),
             items: $items,
             autoSettle: $autoSettle,
             buyer: Buyer::individual(),
+            comment: $comment,
         );
     }
 
