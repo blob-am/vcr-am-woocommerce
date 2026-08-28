@@ -36,7 +36,7 @@ The official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Re
 1. Upload the plugin folder to `/wp-content/plugins/`, or install via the WordPress plugin directory.
 2. Activate the plugin through the **Plugins** menu in WordPress.
 3. Go to **WooCommerce → Settings → VCR** and paste your VCR.AM API key.
-4. Save, then pick the **default cashier** and **default department** — both dropdowns load from your VCR account once the key is stored. Each department option is labelled with its tax regime (VAT, VAT-exempt, turnover tax, micro-enterprise); pick the one matching how your business is registered, because that is what gets printed on every receipt the store issues.
+4. Save, then pick the **default cashier** — the dropdown loads from your VCR account once the key is stored. Leave **override department** empty: each offer already carries the department you chose when you added it in VCR, and orders use it automatically. Set it only if you deliberately want every line of every order booked under one department regardless of what its offer says. The department determines the tax regime (VAT, VAT-exempt, turnover tax, micro-enterprise) printed on the receipt, and a fiscal receipt can only be refunded and reissued, never corrected.
 5. Configure per-payment-method fiscalization timing (online gateways default to "on payment confirmed"; cash-on-delivery defaults to "on order completed").
 
 == Frequently Asked Questions ==

@@ -117,6 +117,15 @@ class Configuration
         return $value > 0 ? $value : null;
     }
 
+    /**
+     * Internal id of the department every line of every order is booked
+     * under, overriding the one each offer carries in VCR.
+     *
+     * `null` — the normal case — means no override: each line inherits its
+     * offer's own department, so a catalog that spans two tax regimes stays
+     * expressible. Set this only when the store deliberately sells its whole
+     * catalog out of one department that is not the offers' own.
+     */
     public function defaultDepartmentId(): ?int
     {
         $stored = get_option(self::OPT_DEFAULT_DEPARTMENT_ID, '');
@@ -196,8 +205,11 @@ class Configuration
 
     public function isFullyConfigured(): bool
     {
+        // The department is deliberately absent: it is an optional override,
+        // not a prerequisite. Requiring it was what forced every admin to
+        // type a department id, and a guessed one books the store's receipts
+        // under a tax regime it may not owe.
         return $this->hasCredentials()
-            && $this->defaultCashierId() !== null
-            && $this->defaultDepartmentId() !== null;
+            && $this->defaultCashierId() !== null;
     }
 }

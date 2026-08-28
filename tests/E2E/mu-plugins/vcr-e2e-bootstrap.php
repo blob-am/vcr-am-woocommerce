@@ -30,7 +30,12 @@ add_action('init', static function (): void {
     $defaults = [
         'vcr_base_url' => getenv('VCR_E2E_BASE_URL') ?: 'http://host.docker.internal:9876/api/v1',
         'vcr_default_cashier_id' => getenv('VCR_E2E_CASHIER_ID') ?: '1',
-        'vcr_default_department_id' => getenv('VCR_E2E_DEPARTMENT_ID') ?: '1',
+        // Empty on purpose — the department is an optional override and an
+        // unset one is what a real store runs. Leaving it set here would
+        // mean the only end-to-end check of the wire payload never sees the
+        // shape the plugin actually sends. Override via the env var to
+        // exercise the opt-in path.
+        'vcr_default_department_id' => getenv('VCR_E2E_DEPARTMENT_ID') ?: '',
         'vcr_test_mode' => 'no',
         'vcr_shipping_sku' => 'shipping',
         'vcr_fee_sku' => 'fee',

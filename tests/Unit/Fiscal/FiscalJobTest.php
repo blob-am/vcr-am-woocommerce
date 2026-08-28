@@ -90,11 +90,11 @@ function makeApiException(int $statusCode): VcrApiException
 {
     return new VcrApiException(
         statusCode: $statusCode,
-        apiErrorCode: 'TEST',
         apiErrorMessage: 'simulated',
         rawBody: '{}',
         request: Mockery::mock(RequestInterface::class),
         response: Mockery::mock(ResponseInterface::class),
+        requestId: 'req-test',
     );
 }
 
@@ -332,7 +332,9 @@ it('classifies HTTP 4xx (other than 429) as terminal failure', function (): void
     $registrar->expects('registerSale')->andThrow(makeApiException(422));
     $this->registrarFactory->expects('create')->andReturn($registrar);
 
-    $this->meta->expects('markFailed')->with($order, Mockery::pattern('/HTTP 422/'));
+    // The request id is the only handle support has on a specific failed
+    // call, so it has to survive into the message stored on the order.
+    $this->meta->expects('markFailed')->with($order, Mockery::pattern('/HTTP 422 \[request req-test\]/'));
     // Terminal failures go to logger at error level (vs warning for retriable).
     $this->logger->expects('error')->with(Mockery::pattern('/TERMINAL/'), Mockery::type('array'));
 

@@ -107,7 +107,7 @@ class FiscalJob
 
         if (! $this->configuration->isFullyConfigured() || $apiKey === null) {
             $reason = __(
-                'VCR plugin is not fully configured (missing API key, cashier, or department). Open WooCommerce → Settings → VCR to finish setup, then retry.',
+                'VCR plugin is not fully configured (missing API key or cashier). Open WooCommerce → Settings → VCR to finish setup, then retry.',
                 'vcr-am-fiscal-receipts',
             );
 
@@ -154,12 +154,19 @@ class FiscalJob
         $cashierId = $this->configuration->defaultCashierId();
         $departmentId = $this->configuration->defaultDepartmentId();
 
-        // isFullyConfigured() guarantees both are non-null at this point —
-        // the asserts are belt-and-braces for readers / future refactors.
+        // isFullyConfigured() guarantees the cashier is non-null at this
+        // point — the assert is belt-and-braces for readers / future
+        // refactors.
         assert($cashierId !== null);
-        assert($departmentId !== null);
 
-        $department = new Department($departmentId);
+        // Unset is the normal case: every line then inherits the department
+        // of the offer it references, which is the one the merchant chose
+        // when onboarding that offer in VCR. Stamping a single department on
+        // the whole order is the override, and it makes a mixed-regime
+        // catalog inexpressible — every line goes out under one regime no
+        // matter what its offer says.
+        $department = $departmentId === null ? null : new Department($departmentId);
+
         $items = $this->itemBuilder->build(
             $order,
             $department,
@@ -272,7 +279,10 @@ class FiscalJob
             return sprintf(
                 'VCR API HTTP %d%s%s',
                 $error->statusCode,
-                $error->apiErrorCode !== null ? ' [' . $error->apiErrorCode . ']' : '',
+                // Was `apiErrorCode` until SDK 0.7.0 established there is no
+                // top-level code on the wire — the branch had never fired.
+                // `requestId` does arrive, and support can look it up.
+                $error->requestId !== null ? ' [request ' . $error->requestId . ']' : '',
                 $error->apiErrorMessage !== null ? ': ' . $error->apiErrorMessage : '',
             );
         }

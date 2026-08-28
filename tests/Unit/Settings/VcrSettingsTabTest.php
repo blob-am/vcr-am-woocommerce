@@ -198,10 +198,12 @@ it('renders the department picker as a dropdown labelled with the tax regime', f
     expect($field['type'])->toBe('select');
     expect($field['options'])->toHaveKey(1, 'VAT — Bakery (#1)');
     expect($field['options'])->toHaveKey(4, 'Micro-enterprise (#4)');
-    // No preselected department — picking one is the admin's call, and a
-    // default here would reintroduce exactly the silent-wrong-regime bug.
+    // Empty is the intended resting state, not an unfinished one: with no
+    // override each line inherits its offer's own department. Preselecting
+    // anything here would reintroduce the silent-wrong-regime bug, and the
+    // placeholder has to read as a real choice rather than a prompt.
     expect($field['default'])->toBe('');
-    expect($field['options'][''])->toContain('select a department');
+    expect($field['options'][''])->toContain("use each offer's own department");
     expect($field)->not->toHaveKey('custom_attributes');
 });
 

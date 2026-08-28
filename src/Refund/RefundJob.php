@@ -268,7 +268,10 @@ class RefundJob
             return sprintf(
                 'VCR API HTTP %d%s%s',
                 $error->statusCode,
-                $error->apiErrorCode !== null ? ' [' . $error->apiErrorCode . ']' : '',
+                // Was `apiErrorCode` until SDK 0.7.0 established there is no
+                // top-level code on the wire — the branch had never fired.
+                // `requestId` does arrive, and support can look it up.
+                $error->requestId !== null ? ' [request ' . $error->requestId . ']' : '',
                 $error->apiErrorMessage !== null ? ': ' . $error->apiErrorMessage : '',
             );
         }

@@ -85,11 +85,11 @@ function makeRefundApiException(int $statusCode): VcrApiException
 {
     return new VcrApiException(
         statusCode: $statusCode,
-        apiErrorCode: 'TEST',
         apiErrorMessage: 'simulated',
         rawBody: '{}',
         request: Mockery::mock(RequestInterface::class),
         response: Mockery::mock(ResponseInterface::class),
+        requestId: 'req-test',
     );
 }
 

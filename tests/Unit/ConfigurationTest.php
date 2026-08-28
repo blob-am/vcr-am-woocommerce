@@ -6,6 +6,7 @@ use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
 use Brain\Monkey\Functions;
+use Mockery;
 
 beforeEach(function (): void {
     Functions\when('wp_salt')->justReturn(str_repeat('x', 64));
@@ -84,13 +85,45 @@ it('defaultDepartmentId returns null on missing or zero, positive int otherwise'
     expect((new Configuration(new KeyStore('vcr_x')))->defaultDepartmentId())->toBe(7);
 });
 
-it('isFullyConfigured requires apiKey AND cashier AND department', function (): void {
-    // No credentials.
+/**
+ * Configuration backed by a KeyStore that reports a usable API key, so the
+ * credential half of isFullyConfigured() is satisfied and the assertions
+ * below are about the remaining fields.
+ */
+function configWithCredentials(): Configuration
+{
+    $keyStore = Mockery::mock(KeyStore::class);
+    $keyStore->allows('get')->andReturn('an-api-key');
+
+    return new Configuration($keyStore);
+}
+
+it('isFullyConfigured requires an API key', function (): void {
     withOptionMap([
         Configuration::OPT_DEFAULT_CASHIER_ID => '1',
         Configuration::OPT_DEFAULT_DEPARTMENT_ID => '1',
     ]);
+
     expect((new Configuration(new KeyStore('vcr_x')))->isFullyConfigured())->toBeFalse();
+});
+
+it('isFullyConfigured requires a cashier', function (): void {
+    withOptionMap([Configuration::OPT_DEFAULT_DEPARTMENT_ID => '1']);
+
+    expect(configWithCredentials()->isFullyConfigured())->toBeFalse();
+});
+
+it('isFullyConfigured does NOT require a department', function (): void {
+    // The department is an override, not a prerequisite. Requiring it is
+    // what forced every admin to pick one, and a guessed department books
+    // the store's receipts under a tax regime it may not owe. With none
+    // set, each line inherits the department of the offer it references.
+    withOptionMap([Configuration::OPT_DEFAULT_CASHIER_ID => '1']);
+
+    $config = configWithCredentials();
+
+    expect($config->defaultDepartmentId())->toBeNull()
+        ->and($config->isFullyConfigured())->toBeTrue();
 });
 
 it('shippingSku returns null when option is unset', function (): void {

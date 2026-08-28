@@ -348,3 +348,50 @@ it('normalises a lowercase currency code to uppercase', function (): void {
 
     expect($items[0]->currency)->toBe('EUR');
 });
+
+it('omits the department entirely when no override is configured', function (): void {
+    // The normal case. Every offer already carries the department it was
+    // onboarded with in VCR, and a line that names none inherits it — which
+    // is the only way a catalog spanning two tax regimes stays expressible.
+    // A null must be left OUT of the payload, not sent as null: the API
+    // distinguishes "inherit" from an explicit value and rejects the latter.
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
+    $order->allows('get_shipping_total')->andReturn('50');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
+    $order->allows('get_items')->andReturn([mockProductLine()]);
+
+    $items = $this->builder->build($order, null, shippingSku: 'ship-001');
+
+    expect($items)->toHaveCount(2);
+
+    foreach ($items as $item) {
+        expect($item->department)->toBeNull();
+        expect($item->jsonSerialize())->not->toHaveKey('department');
+    }
+});
+
+it('stamps the override on synthesised shipping and fee lines too', function (): void {
+    // An override that skipped the synthesised lines would split one order
+    // across two tax regimes without the admin ever asking for it.
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
+    $order->allows('get_shipping_total')->andReturn('50');
+    $order->allows('get_shipping_tax')->andReturn('0');
+
+    $fee = Mockery::mock(WC_Order_Item_Fee::class);
+    $fee->allows('get_total')->andReturn('30');
+    $fee->allows('get_total_tax')->andReturn('0');
+
+    $order->allows('get_items')->with('fee')->andReturn([$fee]);
+    $order->allows('get_items')->andReturn([mockProductLine()]);
+
+    $items = $this->builder->build($order, $this->department, shippingSku: 'ship-001', feeSku: 'svc-fee');
+
+    expect($items)->toHaveCount(3);
+
+    foreach ($items as $item) {
+        expect($item->department?->id)->toBe(7);
+    }
+});

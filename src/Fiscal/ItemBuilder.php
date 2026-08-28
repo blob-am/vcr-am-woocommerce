@@ -99,17 +99,22 @@ class ItemBuilder
      * SKUs into Settings → VCR. The plugin then references those offers
      * by SKU on every receipt — no compliance call inside plugin code.
      *
-     * @param  ?string $shippingSku The configured shipping offer SKU,
-     *                              or null to fail loudly when the
-     *                              order has shipping charges.
-     * @param  ?string $feeSku      Same contract for fee items.
+     * @param  ?Department $department Override for the department every line
+     *                                 is booked under. `null` — the normal
+     *                                 case — leaves it off the payload so
+     *                                 each offer keeps the department it was
+     *                                 onboarded with in VCR.
+     * @param  ?string     $shippingSku The configured shipping offer SKU,
+     *                                  or null to fail loudly when the
+     *                                  order has shipping charges.
+     * @param  ?string     $feeSku      Same contract for fee items.
      * @return list<SaleItem>
      *
      * @throws FiscalBuildException
      */
     public function build(
         WC_Order $order,
-        Department $department,
+        ?Department $department,
         ?string $shippingSku = null,
         ?string $feeSku = null,
     ): array {
@@ -216,7 +221,7 @@ class ItemBuilder
         return $currency;
     }
 
-    private function buildOne(WC_Order_Item_Product $item, Department $department, ?string $currency): SaleItem
+    private function buildOne(WC_Order_Item_Product $item, ?Department $department, ?string $currency): SaleItem
     {
         $product = $item->get_product();
 

@@ -105,9 +105,12 @@ test.describe('VCR fiscal flow (happy path)', () => {
         expect(payload.items).toHaveLength(1);
         expect(payload.items[0]).toMatchObject({
             offer: { externalId: 'E2E-SKU-1' },
-            department: { id: 1 },
             quantity: '1',
         });
+        // Absent, not null: with no override configured the line inherits
+        // the department of the offer it references, and the API tells the
+        // two apart — a null fails its schema.
+        expect('department' in payload.items[0]).toBe(false);
         // Sale path uses server-side auto-settle: the plugin sends the
         // tender and the VCR derives the AMD total from the items. No
         // client-computed `amount` block on the wire. The fixture pays via

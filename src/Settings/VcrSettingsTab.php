@@ -28,11 +28,13 @@ if (! defined('ABSPATH')) {
  *   - **Test mode** — toggles between test and production cashiers.
  *   - **Default cashier** — dropdown populated from `listCashiers()` via
  *     {@see CashierCatalog}. Required before fiscal jobs will run.
- *   - **Default department** — dropdown populated from `listDepartments()`
- *     via {@see DepartmentCatalog}, every option labelled with its tax
- *     regime. It was a bare number input until the regime a stray "1"
- *     selects turned out to be VAT on every register — see
- *     {@see DepartmentCatalog} for why the label carries the weight here.
+ *   - **Override department** — optional, and normally left empty: each
+ *     offer carries its own department and orders inherit it. Populated
+ *     from `listDepartments()` via {@see DepartmentCatalog}, every option
+ *     labelled with its tax regime. It was a required bare number input
+ *     until the regime a stray "1" selects turned out to be VAT on every
+ *     register — see {@see DepartmentCatalog} for why the label carries
+ *     the weight here.
  *
  * Order line synthesis (optional — only needed for stores using WC's
  * built-in shipping or fee features):
@@ -305,6 +307,11 @@ final class VcrSettingsTab extends WC_Settings_Page
     }
 
     /**
+     * Optional, and best left empty: each offer already carries the
+     * department it was onboarded with in VCR, and a line that names none
+     * inherits it. Setting this overrides all of them at once, which makes
+     * a catalog spanning two tax regimes inexpressible.
+     *
      * Every option is labelled with its tax regime, because that — not
      * the department's name or its position in the list — is what ends
      * up printed on the receipt. See {@see DepartmentCatalog}.
@@ -314,15 +321,15 @@ final class VcrSettingsTab extends WC_Settings_Page
     private function buildDepartmentField(): array
     {
         return $this->buildCatalogSelect(
-            name: __('Default department', 'vcr-am-fiscal-receipts'),
+            name: __('Override department', 'vcr-am-fiscal-receipts'),
             optionId: Configuration::OPT_DEFAULT_DEPARTMENT_ID,
             options: $this->departmentCatalog->list(),
-            placeholder: __('— select a department —', 'vcr-am-fiscal-receipts'),
+            placeholder: __('— use each offer\'s own department —', 'vcr-am-fiscal-receipts'),
             emptyReason: $this->keyStore->isSet()
                 ? __('No departments found — check your API key permissions or create one in the VCR dashboard.', 'vcr-am-fiscal-receipts')
                 : __('Save your API key first; the department list loads from the VCR API.', 'vcr-am-fiscal-receipts'),
-            desc: __('Loaded from listDepartments() and cached for one hour. Re-saving these settings forces a refresh.', 'vcr-am-fiscal-receipts'),
-            descTip: __('The department sets the tax regime printed on every receipt this store issues. Pick the one matching how the business is registered — a mismatch is not rejected by anything, and a fiscal receipt can only be refunded and reissued, never corrected.', 'vcr-am-fiscal-receipts'),
+            desc: __('Leave empty unless you know you need it. Loaded from listDepartments() and cached for one hour; re-saving these settings forces a refresh.', 'vcr-am-fiscal-receipts'),
+            descTip: __('The department sets the tax regime printed on the receipt. Each offer already has one, chosen when you onboarded it in VCR, and orders use it automatically. Picking a department here overrides every line of every order — including offers registered under a different regime. Nothing rejects a mismatch, and a fiscal receipt can only be refunded and reissued, never corrected.', 'vcr-am-fiscal-receipts'),
         );
     }
 

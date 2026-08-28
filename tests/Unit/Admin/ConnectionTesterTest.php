@@ -182,7 +182,6 @@ it('reports VcrException messages directly on failure', function (): void {
 
     $apiException = new VcrApiException(
         statusCode: 401,
-        apiErrorCode: 'UNAUTHORIZED',
         apiErrorMessage: 'API key not valid',
         rawBody: '{}',
         request: Mockery::mock(RequestInterface::class),
