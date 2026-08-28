@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Settings;
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
+use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Net\SafeUrlValidator;
 use WC_Settings_Page;
@@ -27,9 +28,11 @@ if (! defined('ABSPATH')) {
  *   - **Test mode** — toggles between test and production cashiers.
  *   - **Default cashier** — dropdown populated from `listCashiers()` via
  *     {@see CashierCatalog}. Required before fiscal jobs will run.
- *   - **Default department ID** — numeric input. The SDK does not yet
- *     expose `listDepartments`, so the admin enters the integer id from
- *     the VCR dashboard manually until that endpoint is published.
+ *   - **Default department** — dropdown populated from `listDepartments()`
+ *     via {@see DepartmentCatalog}, every option labelled with its tax
+ *     regime. It was a bare number input until the regime a stray "1"
+ *     selects turned out to be VAT on every register — see
+ *     {@see DepartmentCatalog} for why the label carries the weight here.
  *
  * Order line synthesis (optional — only needed for stores using WC's
  * built-in shipping or fee features):
@@ -47,6 +50,7 @@ final class VcrSettingsTab extends WC_Settings_Page
     public function __construct(
         private readonly KeyStore $keyStore,
         private readonly CashierCatalog $cashierCatalog,
+        private readonly DepartmentCatalog $departmentCatalog,
         private readonly SafeUrlValidator $urlValidator = new SafeUrlValidator(),
     ) {
         $this->id = 'vcr';
@@ -129,14 +133,14 @@ final class VcrSettingsTab extends WC_Settings_Page
             ? __('Saved — leave empty to keep current key', 'vcr-am-fiscal-receipts')
             : __('Required', 'vcr-am-fiscal-receipts');
 
-        $cashiers = $this->cashierCatalog->list();
-        $cashierField = $this->buildCashierField($cashiers);
+        $cashierField = $this->buildCashierField();
+        $departmentField = $this->buildDepartmentField();
 
         return [
             [
                 'name' => __('VCR — Fiscal Receipts for Armenia', 'vcr-am-fiscal-receipts'),
                 'type' => 'title',
-                'desc' => $this->buildIntroDescription(),
+                'desc' => (new IntroDescription())->render(),
                 'id' => 'vcr_section',
             ],
             [
@@ -168,17 +172,7 @@ final class VcrSettingsTab extends WC_Settings_Page
                 'default' => 'no',
             ],
             $cashierField,
-            [
-                'name' => __('Default department ID', 'vcr-am-fiscal-receipts'),
-                'type' => 'number',
-                'id' => Configuration::OPT_DEFAULT_DEPARTMENT_ID,
-                'desc_tip' => __(
-                    'Internal id of the department to fiscalize against by default. Find it in the VCR dashboard under your cashier configuration. The SDK does not yet expose a department-listing endpoint, so this value is entered manually.',
-                    'vcr-am-fiscal-receipts',
-                ),
-                'custom_attributes' => ['min' => 1, 'step' => 1],
-                'default' => '',
-            ],
+            $departmentField,
             [
                 'type' => 'sectionend',
                 'id' => 'vcr_section',
@@ -289,86 +283,90 @@ final class VcrSettingsTab extends WC_Settings_Page
     public function invalidateCaches(): void
     {
         $this->cashierCatalog->refresh();
+        $this->departmentCatalog->refresh();
     }
 
     /**
-     * Description rendered at the top of the settings tab. Doubles as
-     * the merchant-facing GDPR / data-flow disclosure: the merchant
-     * needs to know that activating the plugin sets up an EU → Armenia
-     * data transfer (when the merchant is GDPR-subject) before they
-     * paste their API key. Keeps the legal text in the merchant's
-     * primary configuration surface so they can't miss it.
-     *
-     * The text is allow-listed `wp_kses_post` HTML — `<a>`, `<strong>`,
-     * `<p>`, `<em>` are kept; everything else is stripped by WC's
-     * settings renderer. The DPA / SCC links are intentionally
-     * informational; we don't ship hard-coded merchant-side legal docs
-     * with the plugin.
-     */
-    private function buildIntroDescription(): string
-    {
-        $body = __(
-            'Connect your store to the VCR.AM gateway. Fiscal receipts (e-HDM) are issued directly to the Armenian State Revenue Committee (SRC) on every paid order.',
-            'vcr-am-fiscal-receipts',
-        );
-
-        $disclosure = __(
-            'GDPR / data-flow notice: activating this plugin transmits order line items, totals, and payment-method classification (cash / non-cash) to the VCR.AM gateway, which forwards them to the Armenian SRC. Customer name, email, address, and phone number are NOT transmitted. VCR.AM is established in the Republic of Armenia, which is not on the European Commission\'s adequacy list — when this site is GDPR-subject, the transfer is governed by Standard Contractual Clauses (Commission Implementing Decision (EU) 2021/914).',
-            'vcr-am-fiscal-receipts',
-        );
-
-        $links = sprintf(
-            /* translators: 1: VCR.AM Privacy Policy URL, 2: VCR.AM Data Processing Addendum URL, 3: Standard Contractual Clauses (Commission Decision) URL */
-            __('Reference links: %1$s · %2$s · %3$s.', 'vcr-am-fiscal-receipts'),
-            sprintf('<a href="https://vcr.am/privacy" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('VCR.AM Privacy Policy', 'vcr-am-fiscal-receipts')),
-            sprintf('<a href="https://vcr.am/dpa" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('Data Processing Addendum (request from VCR.AM)', 'vcr-am-fiscal-receipts')),
-            sprintf('<a href="https://eur-lex.europa.eu/eli/dec_impl/2021/914/oj" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('Standard Contractual Clauses (EU 2021/914)', 'vcr-am-fiscal-receipts')),
-        );
-
-        return wp_kses_post(
-            '<p>' . $body . '</p>'
-            . '<p><em>' . $disclosure . '</em></p>'
-            . '<p>' . $links . '</p>',
-        );
-    }
-
-    /**
-     * Build the WC settings field for the cashier dropdown. Three states:
-     *
-     *   1. Credentials missing → show a disabled placeholder pointing the
-     *      admin at the API key field above.
-     *   2. Credentials present, API call returned no cashiers → show a
-     *      disabled placeholder hinting at the cause.
-     *   3. Cashiers available → render the dropdown.
-     *
-     * @param  array<int, string> $cashiers
      * @return array<string, mixed>
      */
-    private function buildCashierField(array $cashiers): array
+    private function buildCashierField(): array
     {
-        if ($cashiers === []) {
-            $reason = $this->keyStore->isSet()
+        return $this->buildCatalogSelect(
+            name: __('Default cashier', 'vcr-am-fiscal-receipts'),
+            optionId: Configuration::OPT_DEFAULT_CASHIER_ID,
+            options: $this->cashierCatalog->list(),
+            placeholder: __('— select a cashier —', 'vcr-am-fiscal-receipts'),
+            emptyReason: $this->keyStore->isSet()
                 ? __('No cashiers found — check your API key permissions or create one in the VCR dashboard.', 'vcr-am-fiscal-receipts')
-                : __('Save your API key first; the cashier list loads from the VCR API.', 'vcr-am-fiscal-receipts');
+                : __('Save your API key first; the cashier list loads from the VCR API.', 'vcr-am-fiscal-receipts'),
+            desc: __('Loaded from listCashiers() and cached for one hour. Re-saving these settings forces a refresh.', 'vcr-am-fiscal-receipts'),
+            descTip: __('Required before fiscal jobs will run.', 'vcr-am-fiscal-receipts'),
+        );
+    }
 
+    /**
+     * Every option is labelled with its tax regime, because that — not
+     * the department's name or its position in the list — is what ends
+     * up printed on the receipt. See {@see DepartmentCatalog}.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildDepartmentField(): array
+    {
+        return $this->buildCatalogSelect(
+            name: __('Default department', 'vcr-am-fiscal-receipts'),
+            optionId: Configuration::OPT_DEFAULT_DEPARTMENT_ID,
+            options: $this->departmentCatalog->list(),
+            placeholder: __('— select a department —', 'vcr-am-fiscal-receipts'),
+            emptyReason: $this->keyStore->isSet()
+                ? __('No departments found — check your API key permissions or create one in the VCR dashboard.', 'vcr-am-fiscal-receipts')
+                : __('Save your API key first; the department list loads from the VCR API.', 'vcr-am-fiscal-receipts'),
+            desc: __('Loaded from listDepartments() and cached for one hour. Re-saving these settings forces a refresh.', 'vcr-am-fiscal-receipts'),
+            descTip: __('The department sets the tax regime printed on every receipt this store issues. Pick the one matching how the business is registered — a mismatch is not rejected by anything, and a fiscal receipt can only be refunded and reissued, never corrected.', 'vcr-am-fiscal-receipts'),
+        );
+    }
+
+    /**
+     * Shared shape for the two dropdowns that are populated from the VCR
+     * API. Three states:
+     *
+     *   1. Credentials missing → disabled placeholder pointing the admin
+     *      at the API key field above.
+     *   2. Credentials present, API returned nothing → disabled
+     *      placeholder hinting at the cause.
+     *   3. Entries available → render the dropdown.
+     *
+     * @param  array<int, string> $options
+     * @return array<string, mixed>
+     */
+    private function buildCatalogSelect(
+        string $name,
+        string $optionId,
+        array $options,
+        string $placeholder,
+        string $emptyReason,
+        string $desc,
+        string $descTip,
+    ): array {
+        if ($options === []) {
             return [
-                'name' => __('Default cashier', 'vcr-am-fiscal-receipts'),
+                'name' => $name,
                 'type' => 'select',
-                'id' => Configuration::OPT_DEFAULT_CASHIER_ID,
-                'options' => ['' => $reason],
-                'desc' => __('Loaded from listCashiers() and cached for one hour. Re-saving these settings forces a refresh.', 'vcr-am-fiscal-receipts'),
+                'id' => $optionId,
+                'options' => ['' => $emptyReason],
+                'desc' => $desc,
                 'custom_attributes' => ['disabled' => 'disabled'],
                 'default' => '',
             ];
         }
 
         return [
-            'name' => __('Default cashier', 'vcr-am-fiscal-receipts'),
+            'name' => $name,
             'type' => 'select',
-            'id' => Configuration::OPT_DEFAULT_CASHIER_ID,
-            'options' => ['' => __('— select a cashier —', 'vcr-am-fiscal-receipts')] + $cashiers,
-            'desc' => __('Loaded from listCashiers() and cached for one hour. Re-saving these settings forces a refresh.', 'vcr-am-fiscal-receipts'),
-            'desc_tip' => __('Required before fiscal jobs will run.', 'vcr-am-fiscal-receipts'),
+            'id' => $optionId,
+            'options' => ['' => $placeholder] + $options,
+            'desc' => $desc,
+            'desc_tip' => $descTip,
             'default' => '',
         ];
     }

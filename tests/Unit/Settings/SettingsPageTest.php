@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
+use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\SettingsPage;
@@ -25,7 +27,11 @@ it('hooks into woocommerce_get_settings_pages on register', function (): void {
         $config,
         new CashierListerFactory($config, new VcrClientFactory()),
     );
-    (new SettingsPage($keyStore, $catalog))->register();
+    $departments = new DepartmentCatalog(
+        $config,
+        new DepartmentListerFactory($config, new VcrClientFactory()),
+    );
+    (new SettingsPage($keyStore, $catalog, $departments))->register();
 });
 
 // `VcrSettingsTab` extends `WC_Settings_Page` — exercising `addTab()` would

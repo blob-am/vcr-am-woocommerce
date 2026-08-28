@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Settings;
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
+use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -24,6 +25,7 @@ final class SettingsPage
     public function __construct(
         private readonly KeyStore $keyStore,
         private readonly CashierCatalog $cashierCatalog,
+        private readonly DepartmentCatalog $departmentCatalog,
     ) {
     }
 
@@ -38,7 +40,11 @@ final class SettingsPage
      */
     public function addTab(array $pages): array
     {
-        $pages[] = new VcrSettingsTab($this->keyStore, $this->cashierCatalog);
+        $pages[] = new VcrSettingsTab(
+            $this->keyStore,
+            $this->cashierCatalog,
+            $this->departmentCatalog,
+        );
 
         return $pages;
     }

@@ -14,6 +14,8 @@ use BlobSolutions\WooCommerceVcrAm\Admin\PluginActionLinks;
 use BlobSolutions\WooCommerceVcrAm\Admin\SystemStatusReport;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
+use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
 use BlobSolutions\WooCommerceVcrAm\Currency\CachedExchangeRateProvider;
 use BlobSolutions\WooCommerceVcrAm\Currency\CbaExchangeRateProvider;
@@ -141,10 +143,14 @@ final class Plugin
         $clientFactory = new VcrClientFactory();
         $listerFactory = new CashierListerFactory($config, $clientFactory);
         $cashierCatalog = new CashierCatalog($config, $listerFactory);
+        $departmentCatalog = new DepartmentCatalog(
+            $config,
+            new DepartmentListerFactory($config, $clientFactory),
+        );
 
         (new PluginActionLinks($this->pluginFile))->register();
 
-        (new SettingsPage($keyStore, $cashierCatalog))->register();
+        (new SettingsPage($keyStore, $cashierCatalog, $departmentCatalog))->register();
         (new ConnectionTester(
             $keyStore,
             $listerFactory,
