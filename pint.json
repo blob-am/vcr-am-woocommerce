@@ -4,7 +4,11 @@
         "declare_strict_types": true,
         "ordered_imports": {
             "sort_algorithm": "alpha",
-            "imports_order": ["class", "function", "const"]
+            "imports_order": [
+                "class",
+                "function",
+                "const"
+            ]
         },
         "no_unused_imports": true,
         "single_quote": true,
@@ -13,6 +17,7 @@
     "exclude": [
         "vendor",
         "vendor-prefixed",
-        "tests/E2E/scripts"
+        "tests/E2E/scripts",
+        "playground"
     ]
 }

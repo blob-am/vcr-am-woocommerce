@@ -168,6 +168,11 @@ echo "==> Regenerating the production autoloader"
 echo "==> Stripping dev-only tooling that may have been recreated post-install"
 rm -rf "$STAGING_DIR/bin" "$STAGING_DIR/vendor-bin" "$STAGING_DIR/composer.lock"
 
+# Strauss writes autoload_aliases.php so a developer can still reference the
+# pre-scoping class names locally. Its own documentation says the file must
+# not be included in production code, and nothing in the ZIP loads it.
+rm -f "$STAGING_DIR/vendor/composer/autoload_aliases.php"
+
 # ---------------------------------------------------------------------------
 # Sanity check: verify the staging dir does NOT contain anything that
 # .distignore says it shouldn't. A grep-based double-check catches the case
@@ -225,6 +230,33 @@ echo "==> Zipping into $ZIP_PATH"
     cd "$BUILD_DIR"
     zip -rqX "../$ZIP_PATH" "$SLUG"
 )
+
+# ---------------------------------------------------------------------------
+# Smoke-test the artefact by running it.
+#
+# Every check above this line is structural: it asks whether files are in the
+# right places. None of them loads a class, and a ZIP can pass all of them
+# and still fatal on the merchant's first order — that is exactly what
+# happened in v0.1.0, where the autoloader silently omitted the PSR contracts
+# the scoped Guzzle implements. The files were all present; nothing could
+# find them.
+#
+# Unzip and test the ZIP rather than the staging tree, so the thing under
+# test is the thing that gets published.
+# ---------------------------------------------------------------------------
+echo "==> Smoke-testing the built ZIP"
+SMOKE_DIR="$(mktemp -d)"
+trap 'rm -rf "$SMOKE_DIR"' EXIT
+unzip -qq "$ZIP_PATH" -d "$SMOKE_DIR"
+# Require the marker, not just a zero exit: a plugin file that hits its own
+# `if (! defined('ABSPATH')) exit;` guard terminates PHP with status 0, so
+# exit code alone cannot distinguish "passed" from "died on line one".
+smoke_output="$(php -d error_reporting=E_ALL "$REPO_ROOT/bin/smoke-test-artifact.php" "$SMOKE_DIR/$SLUG" 2>&1)" || true
+echo "$smoke_output" | sed 's/^/    /'
+if ! grep -q '^SMOKE TEST PASSED$' <<< "$smoke_output"; then
+    echo "error: the built artefact failed its smoke test — refusing to publish it" >&2
+    exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # Report the final size and a checksum so a release-engineer can verify the
