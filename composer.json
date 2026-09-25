@@ -1,6 +1,6 @@
 {
     "name": "blob-solutions/woocommerce-vcr-am",
-    "description": "Official WooCommerce plugin for the VCR.AM Virtual Cash Register — issue fiscal receipts (eHDM) to the Armenian State Revenue Committee directly from WooCommerce orders. Direct SRC integration, multi-currency, refunds, customer-facing QR.",
+    "description": "Official WooCommerce plugin for the VCR.AM Virtual Cash Register — issue fiscal receipts (eHDM) to the Armenian State Revenue Committee directly from WooCommerce orders. Direct SRC integration, multi-currency, refunds, customer receipt link.",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "keywords": [

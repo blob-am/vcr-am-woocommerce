@@ -97,4 +97,11 @@ For multi-currency stores (orders in USD, EUR, RUB, etc.), the plugin fetches th
 == Changelog ==
 
 = 0.1.0 =
-* Initial scaffold release. No customer-facing functionality yet — see the project roadmap on GitHub.
+* First public release.
+* Fiscalizes paid WooCommerce orders through the VCR.AM gateway to the State Revenue Committee, asynchronously via Action Scheduler with automatic retries.
+* Cash on delivery: choose whether the receipt is issued when the order is placed or when you mark it Completed.
+* Full refunds are reversed at the tax authority automatically; partial refunds are flagged for manual registration.
+* Multi-currency orders (USD/EUR/RUB) are converted server-side at the Central Bank of Armenia rate.
+* Customer receipt link on the thank-you page, in transactional emails and in order details.
+* HPOS and Cart/Checkout Blocks compatible. Credentials encrypted at rest with libsodium.
+* Not yet exercised against the live State Revenue Committee service — the automated suites run against a mock.

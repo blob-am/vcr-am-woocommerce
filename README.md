@@ -16,8 +16,8 @@ What sets it apart from existing options:
 - **Direct SRC integration** — talks to the official VCR.AM gateway, not to a third-party reseller. No per-receipt rake from intermediaries.
 - **Asynchronous fiscalization** — uses WooCommerce's Action Scheduler. Customer checkout is never blocked by SRC slowness; failed transmissions retry automatically with exponential backoff.
 - **Multi-currency first-class** — orders in USD/EUR/RUB are sent to the VCR per-line in their own currency; the VCR converts each line to AMD server-side at the previous-business-day Central Bank of Armenia rate and records the HO-234-N foreign-input audit trail. The whole AMD total is derived and settled server-side (auto-settle), so the plugin never guesses the AMD magnitude. (Refunds, which reverse an already-AMD receipt, resolve the AMD amount through the plugin's own cached CBA rate with stale-rate guards.)
-- **Refund-aware** — `woocommerce_order_refunded` triggers a partial-reversal receipt automatically.
-- **Customer-facing receipt** — QR code and public verification URL on the thank-you page and in transactional emails.
+- **Refund-aware** — a full refund of an order is reversed at the tax authority automatically. A partial refund is flagged for you to register by hand, because the reversal has to name the exact lines and the SDK does not yet expose per-item SRC ids.
+- **Customer-facing receipt** — a verification link to the official receipt page on the thank-you page, in transactional emails and in order details.
 - **HPOS + Cart/Checkout Blocks compatible** out of the box.
 - **Encrypted credentials at rest** (libsodium).
 
@@ -25,9 +25,17 @@ What sets it apart from existing options:
 
 | | Minimum | Tested up to |
 | --- | --- | --- |
-| WordPress | 6.7 | 6.9 |
+| WordPress | 6.7 | 6.8 |
 | WooCommerce | 9.4 | 10.7 |
 | PHP | 8.3 | 8.4 |
+
+## Installation
+
+Download `vcr-am-fiscal-receipts.zip` from the [latest release](https://github.com/blob-am/vcr-am-woocommerce/releases/latest), then in WordPress go to **Plugins -> Add New -> Upload Plugin** and upload it.
+
+> Do not install from the green **Code -> Download ZIP** button, and do not upload a `git clone` of this repository. The source tree deliberately excludes `vendor/` and `vendor-prefixed/`, so WordPress will activate the plugin and immediately show *"missing composer dependencies (run composer install)"*. The release ZIP is the same tree with those directories built in.
+
+After activating, configure it under **WooCommerce -> Settings -> VCR** (steps 3-5 of the Installation section in `readme.txt`).
 
 ## Installation (development)
 
