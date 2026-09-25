@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and publish'
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish the plugin ZIP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-8.3-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-8.3-
+
+      # The build needs the Strauss bin context, which the post-install hook
+      # provisions. Installing the full dev tree here is what makes
+      # bin/build-wporg-zip.sh able to scope the staged production tree.
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      # Fails the release if the version in the entry file, in readme.txt's
+      # Stable tag and in the pushed tag disagree. A ZIP whose header version
+      # does not match its tag cannot be supported afterwards.
+      - name: Check the tag matches the declared version
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          tag_version="${tag#v}"
+          header_version="$(grep -oE '^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*[^[:space:]]+' vcr-am-fiscal-receipts.php | awk '{print $NF}')"
+          const_version="$(grep -oE "PLUGIN_VERSION[[:space:]]*=[[:space:]]*'[^']+'" vcr-am-fiscal-receipts.php | grep -oE "'[^']+'" | tr -d "'")"
+          stable_tag="$(grep -oE '^Stable tag:[[:space:]]*[^[:space:]]+' readme.txt | awk '{print $NF}')"
+          echo "tag=$tag_version header=$header_version const=$const_version readme=$stable_tag"
+          for v in "$header_version" "$const_version" "$stable_tag"; do
+            if [[ -z "$v" || "$v" != "$tag_version" ]]; then
+              echo "error: version mismatch between the tag, the plugin header, PLUGIN_VERSION and readme.txt" >&2
+              exit 1
+            fi
+          done
+
+      - name: Build the distributable ZIP
+        run: bash bin/build-wporg-zip.sh
+
+      - name: Publish the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: dist/vcr-am-fiscal-receipts.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true
