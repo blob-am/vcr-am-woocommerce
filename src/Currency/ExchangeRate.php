@@ -4,41 +4,32 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Currency;
 
-/**
- * Immutable snapshot of one CBA published exchange rate.
- *
- * CBA quotes some currencies per multi-unit lot (e.g. 100 JPY, 1 IRR
- * group of 1000). The {@see self::amount} captures that lot size; one
- * unit of {@see self::iso} converts to AMD as `rate / amount`. So a
- * `rate=251.6, amount=100` means `1 JPY = 2.516 AMD`.
- *
- * {@see self::publishedAt} is the CBA-side rate-effective date (NOT the
- * fetch time — those can differ if we cached and replayed). Caching of
- * the rate row is done in {@see CachedExchangeRateProvider} and tracks
- * its own `fetchedAt` separately for the 48-hour staleness gate.
- */
-
 if (! defined('ABSPATH')) {
     exit;
 }
 
+
+/**
+ * One AMD conversion rate, as the VCR resolved it.
+ *
+ * The VCR applies Tax Code art. 16 (ՀՕ-234-Ն): the Central Bank of Armenia
+ * mid-market rate published on the **previous business day**. It returns the
+ * rate already normalised to AMD per single unit, so nothing here has to know
+ * that CBA quotes some currencies per lot of 100 or 1000.
+ *
+ * {@see self::rateDate} is the Yerevan date whose rate was applied and
+ * {@see self::ruleVersion} names the rule that picked it. Both are carried so
+ * a receipt can be reconciled later against the number that produced it —
+ * that provenance is the reason the conversion lives server-side rather than
+ * being recomputed here.
+ */
 final readonly class ExchangeRate
 {
     public function __construct(
         public string $iso,
-        public float $rate,
-        public float $amount,
-        public int $publishedAt,
+        public float $amdPerUnit,
+        public string $rateDate,
+        public string $ruleVersion,
     ) {
-    }
-
-    /**
-     * Convert one unit of this currency to AMD.
-     *
-     * Example: `JPY rate=251.6 amount=100` -> `toAmd() = 2.516` (AMD per 1 JPY).
-     */
-    public function unitToAmd(): float
-    {
-        return $this->rate / $this->amount;
     }
 }

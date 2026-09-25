@@ -83,7 +83,7 @@ it('throws FiscalBuildException for negative-amount refunds', function (): void 
 it('converts non-AMD refund amounts via the injected CurrencyConverter', function (): void {
     [$parent, $refund] = refundPair(paymentMethod: 'stripe', refundAmount: '50.00', currency: 'USD');
 
-    $rate = new ExchangeRate(iso: 'USD', rate: 388.5, amount: 1.0, publishedAt: 0);
+    $rate = new ExchangeRate(iso: 'USD', amdPerUnit: 388.5, rateDate: '2026-09-24', ruleVersion: 'HO-234-N');
     $provider = new class ($rate) implements ExchangeRateProvider {
         public function __construct(private ExchangeRate $rate)
         {

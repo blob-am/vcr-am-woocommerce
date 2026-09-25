@@ -57,6 +57,6 @@ class CurrencyConverter
         // precision but real fiscal receipts in AMD never need fractions
         // smaller than a banked qopiq (1/100 AMD). Two decimals also
         // matches the precision PaymentMapper uses for AMD totals.
-        return round($amount * $rate->unitToAmd(), 2);
+        return round($amount * $rate->amdPerUnit, 2);
     }
 }

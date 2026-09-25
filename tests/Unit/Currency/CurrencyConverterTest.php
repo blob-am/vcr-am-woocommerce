@@ -48,9 +48,9 @@ it('treats lowercase / whitespace ISO as the same currency', function (): void {
         ->toBe(50.0);
 });
 
-it('multiplies by unitToAmd for non-AMD currencies', function (): void {
+it('multiplies by the per-unit rate for non-AMD currencies', function (): void {
     // 1 USD = 388.5 AMD ; 100 USD = 38850 AMD
-    $rate = new ExchangeRate(iso: 'USD', rate: 388.5, amount: 1.0, publishedAt: 0);
+    $rate = new ExchangeRate(iso: 'USD', amdPerUnit: 388.5, rateDate: '2026-09-24', ruleVersion: 'HO-234-N');
     $provider = fakeRateProvider(rate: $rate);
 
     expect((new CurrencyConverter($provider))->toAmd(100.0, 'USD'))
@@ -59,7 +59,7 @@ it('multiplies by unitToAmd for non-AMD currencies', function (): void {
 
 it('handles multi-unit-lot rates (CBA quotes some currencies per 100/1000)', function (): void {
     // 100 JPY = 251.6 AMD ; 50 JPY = 125.8 AMD
-    $rate = new ExchangeRate(iso: 'JPY', rate: 251.6, amount: 100.0, publishedAt: 0);
+    $rate = new ExchangeRate(iso: 'JPY', amdPerUnit: 2.516, rateDate: '2026-09-24', ruleVersion: 'HO-234-N');
     $provider = fakeRateProvider(rate: $rate);
 
     expect((new CurrencyConverter($provider))->toAmd(50.0, 'JPY'))
@@ -73,7 +73,7 @@ it('rounds the converted amount to 2 decimal places (qopiq precision)', function
     // Actually PHP round() with default half-away-from-zero: 3177.99825 -> 3178.00? No.
     // round(3177.99825, 2) = 3178.00? Let's think: third decimal is 8 (>=5), so round up.
     // 3177.99 + 0.00825 -> rounds to 3178.00. Hmm, but actually 0.99825 -> 1.00 -> total 3178.00.
-    $rate = new ExchangeRate(iso: 'EUR', rate: 423.7331, amount: 1.0, publishedAt: 0);
+    $rate = new ExchangeRate(iso: 'EUR', amdPerUnit: 423.7331, rateDate: '2026-09-24', ruleVersion: 'HO-234-N');
     $provider = fakeRateProvider(rate: $rate);
 
     $amd = (new CurrencyConverter($provider))->toAmd(7.50, 'EUR');

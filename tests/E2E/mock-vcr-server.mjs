@@ -56,6 +56,18 @@ const DEFAULT_PLAN = {
             fiscal: 'FISCAL-TEST',
         },
     },
+    getExchangeRate: {
+        status: 200,
+        body: {
+            currency: 'USD',
+            ratePerUnit: 363.38,
+            amount: 1,
+            rateDate: '2026-09-24',
+            saleDate: '2026-09-25',
+            ruleVersion: 'HO-234-N',
+            source: 'CBA',
+        },
+    },
     registerSaleRefund: {
         status: 200,
         body: {
@@ -141,6 +153,17 @@ async function handleRequest(req, res) {
     if (req.url === '/api/v1/sales' && req.method === 'POST') {
         const plan = responsePlan.registerSale;
         return jsonResponse(res, plan.status, plan.body);
+    }
+
+    if (req.url.startsWith('/api/v1/exchange-rate') && req.method === 'GET') {
+        const plan = responsePlan.getExchangeRate;
+
+        // Echo back the currency that was asked for, so a spec can assert the
+        // plugin requested the order's currency rather than a hardcoded one.
+        const asked = new URL(req.url, 'http://mock').searchParams.get('currency');
+        const body = asked ? { ...plan.body, currency: asked.toUpperCase() } : plan.body;
+
+        return jsonResponse(res, plan.status, body);
     }
 
     if (req.url === '/api/v1/sales/refund' && req.method === 'POST') {

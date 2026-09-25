@@ -17,9 +17,8 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
-use BlobSolutions\WooCommerceVcrAm\Currency\CachedExchangeRateProvider;
-use BlobSolutions\WooCommerceVcrAm\Currency\CbaExchangeRateProvider;
 use BlobSolutions\WooCommerceVcrAm\Currency\CurrencyConverter;
+use BlobSolutions\WooCommerceVcrAm\Currency\VcrExchangeRateProvider;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\CashPaymentResolver;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\CommentBuilder;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJob;
@@ -160,15 +159,15 @@ final class Plugin
         ))->register();
 
         // Currency converter wired once per request for the REFUND path only.
-        // The sale path no longer converts client-side: foreign-currency sales
-        // send per-item `currency` and let the VCR convert + record the
-        // HO-234-N trail server-side (see ItemBuilder / PaymentMapper). Refunds
-        // reverse an already-AMD receipt through the AMD-based refund endpoint,
-        // so they still resolve the AMD magnitude here. The cache decorator
-        // owns the WP-transient hot path so multi-currency stores see at most
-        // one CBA round-trip per day per currency.
+        // The sale path never converts here: foreign-currency sales send
+        // per-item `currency` and the VCR converts and records the HO-234-N
+        // trail server-side (see ItemBuilder / PaymentMapper). A refund
+        // reverses an already-AMD receipt through the AMD-based refund
+        // endpoint, so it has to name the AMD magnitude — and it asks the
+        // same service for the rate, so both halves of the transaction are
+        // governed by one implementation of the rule.
         $currencyConverter = new CurrencyConverter(
-            new CachedExchangeRateProvider(new CbaExchangeRateProvider()),
+            new VcrExchangeRateProvider($config, $clientFactory),
         );
 
         $meta = new FiscalStatusMeta();

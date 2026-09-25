@@ -12,14 +12,12 @@ if (! defined('ABSPATH')) {
 
 
 /**
- * Source of CBA exchange rates. Implementations:
+ * Source of AMD conversion rates.
  *
- *   - {@see CbaExchangeRateProvider} — live SOAP call to api.cba.am.
- *   - {@see CachedExchangeRateProvider} — decorator that adds a WP-transient
- *     cache + 48-hour staleness gate around any underlying provider.
- *
- * Production wiring composes them: cached(cba). Tests can swap in a
- * pure in-memory implementation without touching the network.
+ * Production wiring uses {@see VcrExchangeRateProvider}, which asks the VCR —
+ * the same service that fiscalises the sale — so one implementation of Tax
+ * Code art. 16 governs both. Tests swap in a pure in-memory implementation
+ * and never touch the network.
  */
 interface ExchangeRateProvider
 {

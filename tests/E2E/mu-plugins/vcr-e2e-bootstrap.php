@@ -40,14 +40,9 @@ add_action('init', static function (): void {
         'vcr_shipping_sku' => 'shipping',
         'vcr_fee_sku' => 'fee',
         // Plugin is Armenia-focused; the natural test currency is AMD.
-        // wp-env's Docker container can reach host.docker.internal (the
-        // mock VCR API) but cannot reliably reach api.cba.am, so any
-        // non-AMD currency would route the order through the
-        // CurrencyConverter -> CBA SOAP path and fail. The multi-currency
-        // path is exercised separately by the Currency unit tests
-        // (CbaExchangeRateProvider / CachedExchangeRateProvider /
-        // CurrencyConverter / Payment+RefundPaymentMapper). E2E covers
-        // the AMD-passthrough happy path.
+        // Foreign-currency orders no longer need an outside host: the sale
+        // sends the store currency and the VCR converts, and a refund asks
+        // the same VCR for the rate — so the mock covers both.
         'woocommerce_currency' => 'AMD',
     ];
 
