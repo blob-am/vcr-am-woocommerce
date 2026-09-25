@@ -215,6 +215,33 @@ final class VcrSettingsTab extends WC_Settings_Page
                 'id' => 'vcr_synthesis_section',
             ],
             [
+                'name' => __('Cash on delivery', 'vcr-am-fiscal-receipts'),
+                'type' => 'title',
+                'desc' => __(
+                    'When to issue the fiscal receipt for orders paid in cash on delivery. Orders paid online are unaffected — their receipt is always issued the moment the payment clears.',
+                    'vcr-am-fiscal-receipts',
+                ),
+                'id' => 'vcr_cod_section',
+            ],
+            [
+                'name' => __('Issue the receipt', 'vcr-am-fiscal-receipts'),
+                'type' => 'select',
+                'id' => Configuration::OPT_CASH_FISCALIZE_ON,
+                'options' => [
+                    Configuration::CASH_FISCALIZE_ON_PROCESSING => __('When the order is placed', 'vcr-am-fiscal-receipts'),
+                    Configuration::CASH_FISCALIZE_ON_COMPLETED => __('When the order is marked Completed', 'vcr-am-fiscal-receipts'),
+                ],
+                'desc_tip' => __(
+                    'Both are lawful: the law lets a delivery seller issue the receipt in advance, as long as it exists before the goods leave you. Issuing it when the order is placed means a refused delivery needs a refund receipt, because a fiscal receipt can never be corrected. Waiting until Completed avoids that, but an order nobody marks Completed is never fiscalised at all.',
+                    'vcr-am-fiscal-receipts',
+                ),
+                'default' => Configuration::DEFAULT_CASH_FISCALIZE_ON,
+            ],
+            [
+                'type' => 'sectionend',
+                'id' => 'vcr_cod_section',
+            ],
+            [
                 'name' => __('Reconciliation', 'vcr-am-fiscal-receipts'),
                 'type' => 'title',
                 'desc' => __(

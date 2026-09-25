@@ -44,6 +44,39 @@ class Configuration
     public const OPT_FEE_SKU = 'vcr_fee_sku';
 
     /**
+     * When a cash-tender order (cash on delivery, cheque) is fiscalised.
+     *
+     * Online-paid orders are never affected: the money is in at
+     * `payment_complete`, so the receipt is filed there regardless of this
+     * setting. Cash on delivery is the ambiguous one — the order is placed
+     * now and the courier collects later.
+     *
+     * Both options are lawful. Government Decision 1976-N Annex 3 §3(2)
+     * (= Tax Code art. 56(8.1)) lets an order-based delivery seller generate
+     * the receipt in advance, provided it is generated before the goods leave
+     * the delivery point — which checkout always is. What differs is the
+     * failure mode:
+     *
+     *   - `processing` (default) files the receipt when the order is placed.
+     *     A refused delivery then needs a refund receipt, because a fiscal
+     *     receipt can never be corrected, only reversed.
+     *   - `completed` waits until the order is marked Completed, i.e. until
+     *     the merchant has the money. Nothing is ever reversed, but an order
+     *     nobody marks Completed is never fiscalised at all — and a missing
+     *     receipt is the worse of the two problems.
+     *
+     * Hence the default stays `processing`; shops with frequent refusals opt
+     * into `completed` deliberately.
+     */
+    public const OPT_CASH_FISCALIZE_ON = 'vcr_cash_fiscalize_on';
+
+    public const CASH_FISCALIZE_ON_PROCESSING = 'processing';
+
+    public const CASH_FISCALIZE_ON_COMPLETED = 'completed';
+
+    public const DEFAULT_CASH_FISCALIZE_ON = self::CASH_FISCALIZE_ON_PROCESSING;
+
+    /**
      * What the plugin writes into the sale's merchant-internal `comment` so the
      * VCR receipt can be reconciled back to the WooCommerce order. The comment
      * is internal only — VCR never prints it on the buyer's receipt nor sends
@@ -183,6 +216,23 @@ class Configuration
         ];
 
         return in_array($stored, $allowed, true) ? $stored : self::DEFAULT_COMMENT_SOURCE;
+    }
+
+    /**
+     * When cash-tender orders are fiscalised. Always one of the
+     * `CASH_FISCALIZE_ON_*` values; a stray stored value falls back to the
+     * default, so callers never re-validate.
+     */
+    public function cashFiscalizeOn(): string
+    {
+        $stored = get_option(self::OPT_CASH_FISCALIZE_ON, self::DEFAULT_CASH_FISCALIZE_ON);
+
+        $allowed = [
+            self::CASH_FISCALIZE_ON_PROCESSING,
+            self::CASH_FISCALIZE_ON_COMPLETED,
+        ];
+
+        return in_array($stored, $allowed, true) ? $stored : self::DEFAULT_CASH_FISCALIZE_ON;
     }
 
     public function hasCredentials(): bool

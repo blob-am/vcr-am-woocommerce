@@ -20,6 +20,7 @@ use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
 use BlobSolutions\WooCommerceVcrAm\Currency\CachedExchangeRateProvider;
 use BlobSolutions\WooCommerceVcrAm\Currency\CbaExchangeRateProvider;
 use BlobSolutions\WooCommerceVcrAm\Currency\CurrencyConverter;
+use BlobSolutions\WooCommerceVcrAm\Fiscal\CashPaymentResolver;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\CommentBuilder;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJob;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
@@ -183,7 +184,7 @@ final class Plugin
         $queue = new FiscalQueue($job, $meta);
         $queue->register();
 
-        (new OrderListener($queue))->register();
+        (new OrderListener($queue, $config, new CashPaymentResolver()))->register();
         (new FiscalizeNowHandler($meta, $queue))->register();
 
         // Refund flow (Phase 3e) — separate but parallel pipeline.

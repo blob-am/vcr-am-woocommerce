@@ -8,19 +8,19 @@ Stable tag: 0.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Issue Armenian fiscal receipts (eHDM) to the State Revenue Committee from WooCommerce orders. Multi-currency, refunds, QR receipts.
+Issue Armenian fiscal receipts (e-HDM) to the State Revenue Committee from WooCommerce orders. Multi-currency, refunds, async retries.
 
 == Description ==
 
-The official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Register. Issues Armenian fiscal receipts (e-HDM) to the State Revenue Committee directly from WooCommerce orders, refunds, and prepayments — fulfilling the obligation in Tax Code Article 380.1 (HO-280-N) and Government Decision 1976-N.
+The official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Register. Issues Armenian fiscal receipts (e-HDM) to the State Revenue Committee directly from WooCommerce orders and refunds — fulfilling the obligation in Tax Code Article 380.1 (HO-280-N) and Government Decision 1976-N.
 
 = Why this plugin =
 
 * **Direct SRC integration.** Talks to the official VCR.AM gateway, not a third-party reseller.
 * **Asynchronous fiscalization.** Uses WooCommerce Action Scheduler — customer checkout is never blocked by SRC slowness; failed transmissions retry automatically.
 * **Multi-currency first-class.** Orders in USD/EUR/RUB convert to AMD using the Central Bank of Armenia rate at fiscalization time.
-* **Refund-aware.** Issues partial-reversal receipts automatically when WooCommerce refunds happen.
-* **Customer-facing receipt.** QR code and verification URL on the thank-you page and in transactional emails.
+* **Refund-aware.** A full refund of an order is reversed at the tax authority automatically. A partial refund is flagged for you to register by hand, because the reversal has to name the exact lines.
+* **Customer-facing receipt.** A verification link to the official receipt page on the thank-you page and in transactional emails.
 * **HPOS + Cart/Checkout Blocks compatible.**
 * **Encrypted credentials at rest** (libsodium).
 
@@ -37,7 +37,7 @@ The official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Re
 2. Activate the plugin through the **Plugins** menu in WordPress.
 3. Go to **WooCommerce → Settings → VCR** and paste your VCR.AM API key.
 4. Save, then pick the **default cashier** — the dropdown loads from your VCR account once the key is stored. Leave **override department** empty: each offer already carries the department you chose when you added it in VCR, and orders use it automatically. Set it only if you deliberately want every line of every order booked under one department regardless of what its offer says. The department determines the tax regime (VAT, VAT-exempt, turnover tax, micro-enterprise) printed on the receipt, and a fiscal receipt can only be refunded and reissued, never corrected.
-5. Configure per-payment-method fiscalization timing (online gateways default to "on payment confirmed"; cash-on-delivery defaults to "on order completed").
+5. If you take cash on delivery, choose under **Cash on delivery** when its receipt is issued: when the order is placed (the default) or when you mark the order Completed. Orders paid online are always fiscalized the moment the payment clears.
 
 == Frequently Asked Questions ==
 

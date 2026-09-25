@@ -5,7 +5,7 @@
 
 Official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Register — issue Armenian fiscal receipts (eHDM) directly to the State Revenue Committee from WooCommerce orders.
 
-> **Status:** scaffold only. Real fiscal flow lands in subsequent phases — see [Roadmap](#roadmap). Not yet listed on WordPress.org.
+> **Status:** the fiscal flow is built and covered by tests, but the plugin has never run against a live SRC register — every end-to-end test so far has been against a mock. It is unreleased (no tag, no WordPress.org listing) and wants a supervised pilot on a real store before anyone depends on it. See [Roadmap](#roadmap).
 
 ## Why this plugin
 
@@ -37,7 +37,7 @@ cd vcr-am-woocommerce
 composer install
 ```
 
-> **Phase 2 will add [Strauss](https://github.com/BrianHenryIE/strauss)** to scope production dependencies into the `BlobSolutions\WooCommerceVcrAm\Vendor\` namespace under `vendor-prefixed/`. Required for WP.org distribution to prevent conflicts with other plugins that bundle the same libraries at different versions. Currently held out of `composer.json` because Strauss's transitive `voku/simple-cache` (psr/simple-cache 1|2) clashes with Pest 4's mutate plugin (psr/simple-cache 3); the standard fix is to install Strauss in an isolated `composer-bin-plugin` context, which we'll add when production dependencies land.
+> [Strauss](https://github.com/BrianHenryIE/strauss) scopes production dependencies into the `BlobSolutions\WooCommerceVcrAm\Vendor\` namespace under `vendor-prefixed/`. Required for WP.org distribution, so that two plugins bundling the same library at different versions cannot collide. Note the consequence for development: the plugin calls the *vendored* copy of the PHP SDK, so a new SDK capability is unavailable here until the SDK is released and re-vendored.
 
 ## Repository layout
 
@@ -51,15 +51,26 @@ vcr-am-woocommerce/
 ├── readme.txt                    ← WordPress.org plugin directory readme
 ├── LICENSE                       ← GPL-2.0-or-later (WP.org requirement)
 ├── src/
-│   ├── Plugin.php                ← bootstrap (HPOS / Blocks declarations, WC active guard)
-│   └── Settings/
-│       └── SettingsPage.php      ← admin UI (placeholder; filled in Phase 2)
+│   ├── Plugin.php                ← bootstrap + wiring (HPOS / Blocks declarations, WC active guard)
+│   ├── Configuration.php         ← every stored option, read through one class
+│   ├── Admin/                    ← order meta box, orders-list column, bulk action, system status
+│   ├── Catalog/                  ← cashier and department lookups against the VCR account
+│   ├── Cli/                      ← WP-CLI commands
+│   ├── Currency/                 ← CBA rate fetch + cache for non-AMD orders
+│   ├── Fiscal/                   ← the sale pipeline: listener → queue → job → SDK
+│   ├── Logging/                  ← log routing
+│   ├── Migration/                ← option/meta upgrades between plugin versions
+│   ├── Net/                      ← HTTP client plumbing, incl. the SSRF guard
+│   ├── Privacy/                  ← GDPR exporter and eraser
+│   ├── Receipt/                  ← customer-facing receipt link
+│   ├── Refund/                   ← the refund pipeline, parallel to Fiscal/
+│   ├── Settings/                 ← the WooCommerce settings tab
+│   └── VcrClientFactory.php      ← builds the vendored SDK client from settings
 └── tests/
     ├── Pest.php
     ├── TestCase.php              ← Brain Monkey set up / tear down
-    └── Unit/
-        ├── PluginTest.php
-        └── PluginEntryFileTest.php
+    ├── Unit/                     ← mirrors src/, one directory per namespace
+    └── E2E/                      ← Playwright against wp-env + a mock VCR server
 ```
 
 ## Local development
@@ -123,10 +134,15 @@ This plugin follows the same conventions as the rest of the VCR.AM ecosystem:
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 1 | Repo scaffold, tooling, plugin shell, HPOS / Blocks declarations | ✅ done |
-| 2 | SDK + Guzzle as production deps, Strauss vendor scoping, core fiscal flow (order-status hooks, Action Scheduler queue, idempotency), settings page | planned |
-| 3 | FX handling — CBA rate fetcher with cache + stale-rate guards | planned |
-| 4 | Refund automation, customer-facing receipt UX (QR + URL + emails) | planned |
-| 5 | E2E test suite via wp-env + Playwright; WordPress.org submission | planned |
+| 2 | SDK + Guzzle as production deps, Strauss vendor scoping, core fiscal flow (order-status hooks, Action Scheduler queue), settings page | ✅ done |
+| 3 | FX handling — CBA rate fetcher with cache + stale-rate guards | ✅ done |
+| 4 | Refund automation (full refunds), customer-facing receipt link on thank-you page and emails | ✅ done |
+| 5 | E2E suite via wp-env + Playwright, against a mock VCR server | ✅ done |
+| 6 | Validate against a live register on a real store; first tagged release | next |
+| 7 | Idempotency key on every submission — blocked on a PHP SDK release carrying it | next |
+| 8 | Partial refunds (needs per-item SRC ids from the SDK), B2B buyer, per-product unit, `hy_AM` / `ru_RU` translations, QR code, WordPress.org submission | planned |
+
+Deliberately out of scope for now: excise marks (eMark), so shops selling alcohol, tobacco or pharmaceuticals cannot use this plugin yet; prepayment receipts; mixed/split tender.
 
 ## Related packages
 
