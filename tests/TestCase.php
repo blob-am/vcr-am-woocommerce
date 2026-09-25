@@ -51,6 +51,11 @@ abstract class TestCase extends BaseTestCase
         // user-lookup branch override with a (object) ['ID' => N] return.
         Functions\when('get_user_by')->justReturn(false);
 
+        // Store price precision. AMD has no minor unit, which is the setting
+        // every fixture in this suite is written against; a test needing a
+        // 2-decimal store overrides this locally.
+        Functions\when('wc_get_price_decimals')->justReturn(0);
+
         // wp_unslash strips magic-quote escapes from superglobal values.
         // Brain Monkey doesn't pre-stub it. The unit-test environment
         // never has magic quotes active, so a pass-through is the

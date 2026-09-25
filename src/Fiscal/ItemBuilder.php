@@ -123,7 +123,7 @@ class ItemBuilder
         // possible point and saves the admin a confusing two-line
         // error trace.
         $shippingTotal = (float) $order->get_shipping_total() + (float) $order->get_shipping_tax();
-        $feeItems = $order->get_items('fee');
+        $feeItems = $this->chargeableFeeItems($order);
 
         if ($shippingTotal > 0.0 && $shippingSku === null) {
             throw new FiscalBuildException(
@@ -171,25 +171,12 @@ class ItemBuilder
         }
 
         foreach ($feeItems as $fee) {
-            if (! $fee instanceof WC_Order_Item_Fee) {
-                continue;
-            }
-
-            $amount = (float) $fee->get_total() + (float) $fee->get_total_tax();
-
-            if ($amount <= 0.0) {
-                // Negative fees (discount-style adjustments) and zero
-                // fees are skipped — discounts belong on the product
-                // line, not as a separate SaleItem.
-                continue;
-            }
-
             assert($feeSku !== null);
             $built[] = new SaleItem(
                 offer: Offer::existing($feeSku),
                 department: $department,
                 quantity: '1',
-                price: $this->formatDecimal($amount),
+                price: $this->formatDecimal($this->feeAmount($fee)),
                 unit: Unit::Other,
                 currency: $currency,
             );
@@ -201,7 +188,97 @@ class ItemBuilder
             );
         }
 
+        $this->assertItemsAccountForOrderTotal($built, $order);
+
         return $built;
+    }
+
+    /**
+     * Fee lines that represent money actually charged.
+     *
+     * A WC fee may be negative: that is how cart-level discount, loyalty and
+     * gift-card extensions reduce an order, since a negative fee lowers
+     * `get_total()` without touching any product line. Such a line is not a
+     * chargeable item and gets no SaleItem — the resulting shortfall is
+     * caught by {@see self::assertItemsAccountForOrderTotal()} rather than
+     * being special-cased here, so every other way of moving the total
+     * (store credit, a `woocommerce_order_amount_total` filter) is caught by
+     * the same guard.
+     *
+     * @return list<WC_Order_Item_Fee>
+     */
+    private function chargeableFeeItems(WC_Order $order): array
+    {
+        $chargeable = [];
+
+        foreach ($order->get_items('fee') as $fee) {
+            if ($fee instanceof WC_Order_Item_Fee && $this->feeAmount($fee) > 0.0) {
+                $chargeable[] = $fee;
+            }
+        }
+
+        return $chargeable;
+    }
+
+    private function feeAmount(WC_Order_Item_Fee $fee): float
+    {
+        return (float) $fee->get_total() + (float) $fee->get_total_tax();
+    }
+
+    /**
+     * Refuse to build a receipt whose lines do not add up to what the buyer
+     * was charged.
+     *
+     * The sale is settled server-side from the item sum, so nothing else
+     * compares the receipt against `WC_Order::get_total()`. Without this a
+     * discount the plugin cannot model — a negative fee, store credit, a
+     * filtered total — produces a perfectly valid receipt for the wrong
+     * amount, which is a filed tax document nobody can reconcile against the
+     * money.
+     *
+     * @param list<SaleItem> $items
+     *
+     * @throws FiscalBuildException
+     */
+    private function assertItemsAccountForOrderTotal(array $items, WC_Order $order): void
+    {
+        $lineSum = 0.0;
+
+        foreach ($items as $item) {
+            $lineSum += (float) $item->price * (float) $item->quantity;
+        }
+
+        $charged = (float) $order->get_total();
+        $tolerance = $this->roundingTolerance();
+
+        if (abs($lineSum - $charged) <= $tolerance) {
+            return;
+        }
+
+        throw new FiscalBuildException(sprintf(
+            'Receipt lines total %s but the order was charged %s. Something reduced or raised the order total that this plugin cannot put on a receipt — most often a negative fee line from a discount, loyalty or gift-card extension. Fiscalise this order manually.',
+            $this->formatDecimal(abs($lineSum)),
+            $this->formatDecimal(abs($charged)),
+        ));
+    }
+
+    /**
+     * Half the smallest unit the store currency can express.
+     *
+     * WooCommerce stores line totals unrounded and rounds only the grand
+     * total, so the item sum and `get_total()` legitimately differ by up to
+     * half a minor unit — and never by more. For AMD, which has no minor
+     * unit, that is 0.5; for a 2-decimal currency, 0.005.
+     */
+    private function roundingTolerance(): float
+    {
+        // WooCommerce is a hard dependency of this plugin (`Requires Plugins`
+        // in the entry file), so the function is always there. Guarding it
+        // with function_exists() would substitute a different tolerance
+        // silently, which is worse than failing.
+        $decimals = max(0, (int) wc_get_price_decimals());
+
+        return 0.5 * (10 ** -$decimals);
     }
 
     /**
