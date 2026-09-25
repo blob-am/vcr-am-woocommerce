@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 6.8
 Requires PHP: 8.3
-Stable tag: 0.1.1
+Stable tag: 0.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -95,6 +95,10 @@ For multi-currency stores (orders in USD, EUR, RUB, etc.), the plugin fetches th
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.2 =
+* Fixed: refunding a foreign-currency order never worked. The plugin looked the exchange rate up itself and called a Central Bank of Armenia method that does not exist, so every non-AMD refund was held for manual registration. The rate now comes from VCR - the same service that already converted the sale - so one rule governs both halves of the transaction and a refund cannot drift from the receipt it reverses.
+* Your store no longer needs to reach api.cba.am. Refunds talk only to VCR, which the plugin contacts anyway.
 
 = 0.1.1 =
 * Fixed: 0.1.0 could not contact the fiscalization service at all. The release ZIP was built with an autoloader that omitted the PSR HTTP contracts, so every sale failed with "Interface Psr\Http\Client\ClientInterface not found". Anyone on 0.1.0 must update.
