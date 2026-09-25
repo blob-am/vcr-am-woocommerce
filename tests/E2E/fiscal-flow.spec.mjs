@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { wpCli, wpCliJson } from './helpers/wp-cli.mjs';
+import { evalFile, readVcrMeta, resetFiscalMeta, wpCli } from './helpers/wp-cli.mjs';
 import { getMockLog, resetMockLog, resetMockPlan, setMockPlan } from './helpers/mock-vcr.mjs';
 
 /**
@@ -9,8 +9,9 @@ import { getMockLog, resetMockLog, resetMockPlan, setMockPlan } from './helpers/
  * the mock fed back.
  *
  * What this proves:
- *   - Plugin loads in real WP/WC (vendor-prefixed autoloader works,
- *     no fatals on activation)
+ *   - The *built artefact* loads in real WP/WC — the ZIP that gets
+ *     published, with the Strauss-scoped vendor tree, not the working
+ *     tree's unscoped one. That distinction is the whole of v0.1.0.
  *   - WC payment_complete hook is wired to FiscalQueue::enqueue
  *   - Action Scheduler accepts and runs the action
  *   - SaleRegistrarFactory builds a working VcrClient against an
@@ -43,10 +44,7 @@ test.describe('VCR fiscal flow (happy path)', () => {
         // starts from a clean slate. Without this, leftover queued
         // actions from a previous run all fire alongside the new one
         // and assertions about call counts become flaky.
-        await wpCli([
-            'db', 'query',
-            "DELETE FROM wp_postmeta WHERE meta_key LIKE '_vcr_%'",
-        ]).catch(() => { /* fresh DB — nothing to delete */ });
+        await resetFiscalMeta();
 
         await wpCli([
             'db', 'query',
@@ -59,10 +57,7 @@ test.describe('VCR fiscal flow (happy path)', () => {
         // control over WC API calls, ensures the status-transition
         // hook fires (which `wc shop_order create --status=processing`
         // skips, since it sets the status without firing a transition).
-        const orderId = await wpCli([
-            'eval-file',
-            'wp-content/plugins/vcr-am-woocommerce/tests/E2E/scripts/create-paid-order.php',
-        ]);
+        const orderId = await evalFile('create-paid-order.php');
 
         expect(orderId).toMatch(/^\d+$/);
 
@@ -73,16 +68,9 @@ test.describe('VCR fiscal flow (happy path)', () => {
         // first enqueue runs through; pinning by hook works either way.
         await wpCli(['action-scheduler', 'run', '--hooks=vcr_fiscalize_order', '--force']);
 
-        // 4. Read back the fiscal meta. WC stores meta as strings; we
-        // assert the canonical Success state and the SRC identifiers.
-        const meta = await wpCliJson([
-            'post', 'meta', 'list', orderId,
-        ]);
-
-        const byKey = Object.fromEntries(
-            meta.filter((row) => row.meta_key.startsWith('_vcr_'))
-                .map((row) => [row.meta_key, row.meta_value]),
-        );
+        // 4. Read back the fiscal meta through WooCommerce's order CRUD,
+        // so the assertion holds on HPOS and on legacy post storage alike.
+        const byKey = await readVcrMeta(orderId);
 
         expect(byKey._vcr_fiscal_status).toBe('success');
         expect(byKey._vcr_fiscal).toBe('FISCAL-E2E');

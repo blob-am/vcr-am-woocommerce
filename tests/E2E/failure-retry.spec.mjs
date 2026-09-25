@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { wpCli, wpCliJson } from './helpers/wp-cli.mjs';
+import { evalFile, readVcrMeta, resetFiscalMeta, wpCli } from './helpers/wp-cli.mjs';
 import { resetMockLog, resetMockPlan, setMockPlan, getMockLog } from './helpers/mock-vcr.mjs';
 
 /**
@@ -34,10 +34,7 @@ test.describe('VCR fiscal flow (failure → retry → Failed)', () => {
             body: { error: 'gateway timeout (mock)' },
         });
 
-        await wpCli([
-            'db', 'query',
-            "DELETE FROM wp_postmeta WHERE meta_key LIKE '_vcr_%'",
-        ]).catch(() => {});
+        await resetFiscalMeta();
 
         await wpCli([
             'db', 'query',
@@ -46,10 +43,14 @@ test.describe('VCR fiscal flow (failure → retry → Failed)', () => {
     });
 
     test('persistent 5xx exhausts retry budget and ends in Failed', async () => {
-        const orderId = await wpCli([
-            'eval-file',
-            'wp-content/plugins/vcr-am-woocommerce/tests/E2E/scripts/create-paid-order.php',
-        ]);
+        // Six retries mean about fifteen round-trips into the container, each
+        // of which starts a fresh wp-cli. That is several times the default
+        // timeout's worth of process startup and nothing to do with the
+        // plugin, so this one test gets the longer budget rather than the
+        // whole suite getting a timeout loose enough to hide a real hang.
+        test.slow();
+
+        const orderId = await evalFile('create-paid-order.php');
         expect(orderId).toMatch(/^\d+$/);
 
         // FiscalJob::MAX_ATTEMPTS = 6. We need to run the queue 6 times,
@@ -71,11 +72,7 @@ test.describe('VCR fiscal flow (failure → retry → Failed)', () => {
 
         // After 6 attempts, status MUST be failed — markFailed has the
         // "Gave up after %d attempts" message.
-        const meta = await wpCliJson(['post', 'meta', 'list', orderId]);
-        const byKey = Object.fromEntries(
-            meta.filter((row) => row.meta_key.startsWith('_vcr_'))
-                .map((row) => [row.meta_key, row.meta_value]),
-        );
+        const byKey = await readVcrMeta(orderId);
 
         expect(byKey._vcr_fiscal_status).toBe('failed');
         expect(byKey._vcr_attempt_count).toBe(String(MAX_ATTEMPTS));
@@ -96,18 +93,11 @@ test.describe('VCR fiscal flow (failure → retry → Failed)', () => {
         // path stamps the meta correctly without needing the full
         // budget exhaustion. Faster than the previous test for
         // catching regression in the per-attempt bookkeeping.
-        const orderId = await wpCli([
-            'eval-file',
-            'wp-content/plugins/vcr-am-woocommerce/tests/E2E/scripts/create-paid-order.php',
-        ]);
+        const orderId = await evalFile('create-paid-order.php');
 
         await wpCli(['action-scheduler', 'run', '--hooks=vcr_fiscalize_order', '--force']);
 
-        const meta = await wpCliJson(['post', 'meta', 'list', orderId]);
-        const byKey = Object.fromEntries(
-            meta.filter((row) => row.meta_key.startsWith('_vcr_'))
-                .map((row) => [row.meta_key, row.meta_value]),
-        );
+        const byKey = await readVcrMeta(orderId);
 
         expect(byKey._vcr_fiscal_status).toBe('pending');
         expect(byKey._vcr_attempt_count).toBe('1');

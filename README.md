@@ -92,9 +92,11 @@ composer format:check   # verify code style without writing
 composer strauss        # re-run Strauss (auto-runs after install/update)
 ```
 
-### End-to-end tests (Phase 4 lite)
+### End-to-end tests
 
-The repo ships an E2E suite that runs the full plugin against a real WordPress + WooCommerce stack via `wp-env`, with a tiny in-process mock VCR API server. No production VCR endpoint is touched.
+The repo ships an E2E suite that runs the plugin against a real WordPress + WooCommerce stack via `wp-env`, with a tiny in-process mock VCR API server. No production VCR endpoint is touched.
+
+**The suite drives the built ZIP, not the working tree.** `npm run env:start` builds `dist/vcr-am-fiscal-receipts.zip` first and unpacks it into `build/e2e/`, and that is what WordPress loads. Running the tree instead is how v0.1.0 shipped green and unable to make a single HTTP call: the tree's `vendor/` is the developer's unscoped one, so the autoloader defect that only exists after Strauss runs was invisible to every test.
 
 Requirements: Node 20+, Docker.
 
@@ -102,31 +104,50 @@ Requirements: Node 20+, Docker.
 npm install                    # one-off: pulls @wordpress/env + @playwright/test
 npm run test:e2e:install       # one-off: downloads chromium for Playwright
 
-npm run env:start              # boot WP + WC + this plugin in Docker (~30s)
+npm run env:start              # build the ZIP, then boot WP + WC + it in Docker
 npm run test:e2e               # run the suite (mock VCR auto-starts via webServer)
 npm run env:stop               # tear down
 ```
+
+Two environment variables select what the suite runs against:
+
+| Variable | Default | What |
+| --- | --- | --- |
+| `WC_ORDER_STORAGE` | `hpos` | `hpos` or `posts` — which table WooCommerce treats as authoritative for orders. CI runs both. |
+| `WC_VERSION` | `latest` | WooCommerce version to install. |
+
+```bash
+WC_ORDER_STORAGE=posts npm run test:e2e   # legacy post storage
+```
+
+Switching storage against a container that already has orders deletes them: WooCommerce refuses to move the authoritative table while any order is out of sync, and a test store has nothing worth migrating.
 
 Layout:
 
 | Path | What |
 | --- | --- |
-| `.wp-env.json` | wp-env config — pins PHP 8.3, mounts plugin + WC, loads bootstrap mu-plugin |
-| `tests/E2E/wp-bootstrap.php` | mu-plugin loaded inside WP — pre-configures the plugin to point at the mock VCR |
-| `tests/E2E/mock-vcr-server.mjs` | Node HTTP server on `:9876` answering `/api/v1/cashiers`, `/api/v1/sales`. Programmable per test via `/__test/plan` |
-| `tests/E2E/helpers/wp-cli.mjs` | `wp ...` runner — driving WP/WC state from Node without browser navigation |
+| `.wp-env.json` | wp-env config — pins PHP 8.3, mounts `build/e2e/` + the mu-plugin + the fixture scripts |
+| `tests/E2E/scripts/setup-env.mjs` | Installs and activates WooCommerce, sets the order datastore, activates the plugin. Runs as `pretest:e2e` |
+| `tests/E2E/mu-plugins/vcr-e2e-bootstrap.php` | mu-plugin loaded inside WP — points the plugin at the mock VCR |
+| `tests/E2E/mock-vcr-server.mjs` | Node HTTP server on `:9876` answering `/api/v1/cashiers`, `/api/v1/sales`, `/api/v1/sales/refund`, `/api/v1/exchange-rate`. Programmable per test via `/__test/plan` |
+| `tests/E2E/helpers/wp-cli.mjs` | `wp ...` runner, plus the storage-agnostic order-meta helpers |
 | `tests/E2E/helpers/mock-vcr.mjs` | Test-side client for `/__test/log` (assertions) and `/__test/plan` (scenario programming) |
+| `tests/E2E/scripts/*.php` | Fixtures run via `wp eval-file` — create orders, read back `_vcr_*` meta, reset state |
 | `tests/E2E/*.spec.mjs` | Playwright test specs |
+
+WooCommerce is installed by `wp plugin install`, not listed in `.wp-env.json`. A URL-sourced plugin lands in a directory named after the URL (`woocommerce.latest-stable`), and WordPress resolves `Requires Plugins: woocommerce` against directory names — so under that layout the suite tests a dependency graph no real store has.
+
+Order meta is read through WooCommerce's order CRUD (`tests/E2E/scripts/read-order-meta.php`), never `wp post meta list`. Under HPOS `wp_postmeta` holds nothing, so a postmeta read asserts against an empty set and passes having verified nothing.
 
 #### WP/WC version policy
 
-CI matrix today is `php 8.3 × WP latest × WC latest` — one combo, sequential. Once the suite proves stable on `main` for a couple of weeks, broaden to:
+CI matrix today is `php 8.3 × WP latest × WC latest`, run against both order datastores. Once the suite proves stable on `main` for a couple of weeks, broaden to:
 
 - PHP: 8.3, 8.4
 - WP: 6.6, 6.7, latest
 - WC: 9.4, latest, beta
 
-Matrix combos cost ~2 min each in parallel. The narrow start lets us iterate on flake without burning CI minutes; expand by editing the `matrix:` block in `.github/workflows/e2e.yml`.
+Matrix combos run in parallel. The narrow start lets us iterate on flake without burning CI minutes; expand by editing the `matrix:` block in `.github/workflows/e2e.yml`.
 
 ## Architecture principles
 

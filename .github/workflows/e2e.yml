@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   e2e:
-    name: Playwright (PHP ${{ matrix.php }} · WP ${{ matrix.wp }} · WC ${{ matrix.wc }})
+    name: Playwright (PHP ${{ matrix.php }} · WP ${{ matrix.wp }} · WC ${{ matrix.wc }} · ${{ matrix.storage }})
     runs-on: ubuntu-latest
     # Hard cap so a stuck wp-env/Docker startup fails within minutes
     # instead of burning the 6h GitHub default before anyone notices.
@@ -28,6 +28,11 @@ jobs:
         php: ['8.3']
         wp: ['latest']
         wc: ['latest']
+        # Both order datastores are live in the wild: HPOS is the default
+        # for stores created since WC 8.2, legacy post storage is what
+        # every older store runs until it migrates. The plugin reads and
+        # writes order meta on both, so both get exercised.
+        storage: ['hpos', 'posts']
 
     steps:
       - uses: actions/checkout@v4
@@ -62,29 +67,27 @@ jobs:
       - name: Install Playwright browsers
         run: npm run test:e2e:install
 
-      - name: Override .wp-env.json with matrix versions
-        # Only patch when the matrix selects a non-default version, to
-        # avoid touching the file in the latest×latest case (the
-        # checked-in .wp-env.json already targets latest).
-        if: matrix.wp != 'latest' || matrix.wc != 'latest'
+      - name: Override .wp-env.json with the matrix WordPress version
+        # Only patch for a non-default version — the checked-in
+        # .wp-env.json already targets latest. The WooCommerce version is
+        # NOT set here: it is installed by tests/E2E/scripts/setup-env.mjs
+        # via `wp plugin install`, which is the only way to get the
+        # canonical `woocommerce` plugin directory that `Requires Plugins`
+        # resolves against.
+        if: matrix.wp != 'latest'
         run: |
           node -e "
             const fs = require('fs');
             const c = JSON.parse(fs.readFileSync('.wp-env.json', 'utf8'));
-            const wp = '${{ matrix.wp }}';
-            const wc = '${{ matrix.wc }}';
-            if (wp !== 'latest') {
-              c.core = 'WordPress/WordPress#' + wp;
-            }
-            if (wc !== 'latest') {
-              c.plugins = c.plugins.map((p) =>
-                p.includes('woocommerce') ? 'https://downloads.wordpress.org/plugin/woocommerce.' + wc + '.zip' : p
-              );
-            }
+            c.core = 'WordPress/WordPress#' + '${{ matrix.wp }}';
             fs.writeFileSync('.wp-env.override.json', JSON.stringify(c, null, 2));
           "
 
       - name: Start wp-env
+        # `preenv:start` builds the distributable ZIP and unpacks it into
+        # build/e2e/ — the suite drives the artefact that gets published,
+        # not the working tree. v0.1.0 shipped unable to make a single HTTP
+        # call while a green E2E run tested a tree that could.
         timeout-minutes: 10
         run: npm run env:start
 
@@ -121,6 +124,11 @@ jobs:
           exit 1
 
       - name: Run Playwright tests
+        # `pretest:e2e` installs and activates WooCommerce and switches the
+        # order datastore before Playwright starts.
+        env:
+          WC_VERSION: ${{ matrix.wc }}
+          WC_ORDER_STORAGE: ${{ matrix.storage }}
         run: npm run test:e2e
 
       - name: Capture wp-env logs on failure
@@ -134,7 +142,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-php${{ matrix.php }}-wp${{ matrix.wp }}-wc${{ matrix.wc }}
+          name: playwright-report-php${{ matrix.php }}-wp${{ matrix.wp }}-wc${{ matrix.wc }}-${{ matrix.storage }}
           path: |
             playwright-report/
             test-results/

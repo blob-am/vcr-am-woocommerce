@@ -8,11 +8,16 @@
         "node": ">=20"
     },
     "scripts": {
+        "build:plugin": "bash bin/build-wporg-zip.sh",
+        "build:e2e-plugin": "npm run build:plugin && rm -rf build/e2e && mkdir -p build/e2e && unzip -qq dist/vcr-am-fiscal-receipts.zip -d build/e2e",
+        "preenv:start": "npm run build:e2e-plugin",
         "env:start": "wp-env start",
         "env:stop": "wp-env stop",
         "env:destroy": "wp-env destroy",
         "env:logs": "wp-env logs",
+        "env:setup": "node tests/E2E/scripts/setup-env.mjs",
         "mock:start": "node tests/E2E/mock-vcr-server.mjs",
+        "pretest:e2e": "npm run env:setup",
         "test:e2e": "playwright test",
         "test:e2e:headed": "playwright test --headed",
         "test:e2e:install": "playwright install --with-deps chromium"

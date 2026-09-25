@@ -5,6 +5,15 @@
  * then transition the order to "processing" so the WC payment hooks
  * fire and the VCR plugin enqueues a fiscal job.
  *
+ * Usage: wp eval-file create-paid-order.php [paymentMethod]
+ *
+ * `paymentMethod` defaults to `bacs` (bank transfer -> nonCash). Pass
+ * `cod` to exercise the cash tender, which is a different branch in both
+ * PaymentMapper and OrderListener. The transition is always
+ * `update_status('processing')` rather than `payment_complete()`, because
+ * that is what WooCommerce's own COD gateway does — and the deferred-cash
+ * setting only has an effect on the status hook.
+ *
  * Echoes the new order id on stdout. Loaded by the E2E suite via
  * `wp eval-file`, executed inside the wp-env CLI container.
  *
@@ -20,6 +29,7 @@ if (! function_exists('wc_get_product')) {
 
 $sku = $_ENV['VCR_E2E_SKU'] ?? 'E2E-SKU-1';
 $price = $_ENV['VCR_E2E_PRICE'] ?? '1000';
+$paymentMethod = isset($args[0]) && $args[0] !== '' ? (string) $args[0] : 'bacs';
 
 // 1. Product (or reuse if it already exists for this SKU).
 $existing = wc_get_product_id_by_sku($sku);
@@ -37,7 +47,7 @@ if ($existing > 0) {
 // 2. Order with that product as a line item, in pending status.
 $order = wc_create_order(['status' => 'pending']);
 $order->add_product($product, 1);
-$order->set_payment_method('bacs');           // any non-COD method → maps to nonCash
+$order->set_payment_method($paymentMethod);
 $order->calculate_totals();
 $order->save();
 

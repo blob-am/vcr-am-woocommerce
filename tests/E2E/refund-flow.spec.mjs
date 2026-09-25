@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { wpCli, wpCliJson } from './helpers/wp-cli.mjs';
+import { evalFile, readVcrMeta, resetFiscalMeta, wpCli } from './helpers/wp-cli.mjs';
 import { getMockLog, resetMockLog, resetMockPlan, setMockPlan } from './helpers/mock-vcr.mjs';
 
 /**
@@ -59,10 +59,7 @@ test.describe('VCR refund flow (happy path)', () => {
 
         // Sweep prior fiscal/refund meta + pending AS actions so each
         // test starts clean.
-        await wpCli([
-            'db', 'query',
-            "DELETE FROM wp_postmeta WHERE meta_key LIKE '_vcr_%'",
-        ]).catch(() => { /* fresh DB */ });
+        await resetFiscalMeta();
 
         await wpCli([
             'db', 'query',
@@ -72,10 +69,7 @@ test.describe('VCR refund flow (happy path)', () => {
 
     test('a refund of a registered sale is registered with the mock SRC', async () => {
         // 1. Create the parent paid order. Re-uses Phase-4-lite fixture.
-        const orderId = await wpCli([
-            'eval-file',
-            'wp-content/plugins/vcr-am-woocommerce/tests/E2E/scripts/create-paid-order.php',
-        ]);
+        const orderId = await evalFile('create-paid-order.php');
         expect(orderId).toMatch(/^\d+$/);
 
         // 2. Run the sale fiscalisation AS hook so the parent registers.
@@ -85,23 +79,14 @@ test.describe('VCR refund flow (happy path)', () => {
         // admin's "Refund" button takes. The order id is passed as a
         // positional arg; wp-cli surfaces it via the `$args` global
         // inside the eval-file script.
-        const refundId = await wpCli([
-            'eval-file',
-            'wp-content/plugins/vcr-am-woocommerce/tests/E2E/scripts/create-full-refund.php',
-            orderId.trim(),
-        ]);
+        const refundId = await evalFile('create-full-refund.php', [orderId.trim()]);
         expect(refundId).toMatch(/^\d+$/);
 
         // 4. Run the refund-registration AS hook.
         await wpCli(['action-scheduler', 'run', '--hooks=vcr_register_refund', '--force']);
 
         // 5. Read back refund meta and assert the success state.
-        const refundMeta = await wpCliJson(['post', 'meta', 'list', refundId.trim()]);
-
-        const byKey = Object.fromEntries(
-            refundMeta.filter((row) => row.meta_key.startsWith('_vcr_'))
-                .map((row) => [row.meta_key, row.meta_value]),
-        );
+        const byKey = await readVcrMeta(refundId.trim());
 
         expect(byKey._vcr_refund_status).toBe('success');
         expect(byKey._vcr_refund_url_id).toBe('rfd-e2e-1');

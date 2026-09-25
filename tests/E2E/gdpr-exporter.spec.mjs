@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { wpCli, wpCliJson } from './helpers/wp-cli.mjs';
+import { evalFile, readVcrMeta, resetFiscalMeta, wpCli } from './helpers/wp-cli.mjs';
 import { resetMockLog, resetMockPlan, setMockPlan } from './helpers/mock-vcr.mjs';
 
 /**
@@ -35,10 +35,7 @@ test.describe('GDPR personal-data exporter', () => {
             },
         });
 
-        await wpCli([
-            'db', 'query',
-            "DELETE FROM wp_postmeta WHERE meta_key LIKE '_vcr_%'",
-        ]).catch(() => {});
+        await resetFiscalMeta();
         await wpCli([
             'db', 'query',
             "DELETE FROM wp_actionscheduler_actions WHERE hook = 'vcr_fiscalize_order'",
@@ -47,11 +44,7 @@ test.describe('GDPR personal-data exporter', () => {
 
     test('exporter returns VCR group with SRC identifiers for a Success order', async () => {
         // 1. Order with known billing email
-        const orderId = await wpCli([
-            'eval-file',
-            'wp-content/plugins/vcr-am-woocommerce/tests/E2E/scripts/create-order-with-email.php',
-            TEST_EMAIL,
-        ]);
+        const orderId = await evalFile('create-order-with-email.php', [TEST_EMAIL]);
         expect(orderId).toMatch(/^\d+$/);
 
         // 2. Drive to Success
@@ -59,19 +52,11 @@ test.describe('GDPR personal-data exporter', () => {
 
         // Sanity — fiscal flow must have succeeded, otherwise the
         // exporter would have nothing to surface.
-        const meta = await wpCliJson(['post', 'meta', 'list', orderId]);
-        const byKey = Object.fromEntries(
-            meta.filter((row) => row.meta_key.startsWith('_vcr_'))
-                .map((row) => [row.meta_key, row.meta_value]),
-        );
+        const byKey = await readVcrMeta(orderId);
         expect(byKey._vcr_fiscal_status).toBe('success');
 
         // 3. Invoke the exporter for this email
-        const stdout = await wpCli([
-            'eval-file',
-            'wp-content/plugins/vcr-am-woocommerce/tests/E2E/scripts/run-gdpr-exporter.php',
-            TEST_EMAIL,
-        ]);
+        const stdout = await evalFile('run-gdpr-exporter.php', [TEST_EMAIL]);
 
         const result = JSON.parse(stdout);
 
@@ -109,11 +94,7 @@ test.describe('GDPR personal-data exporter', () => {
     });
 
     test('exporter returns empty data for an unknown email', async () => {
-        const stdout = await wpCli([
-            'eval-file',
-            'wp-content/plugins/vcr-am-woocommerce/tests/E2E/scripts/run-gdpr-exporter.php',
-            'nobody@nowhere.example',
-        ]);
+        const stdout = await evalFile('run-gdpr-exporter.php', ['nobody@nowhere.example']);
 
         const result = JSON.parse(stdout);
 

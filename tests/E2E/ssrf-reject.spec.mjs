@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { wpCli } from './helpers/wp-cli.mjs';
+import { evalFile } from './helpers/wp-cli.mjs';
 
 /**
  * E2E: SSRF guard — settings save filter rejects unsafe URLs.
@@ -40,11 +40,7 @@ test.describe('SafeUrlValidator + settings-save SSRF guard', () => {
     ];
 
     test('SafeUrlValidator rejects every classic SSRF vector', async () => {
-        const stdout = await wpCli([
-            'eval-file',
-            'wp-content/plugins/vcr-am-woocommerce/tests/E2E/scripts/test-ssrf-validator.php',
-            ...MALICIOUS_URLS,
-        ]);
+        const stdout = await evalFile('test-ssrf-validator.php', [...MALICIOUS_URLS]);
 
         const results = JSON.parse(stdout);
 
@@ -64,11 +60,7 @@ test.describe('SafeUrlValidator + settings-save SSRF guard', () => {
         // above.
         const malicious = 'http://169.254.169.254/latest/meta-data/';
 
-        const stdout = await wpCli([
-            'eval-file',
-            'wp-content/plugins/vcr-am-woocommerce/tests/E2E/scripts/test-settings-save-ssrf.php',
-            malicious,
-        ]);
+        const stdout = await evalFile('test-settings-save-ssrf.php', [malicious]);
         const result = JSON.parse(stdout);
 
         // The contract: filter rejects (returns ''), no save lands.
@@ -82,11 +74,7 @@ test.describe('SafeUrlValidator + settings-save SSRF guard', () => {
         // through, otherwise we'd have a self-DoS.
         const safe = 'https://vcr.am/api/v1';
 
-        const stdout = await wpCli([
-            'eval-file',
-            'wp-content/plugins/vcr-am-woocommerce/tests/E2E/scripts/test-settings-save-ssrf.php',
-            safe,
-        ]);
+        const stdout = await evalFile('test-settings-save-ssrf.php', [safe]);
         const result = JSON.parse(stdout);
 
         expect(result.blocked).toBe(false);
