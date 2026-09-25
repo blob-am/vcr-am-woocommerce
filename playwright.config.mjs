@@ -16,7 +16,16 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
     testDir: './tests/E2E',
     testMatch: /.*\.spec\.mjs$/,
-    timeout: 60_000,
+    // Every `wp ...` call boots WordPress, WooCommerce and this plugin inside
+    // the container, which measures at 4-12s depending on machine load — and a
+    // single scenario makes ten to fifteen of them. 60s fitted about twelve
+    // calls on an idle laptop and nothing at all on a loaded CI runner, which
+    // surfaced as a timeout in whichever spec happened to be longest that day.
+    // The transport is not the cost (docker compose exec on the already-running
+    // container saves ~40% and is still seconds), so the budget has to match
+    // what the work costs. A hang is still caught: this fires long before the
+    // job's own 25-minute cap.
+    timeout: 150_000,
     expect: { timeout: 10_000 },
     fullyParallel: false,
     workers: 1,

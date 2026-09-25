@@ -43,12 +43,11 @@ test.describe('VCR fiscal flow (failure → retry → Failed)', () => {
     });
 
     test('persistent 5xx exhausts retry budget and ends in Failed', async () => {
-        // Six retries mean about fifteen round-trips into the container, each
-        // of which starts a fresh wp-cli. That is several times the default
-        // timeout's worth of process startup and nothing to do with the
-        // plugin, so this one test gets the longer budget rather than the
-        // whole suite getting a timeout loose enough to hide a real hang.
-        test.slow();
+        // Structurally the longest spec in the suite: six retry rounds, two
+        // container round-trips each, on top of the usual setup. At the
+        // measured 4-12s per round-trip that is 1-3 minutes of WordPress
+        // bootstrap before any assertion runs.
+        test.setTimeout(300_000);
 
         const orderId = await evalFile('create-paid-order.php');
         expect(orderId).toMatch(/^\d+$/);
