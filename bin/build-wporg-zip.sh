@@ -84,37 +84,80 @@ done < .distignore
 # would copy our in-progress staging into the staging dir.
 RSYNC_EXCLUDES+=("--exclude=$BUILD_DIR" "--exclude=$DIST_DIR")
 
+# Exclude the two dependency trees as well. They are NOT listed in
+# .distignore on purpose: that file answers "what must never reach an end
+# user", and both trees must reach the end user. What we want here is a
+# different thing — the staged tree is built from source rather than
+# inheriting the developer's tree, so a dev machine carrying dev
+# dependencies, a half-finished Strauss run or a locally patched package
+# cannot leak into a release.
+RSYNC_EXCLUDES+=("--exclude=/vendor/" "--exclude=/vendor-prefixed/")
+
 echo "==> Staging source into $STAGING_DIR/ ($(echo "${#RSYNC_EXCLUDES[@]} / 2" | bc) excludes)"
 rsync -a "${RSYNC_EXCLUDES[@]}" ./ "$STAGING_DIR/"
 
 # ---------------------------------------------------------------------------
 # Install production dependencies inside the staging dir.
 #
-# We use --no-scripts to skip the post-install hook (which would try to
-# bin-install Strauss into a fresh composer-bin context — slow and
-# unnecessary because the dev tree's vendor-prefixed/ is already
-# scoped against the production dependency set). Instead we copy
-# vendor-prefixed/ verbatim from the source tree below.
+# The lock file is excluded from the staged tree by .distignore (it must not
+# ship), but `composer install` without one silently resolves dependencies
+# afresh — so the artefact would carry whatever versions happened to be
+# newest at build time rather than the versions CI tested. Copy it in for
+# the install and remove it again below, so the build is reproducible.
 # ---------------------------------------------------------------------------
-echo "==> Installing production dependencies (skipping post-install scripts)"
+if [[ ! -f composer.lock ]]; then
+    echo "error: composer.lock is missing — refusing to build from an unlocked dependency set" >&2
+    exit 1
+fi
+cp composer.lock "$STAGING_DIR/composer.lock"
+
+echo "==> Installing production dependencies from the lock file"
 (
     cd "$STAGING_DIR"
     composer install \
         --no-dev \
-        --optimize-autoloader \
-        --classmap-authoritative \
         --no-interaction \
         --no-progress \
         --no-scripts \
         --quiet
 )
 
-# Copy the pre-built scoped vendor from the source tree. Strauss already
-# ran (during dev `composer install`) and produced these — re-running it
-# inside the staging dir would require composer-bin install which is
-# slow and reinstalls php-parser etc. into the temp tree.
-echo "==> Copying pre-built vendor-prefixed/ from source tree"
-rsync -a "$REPO_ROOT/vendor-prefixed/" "$STAGING_DIR/vendor-prefixed/"
+# Scope the production dependencies inside the staging tree.
+#
+# This must happen HERE and not be copied in from the source tree. Strauss is
+# configured with delete_vendor_packages: true, so running it is what removes
+# the unscoped originals from vendor/. Copying a pre-built vendor-prefixed/
+# instead leaves the staging vendor/ fully populated, and since the plugin
+# require_once's vendor/autoload.php at runtime, the ZIP would register an
+# unscoped GuzzleHttp\Client in the global namespace — exactly the
+# plugin-vs-plugin collision Strauss exists to prevent.
+#
+# bin/ is excluded from the staging tree by .distignore, so we invoke the
+# wrapper from the repo: __DIR__ inside it resolves against the repo, while
+# the CWD (staging) is what Strauss reads composer.json and vendor/ from.
+echo "==> Scoping dependencies with Strauss (in the staging tree)"
+if [[ ! -f "$REPO_ROOT/vendor-bin/strauss/vendor/autoload.php" ]]; then
+    echo "error: Strauss bin context missing — run: composer bin strauss install" >&2
+    exit 1
+fi
+(
+    cd "$STAGING_DIR"
+    php "$REPO_ROOT/bin/strauss"
+)
+
+# Strauss deleted the original packages out of vendor/, which invalidates the
+# classmap composer wrote a moment ago. Regenerate it against what remains.
+echo "==> Regenerating the production autoloader"
+(
+    cd "$STAGING_DIR"
+    composer dump-autoload \
+        --no-dev \
+        --optimize \
+        --classmap-authoritative \
+        --no-interaction \
+        --no-scripts \
+        --quiet
+)
 
 # Strauss leaves its bootstrap (bin/strauss) and the bin-installed tooling
 # (vendor-bin/) in place because composer-bin-plugin is a dev dependency and
@@ -142,6 +185,33 @@ for path in "${forbidden_paths[@]}"; do
 done
 if (( violations > 0 )); then
     echo "error: $violations forbidden artefact(s) made it into the staging dir" >&2
+    exit 1
+fi
+
+# The plugin's entry file refuses to boot unless BOTH autoloaders are present
+# and shows "missing composer dependencies" instead. Assert them here, so a
+# build can never produce a ZIP that fails on activation.
+for autoload in vendor/autoload.php vendor-prefixed/autoload.php; do
+    if [[ ! -f "$STAGING_DIR/$autoload" ]]; then
+        echo "error: $autoload missing — the plugin would refuse to activate" >&2
+        exit 1
+    fi
+done
+
+# Every production package must exist in exactly one of the two trees. A
+# package present in both means Strauss did not delete the unscoped original,
+# so the ZIP would load an unprefixed copy into the global namespace and
+# collide with any other plugin bundling the same library.
+echo "==> Verifying no dependency ships both scoped and unscoped"
+duplicates=0
+while IFS= read -r pkg; do
+    if [[ -d "$STAGING_DIR/vendor/$pkg" ]]; then
+        echo "  FAIL: $pkg exists in vendor/ and vendor-prefixed/" >&2
+        duplicates=$((duplicates + 1))
+    fi
+done < <(cd "$STAGING_DIR/vendor-prefixed" && find . -mindepth 2 -maxdepth 2 -type d | sed 's|^\./||')
+if (( duplicates > 0 )); then
+    echo "error: $duplicates dependency(ies) ship unscoped as well as scoped" >&2
     exit 1
 fi
 
