@@ -38,7 +38,11 @@
         "ext-json": "*",
         "ext-sodium": "*",
         "blob-solutions/vcr-am-sdk": "^0.8.0",
-        "guzzlehttp/guzzle": "^7.8"
+        "guzzlehttp/guzzle": "^7.8",
+        "psr/http-client": "^1.0",
+        "psr/http-factory": "^1.1",
+        "psr/http-message": "^2.0",
+        "psr/log": "^3.0"
     },
     "require-dev": {
         "bamarni/composer-bin-plugin": "^1.8",

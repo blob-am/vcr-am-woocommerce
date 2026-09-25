@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "65201f2024b6dcc50c69bfd28f36484e",
+    "content-hash": "63a51ff04c3b9fd959161d445ce277ae",
     "packages": [
         {
             "name": "blob-solutions/vcr-am-sdk",
