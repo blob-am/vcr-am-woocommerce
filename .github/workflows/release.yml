@@ -72,10 +72,20 @@ jobs:
       - name: Build the distributable ZIP
         run: bash bin/build-wporg-zip.sh
 
+      # Published with the preinstalled gh CLI rather than a third-party action:
+      # this step holds a write-scoped token and signs off the only artefact
+      # merchants ever install, so it should not run code we do not control.
       - name: Publish the GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          files: dist/vcr-am-fiscal-receipts.zip
-          generate_release_notes: true
-          fail_on_unmatched_files: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zip="dist/vcr-am-fiscal-receipts.zip"
+          if [[ ! -f "$zip" ]]; then
+            echo "error: $zip was not produced by the build" >&2
+            exit 1
+          fi
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          gh release create "$tag" "$zip" \
+            --title "$tag" \
+            --generate-notes \
+            --verify-tag
