@@ -1,10 +1,10 @@
 {
     "name": "blob-solutions/woocommerce-vcr-am-strauss-bin",
-    "description": "Isolated composer-bin context for brianhenryie/strauss. Strauss's transitive deps (voku/simple-cache → psr/simple-cache 1|2) conflict with Pest 4's mutate plugin (psr/simple-cache 3) when installed in the main require-dev. Keeping Strauss here lets us scope production deps for WP.org distribution without dragging that conflict into the main composer environment.",
+    "description": "Isolated composer-bin context for brianhenryie/strauss. Strauss's transitive deps (voku/simple-cache -> psr/simple-cache 1|2) conflict with Pest 4's mutate plugin (psr/simple-cache 3) when installed in the main require-dev. Keeping Strauss here lets us scope production deps for WP.org distribution without dragging that conflict into the main composer environment. Held below 0.29: from that version Strauss stops rewriting class names inside defined('Class::CONST') strings, which is exactly how php-http/discovery detects Guzzle as a PSR-18 client (CommonClassesStrategy::isGuzzleImplementingPsr18). Verified by building on both: 0.28.1 emits the prefixed constant, 0.30.0 emits the unprefixed one. Latent for us today because VcrClientFactory always passes an explicit client, but it is a trap waiting for the first caller that does not.",
     "type": "project",
     "require": {
         "php": "^8.3",
-        "brianhenryie/strauss": "^0.27"
+        "brianhenryie/strauss": "^0.28.1"
     },
     "config": {
         "sort-packages": true,
