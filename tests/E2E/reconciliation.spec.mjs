@@ -91,4 +91,52 @@ test.describe('receipt/charge reconciliation', () => {
         // than reporting nothing, because only a reversal can undo it.
         expect(salesCalls(await getMockLog())).toHaveLength(0);
     });
+
+    test.describe('with tax calculation on', () => {
+        // Prices include tax, which is how an Armenian store is set up: VAT is
+        // extracted from the displayed price, never added to it. So a product
+        // line's gross does not move, while shipping and fees — whose totals
+        // WooCommerce treats as ex-tax — grow by the rate.
+        test.beforeEach(async () => {
+            await evalFile('configure-taxes.php', ['on']);
+        });
+
+        test.afterEach(async () => {
+            // Load-bearing: the setting is global and the specs share one
+            // WordPress, so leaving it on would silently change the
+            // arithmetic of every order created after this file.
+            await evalFile('configure-taxes.php', ['off']);
+        });
+
+        test('lines carry their tax portion and still add up to the charge', async () => {
+            const order = JSON.parse(await evalFile('create-shaped-order.php', ['rich']));
+
+            await wpCli(['action-scheduler', 'run', '--hooks=vcr_fiscalize_order', '--force']);
+
+            const byKey = await readVcrMeta(order.id);
+            expect(byKey._vcr_fiscal_status).toBe('success');
+
+            const calls = salesCalls(await getMockLog());
+            expect(calls).toHaveLength(1);
+
+            const { items } = calls[0].body;
+            const lineSum = items.reduce(
+                (sum, item) => sum + Number(item.price) * Number(item.quantity),
+                0,
+            );
+
+            // The fold is what this pins: WooCommerce stores a line's net and
+            // its tax separately, and the receipt has to report the gross.
+            // Negative-tested by dropping `get_total_tax()` from
+            // `unitPriceInclusive()` in the installed artefact — the order
+            // does not quietly under-report, it lands in ManualRequired,
+            // because the reconciliation guard catches the shortfall too. The
+            // untaxed cases above stay green under that same break, which is
+            // why this one has to exist.
+            expect(lineSum).toBeCloseTo(Number(order.total), 2);
+
+            // Tax is genuinely in play here, not silently zero.
+            expect(Number(order.total)).toBeGreaterThan(3550);
+        });
+    });
 });
