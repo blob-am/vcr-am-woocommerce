@@ -45,7 +45,7 @@ cd vcr-am-woocommerce
 composer install
 ```
 
-> [Strauss](https://github.com/BrianHenryIE/strauss) scopes production dependencies into the `BlobSolutions\WooCommerceVcrAm\Vendor\` namespace under `vendor-prefixed/`. Required for WP.org distribution, so that two plugins bundling the same library at different versions cannot collide. Note the consequence for development: the plugin calls the *vendored* copy of the PHP SDK, so a new SDK capability is unavailable here until the SDK is released and re-vendored.
+> [Strauss](https://github.com/BrianHenryIE/strauss) scopes production dependencies into the `BlobSolutions\WooCommerceVcrAm\Vendor\` namespace under `vendor-prefixed/`. Required for WP.org distribution, so that two plugins bundling the same library at different versions cannot collide. **Everything is scoped, the PSR interfaces included** — `psr/log` v1 and v3 have mutually unsatisfiable signatures, so a global `Psr\Log\LoggerInterface` is a collision, not a shared contract, and both WordPress core and WooCommerce core scope their own. The shipped `vendor/` therefore holds nothing but the plugin's own autoloader. Note the consequence for development: the plugin calls the *vendored* copy of the PHP SDK, so a new SDK capability is unavailable here until the SDK is released and re-vendored.
 
 ## Repository layout
 

@@ -47,15 +47,16 @@ foreach (['vendor/autoload.php', 'vendor-prefixed/autoload.php'] as $autoloader)
 $prefix = 'BlobSolutions\\WooCommerceVcrAm\\';
 $vendor = $prefix . 'Vendor\\';
 
+$psr18Client = $vendor . 'Psr\\Http\\Client\\ClientInterface';
+
 /** @var array<string, string> symbol => kind */
 $required = [
-    // Shared contracts, deliberately left unprefixed so the scoped Guzzle
-    // interoperates with whatever else the site has loaded. These are the
-    // ones the broken build dropped.
-    'Psr\\Http\\Client\\ClientInterface' => 'interface',
-    'Psr\\Http\\Message\\RequestFactoryInterface' => 'interface',
-    'Psr\\Http\\Message\\StreamFactoryInterface' => 'interface',
-    'Psr\\Log\\LoggerInterface' => 'interface',
+    // The PSR contracts. Scoped like everything else — see the leak check
+    // below for why they must NOT also exist unprefixed.
+    $psr18Client => 'interface',
+    $vendor . 'Psr\\Http\\Message\\RequestFactoryInterface' => 'interface',
+    $vendor . 'Psr\\Http\\Message\\StreamFactoryInterface' => 'interface',
+    $vendor . 'Psr\\Log\\LoggerInterface' => 'interface',
     // Scoped dependencies.
     $vendor . 'GuzzleHttp\\Client' => 'class',
     $vendor . 'BlobSolutions\\VcrAm\\VcrClient' => 'class',
@@ -77,8 +78,26 @@ foreach ($required as $symbol => $kind) {
 
 // An unprefixed copy in the global namespace is the collision Strauss exists
 // to prevent; it means the scoping step silently did nothing.
-foreach (['GuzzleHttp\\Client', 'CuyZ\\Valinor\\MapperBuilder'] as $leaked) {
-    if (class_exists($leaked)) {
+//
+// The PSR contracts belong in this list, not in an exclusion. Two plugins
+// cannot share a global `Psr\Log\LoggerInterface` when one wants v1 and the
+// other v3 — the signatures are mutually unsatisfiable, and whichever
+// autoloads first wins for the whole request. Both WordPress core (as
+// WordPress\AiClientDependencies\Psr\…) and WooCommerce core (as
+// Automattic\WooCommerce\Vendor\Psr\…) scope theirs, so there is no shared
+// contract here to interoperate with — only a collision to avoid.
+$leaks = [
+    'GuzzleHttp\\Client' => 'class',
+    'CuyZ\\Valinor\\MapperBuilder' => 'class',
+    'Psr\\Http\\Client\\ClientInterface' => 'interface',
+    'Psr\\Http\\Message\\RequestFactoryInterface' => 'interface',
+    'Psr\\Log\\LoggerInterface' => 'interface',
+];
+
+foreach ($leaks as $leaked => $kind) {
+    $found = $kind === 'interface' ? interface_exists($leaked) : class_exists($leaked);
+
+    if ($found) {
         fwrite(STDERR, "FAIL: $leaked leaked into the global namespace unscoped\n");
         $failures++;
     }
@@ -94,8 +113,8 @@ if ($failures > 0) {
 $clientClass = $vendor . 'GuzzleHttp\\Client';
 $client = new $clientClass();
 
-if (! $client instanceof Psr\Http\Client\ClientInterface) {
-    fwrite(STDERR, "FAIL: scoped Guzzle does not satisfy the unprefixed PSR-18 contract\n");
+if (! $client instanceof $psr18Client) {
+    fwrite(STDERR, "FAIL: scoped Guzzle does not satisfy the scoped PSR-18 contract\n");
     exit(1);
 }
 
