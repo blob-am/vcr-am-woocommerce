@@ -43,7 +43,13 @@ add_action('init', static function (): void {
         // Foreign-currency orders no longer need an outside host: the sale
         // sends the store currency and the VCR converts, and a refund asks
         // the same VCR for the rate — so the mock covers both.
-        'woocommerce_currency' => 'AMD',
+        //
+        // Read through `vcr_e2e_currency` rather than pinned, because this
+        // block runs on EVERY request: a spec that set `woocommerce_currency`
+        // directly would have it reset out from under itself on the next page
+        // load. A spec sets `vcr_e2e_currency` instead and this keeps the two
+        // in step.
+        'woocommerce_currency' => get_option('vcr_e2e_currency', 'AMD'),
     ];
 
     foreach ($defaults as $option => $value) {
