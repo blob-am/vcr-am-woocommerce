@@ -42,6 +42,7 @@ playwright.config.mjs
 # Linters / static analysis
 phpstan.neon.dist
 pint.json
+phpcs.xml.dist
 .php-cs-fixer.dist.php
 
 # Composer dev tooling (Strauss et al.)
