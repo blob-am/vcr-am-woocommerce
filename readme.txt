@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 6.8
 Requires PHP: 8.3
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -95,6 +95,11 @@ For multi-currency stores (orders in USD, EUR, RUB, etc.), the plugin fetches th
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.1 =
+* Fixed: 0.1.0 could not contact the fiscalization service at all. The release ZIP was built with an autoloader that omitted the PSR HTTP contracts, so every sale failed with "Interface Psr\Http\Client\ClientInterface not found". Anyone on 0.1.0 must update.
+* An order whose total was reduced by a negative fee line - how cart discount, loyalty and gift-card extensions apply a discount - is now held for manual registration instead of being reported for more money than the customer paid.
+* The build now installs the finished ZIP and makes a request with it before it can be published.
 
 = 0.1.0 =
 * First public release.
