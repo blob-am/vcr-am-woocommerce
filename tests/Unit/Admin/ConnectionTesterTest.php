@@ -9,10 +9,8 @@ use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
-use Mockery;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use RuntimeException;
 
 beforeEach(function (): void {
     Functions\when('wp_salt')->justReturn(str_repeat('x', 64));

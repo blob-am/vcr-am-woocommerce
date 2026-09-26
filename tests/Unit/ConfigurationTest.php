@@ -6,7 +6,6 @@ use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
 use Brain\Monkey\Functions;
-use Mockery;
 
 beforeEach(function (): void {
     Functions\when('wp_salt')->justReturn(str_repeat('x', 64));

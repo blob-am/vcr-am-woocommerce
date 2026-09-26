@@ -11,8 +11,6 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\DepartmentLi
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\DepartmentLocalizedTitle;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\TaxRegime;
 use Brain\Monkey\Functions;
-use Mockery;
-use RuntimeException;
 
 beforeEach(function (): void {
     Functions\when('wp_salt')->justReturn(str_repeat('x', 64));
