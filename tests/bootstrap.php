@@ -5,12 +5,15 @@ declare(strict_types=1);
 /**
  * Test-suite bootstrap.
  *
- * Loads BOTH the main composer autoloader (PSR-4 for our own code, dev
- * deps like Pest / Brain Monkey, and PSR contracts left unprefixed for
- * interop) and the Strauss-prefixed autoloader (SDK + Guzzle + php-http
- * under our private namespace). Production loads them the same way from
- * the plugin entry; mirroring that here keeps tests honest about what's
- * actually visible at runtime.
+ * Loads BOTH the main composer autoloader (PSR-4 for our own code plus
+ * the dev deps — Pest, Brain Monkey) and the Strauss-prefixed autoloader
+ * (SDK + Guzzle + php-http + the PSR contracts, all under our private
+ * namespace). Production loads them the same way from the plugin entry;
+ * mirroring that here keeps tests honest about what's actually visible at
+ * runtime. Note the difference from a built artefact: dev deps make plenty
+ * of unprefixed classes reachable here that the shipped ZIP does not carry,
+ * so the suite cannot prove the scoping worked — `bin/smoke-test-artifact.php`
+ * does that against the ZIP itself.
  *
  * Defines the small set of WordPress constants that our `src/` code
  * references but Brain Monkey doesn't stub by default. These aren't

@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Plugin Name:       VCR — Fiscal Receipts for Armenia (eHDM)
  * Plugin URI:        https://vcr.am
  * Description:       Issue Armenian fiscal receipts (eHDM) to the State Revenue Committee directly from WooCommerce orders. Multi-currency + refunds.
- * Version:           0.1.2
+ * Version:           0.1.3
  * Requires at least: 6.7
  * Tested up to:      6.8
  * Requires PHP:      8.3
@@ -34,13 +34,14 @@ if (defined(__NAMESPACE__ . '\\PLUGIN_FILE')) {
 }
 
 const PLUGIN_FILE    = __FILE__;
-const PLUGIN_VERSION = '0.1.2';
+const PLUGIN_VERSION = '0.1.3';
 
-// Both autoloaders are required for runtime. `vendor/` carries the
-// non-scoped composer artefacts (PSR contracts left unprefixed for
-// interop, Composer autoloader). `vendor-prefixed/` carries the
-// production deps (SDK + Guzzle + php-http/*) under our private
-// namespace so they don't conflict with other plugins. A partial
+// Both autoloaders are required for runtime. `vendor-prefixed/` carries
+// every production dependency (SDK + Guzzle + php-http/* + the PSR
+// contracts) under our private namespace, so nothing this plugin bundles
+// can collide with another plugin's copy of the same library. `vendor/`
+// is left holding only Composer's own autoloader, and is required because
+// that is what resolves this plugin's own `src/` classes. A partial
 // install — typical of `composer install --no-scripts` or shipping a
 // raw Git checkout without running Strauss — would silently load only
 // the first and then fatal at runtime when the SDK is referenced.
