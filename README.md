@@ -122,6 +122,8 @@ WC_ORDER_STORAGE=posts npm run test:e2e   # legacy post storage
 
 Switching storage against a container that already has orders deletes them: WooCommerce refuses to move the authoritative table while any order is out of sync, and a test store has nothing worth migrating.
 
+**Rebuilding the ZIP needs a stop, not just a start.** `build/e2e/<slug>` is a Docker bind mount, and the build deletes that directory before unzipping into it — so rebuilding while the containers are up leaves the mount on an unreachable inode. Inside the container the directory is still there and empty, WordPress sees no plugin, and wp-cli says only "could not be found". `npm run env:start` does not fix it: with an unchanged config wp-env reuses the running containers. `npm run env:stop && npm run env:start` does.
+
 Layout:
 
 | Path | What |
@@ -144,7 +146,7 @@ Order meta is read through WooCommerce's order CRUD (`tests/E2E/scripts/read-ord
 CI matrix today is `php 8.3 × WP latest × WC latest`, run against both order datastores. Once the suite proves stable on `main` for a couple of weeks, broaden to:
 
 - PHP: 8.3, 8.4
-- WP: 6.6, 6.7, latest
+- WP: 6.7 (the declared floor), latest
 - WC: 9.4, latest, beta
 
 Matrix combos run in parallel. The narrow start lets us iterate on flake without burning CI minutes; expand by editing the `matrix:` block in `.github/workflows/e2e.yml`.

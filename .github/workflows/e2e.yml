@@ -99,14 +99,16 @@ jobs:
         timeout-minutes: 3
         run: |
           for i in {1..30}; do
-            # Probe the REST index via ?rest_route=, NOT /wp-json/wc/v3:
-            # wp-env ships WordPress with PLAIN permalinks, so the pretty
-            # /wp-json/ rewrite never exists and every /wp-json/* request
-            # 404s forever — that is exactly what stalled this job on every
-            # run before (WordPress was up; the probe URL was wrong). The
-            # ?rest_route= form is permalink-agnostic and returns the public
-            # REST index (200). /wc/v3 would also need auth (401), so the
-            # core REST root is the right readiness signal.
+            # Probe the REST index via ?rest_route=, NOT /wp-json/wc/v3.
+            # The ?rest_route= form is permalink-agnostic, which is the whole
+            # point: wp-env 10.x shipped WordPress with PLAIN permalinks, so
+            # the pretty /wp-json/ rewrite did not exist and every /wp-json/*
+            # request 404'd forever — that is exactly what stalled this job on
+            # every run before it was fixed (WordPress was up; the probe URL
+            # was wrong). wp-env 11 turns pretty permalinks on by default, so
+            # /wp-json/ happens to work there too — which is precisely why the
+            # probe should not depend on it. /wc/v3 would also need auth
+            # (401), so the core REST root is the right readiness signal.
             # --connect-timeout/--max-time are load-bearing: without them a
             # socket that accepts but never answers (PHP-FPM not ready yet)
             # blocks curl forever, defeating the loop's own bound.

@@ -41,6 +41,11 @@ if (ORDER_STORAGE !== 'hpos' && ORDER_STORAGE !== 'posts') {
     throw new Error(`WC_ORDER_STORAGE must be "hpos" or "posts", got "${ORDER_STORAGE}"`);
 }
 
+async function reportWordPressVersion() {
+    const version = await wpCli(['core', 'version']);
+    console.log(`  WordPress ${version}`);
+}
+
 async function installWooCommerce() {
     const args = ['plugin', 'install', 'woocommerce', '--activate'];
 
@@ -114,6 +119,28 @@ async function configureOrderStorage() {
 }
 
 async function activatePlugin() {
+    // `mappings` is a Docker bind mount onto build/e2e/<slug>, and
+    // `npm run build:e2e-plugin` deletes that directory before unzipping the
+    // fresh ZIP into it. Do that while the containers are up and the mount is
+    // left pointing at an inode nobody can reach: the directory is still
+    // listed inside the container and it is empty, so WordPress sees no plugin
+    // there and wp-cli says only "could not be found".
+    //
+    // `env:start` does not repair it — with an unchanged config wp-env reuses
+    // the running containers, mount and all. Only a stop (or destroy) makes
+    // Docker establish the mount again. Both were measured.
+    const installed = await wpCli(['plugin', 'list', '--field=name']);
+
+    if (! installed.split('\n').includes(PLUGIN_SLUG)) {
+        throw new Error(
+            `${PLUGIN_SLUG} is not visible inside the container: its directory `
+            + 'is mounted but empty, which is what a ZIP rebuilt underneath a '
+            + 'running wp-env looks like. Run `npm run env:stop && npm run '
+            + 'env:start` — starting alone reuses the containers and keeps the '
+            + 'stale mount.',
+        );
+    }
+
     await wpCli(['plugin', 'activate', PLUGIN_SLUG]);
 
     const status = await wpCli(['plugin', 'get', PLUGIN_SLUG, '--field=status']);
@@ -127,6 +154,11 @@ async function activatePlugin() {
 }
 
 console.log('Preparing the wp-env container:');
+// The two versions the run actually exercised, printed before anything else:
+// the matrix asks for "latest", so the log is the only record of which
+// release that was — and the `Tested up to` / `WC tested up to` headers we
+// publish are a claim about exactly these two numbers.
+await reportWordPressVersion();
 await installWooCommerce();
 await configureOrderStorage();
 await activatePlugin();
