@@ -69,6 +69,13 @@ jobs:
             fi
           done
 
+      # The gate CI's own audit job cannot be: this is the last point before a
+      # ZIP reaches merchants, and `--no-dev` narrows it to exactly what ships.
+      # v0.1.3 went out over a Guzzle carrying nine advisories because nothing
+      # between the lock and the release asked.
+      - name: Refuse to ship a lock with known advisories
+        run: composer audit --locked --no-dev
+
       - name: Build the distributable ZIP
         run: bash bin/build-wporg-zip.sh
 

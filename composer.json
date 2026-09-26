@@ -1,6 +1,6 @@
 {
     "name": "blob-solutions/woocommerce-vcr-am",
-    "description": "Official WooCommerce plugin for the VCR.AM Virtual Cash Register — issue fiscal receipts (eHDM) to the Armenian State Revenue Committee directly from WooCommerce orders. Direct SRC integration, multi-currency, refunds, customer receipt link.",
+    "description": "Official WooCommerce plugin for the VCR.AM Virtual Cash Register \u2014 issue fiscal receipts (eHDM) to the Armenian State Revenue Committee directly from WooCommerce orders. Direct SRC integration, multi-currency, refunds, customer receipt link.",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "keywords": [
@@ -45,7 +45,7 @@
         "brain/monkey": "^2.6",
         "laravel/pint": "^1.29",
         "pestphp/pest": "^4.0",
-        "php-stubs/woocommerce-stubs": "^10.0",
+        "php-stubs/woocommerce-stubs": "^11.1",
         "php-stubs/wp-cli-stubs": "^2.12",
         "phpstan/phpstan": "^2.1",
         "phpstan/phpstan-strict-rules": "^2.0",
@@ -105,6 +105,8 @@
             "@phpstan",
             "@test"
         ],
+        "deps:audit": "@composer audit --locked",
+        "deps:outdated": "@composer update --dry-run --no-scripts",
         "build:wporg": "bash bin/build-wporg-zip.sh"
     },
     "scripts-descriptions": {
@@ -115,6 +117,8 @@
         "format": "Apply Pint code style fixes",
         "format:check": "Verify code style without writing changes",
         "check": "Run the full local CI pipeline (format + phpstan + test)",
+        "deps:audit": "Check the LOCK for security advisories. Both --locked forms are deliberate: Strauss deletes every scoped package from vendor/composer/installed.json, so a plain `composer audit` sees the dev tree only and reports all-clear over a vulnerable shipped ZIP",
+        "deps:outdated": "List every dependency a fresh resolve would move, production ones included \u2014 `composer outdated` cannot see them for the same reason `composer audit` cannot",
         "build:wporg": "Build a clean WP.org-ready ZIP into dist/ using .distignore as the exclusion list"
     }
 }

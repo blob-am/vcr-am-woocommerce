@@ -10,6 +10,13 @@ parameters:
             - tests
     treatPhpDocTypesAsCertain: false
     bootstrapFiles:
+        # Held at the 6.x line, one major behind the WordPress we run against
+        # in E2E: php-stubs/wp-cli-stubs (needed just below, for src/Cli/)
+        # still requires wordpress-stubs ^4.7 || ^5.0 || ^6.0, so Composer
+        # cannot take this to 7.x while that stays. Harmless for us — the
+        # plugin's floor is WP 6.7, so 6.x is the API surface we promise to
+        # work on, and E2E exercises the real current release. Lift both the
+        # moment wp-cli-stubs allows ^7.0.
         - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
         - vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
         # Action Scheduler functions (`as_enqueue_async_action`,

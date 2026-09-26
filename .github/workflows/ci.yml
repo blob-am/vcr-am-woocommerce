@@ -14,6 +14,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  audit:
+    name: Composer audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+      # `--locked` is load-bearing, not a shortcut past installing.
+      # Strauss runs on post-install with `delete_vendor_packages: true`, which
+      # removes every scoped package from vendor/composer/installed.json — so a
+      # plain `composer audit` (and `composer outdated`) sees the dev tree only
+      # and reports all-clear while the shipped ZIP carries the advisory. That
+      # is exactly what happened: the lock behind v0.1.3 had 13 advisories
+      # against guzzlehttp/guzzle and guzzlehttp/psr7, one of them high, and
+      # nothing here said a word. Auditing the lock is version-controlled and
+      # install-independent, so Strauss cannot hide anything from it.
+      - name: Audit the lock file
+        run: composer audit --locked
+
   lint:
     name: Pint (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
