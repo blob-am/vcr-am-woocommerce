@@ -6,13 +6,13 @@ declare(strict_types=1);
  * Plugin Name:       VCR — Fiscal Receipts for Armenia (eHDM)
  * Plugin URI:        https://vcr.am
  * Description:       Issue Armenian fiscal receipts (eHDM) to the State Revenue Committee directly from WooCommerce orders. Multi-currency + refunds.
- * Version:           0.1.3
+ * Version:           0.1.4
  * Requires at least: 6.7
- * Tested up to:      6.8
+ * Tested up to:      7.1
  * Requires PHP:      8.3
  * Requires Plugins:  woocommerce
  * WC requires at least: 9.4
- * WC tested up to:   10.7
+ * WC tested up to:   11.1
  * Author:            Blob Solutions
  * Author URI:        https://blob.am
  * License:           GPL-2.0-or-later
@@ -34,7 +34,7 @@ if (defined(__NAMESPACE__ . '\\PLUGIN_FILE')) {
 }
 
 const PLUGIN_FILE    = __FILE__;
-const PLUGIN_VERSION = '0.1.3';
+const PLUGIN_VERSION = '0.1.4';
 
 // Both autoloaders are required for runtime. `vendor-prefixed/` carries
 // every production dependency (SDK + Guzzle + php-http/* + the PSR

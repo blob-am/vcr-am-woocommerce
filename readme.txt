@@ -2,9 +2,9 @@
 Contributors: blobsolutions
 Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
-Tested up to: 6.8
+Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.1.3
+Stable tag: 0.1.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -95,6 +95,11 @@ For multi-currency stores (orders in USD, EUR, RUB, etc.), the plugin fetches th
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.4 =
+* Security: the HTTP library the plugin bundles to talk to VCR (Guzzle) was a year out of date. The copy inside 0.1.3 and every earlier release carried thirteen published advisories, one of them rated high, in how it canonicalises hosts and handles redirects. This release ships the fixed version. Anyone on 0.1.3 or earlier should update.
+* Tested against WordPress 7.1 and WooCommerce 11.1, on both of WooCommerce's order storage modes.
+* The release build now refuses to publish if any bundled library has a known advisory against it, which is what should have caught the above before it shipped.
 
 = 0.1.3 =
 * Fixed: the plugin published a set of shared PHP interfaces (the PSR logging and HTTP contracts) into the global namespace instead of keeping them to itself. Nothing in this plugin misbehaved because of it, but on a site where another plugin needs a different version of those same interfaces, whichever loaded first won and the other one could fatal-error. Everything the plugin bundles is now namespaced to the plugin, so it cannot affect a neighbour. Anyone on 0.1.2 or earlier should update.
