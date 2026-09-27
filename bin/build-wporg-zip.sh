@@ -220,6 +220,26 @@ if (( duplicates > 0 )); then
     exit 1
 fi
 
+# Our own SDK must not ship its development tree into a merchant's
+# wp-content. It did until blob-solutions/vcr-am-sdk v0.9.0, which added
+# `.gitattributes` export-ignore: 55 files, 53 KB of the ZIP. Scoped to the one
+# package we control, so a third party shipping its own tests fails nothing
+# here — that would be a finding to raise upstream, not a reason to block a
+# release.
+echo "==> Verifying our SDK ships no development scaffolding"
+sdk_dir="$STAGING_DIR/vendor-prefixed/blob-solutions/vcr-am-sdk"
+scaffolding=0
+for path in tests phpunit.xml.dist phpstan.neon.dist pint.json; do
+    if [[ -e "$sdk_dir/$path" ]]; then
+        echo "  FAIL: vcr-am-sdk ships $path" >&2
+        scaffolding=$((scaffolding + 1))
+    fi
+done
+if (( scaffolding > 0 )); then
+    echo "error: the vendored SDK carries $scaffolding development path(s) — check its .gitattributes" >&2
+    exit 1
+fi
+
 # ---------------------------------------------------------------------------
 # Build the ZIP. zip's `-r` is recursive, `-q` is quiet, `-X` strips file
 # attributes (we want a deterministic-ish ZIP; macOS's xattr noise breaks

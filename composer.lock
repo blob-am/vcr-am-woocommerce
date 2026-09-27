@@ -4,27 +4,27 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e3bb6cf8de9162a4bcc4b203e587b117",
+    "content-hash": "45b5fc87bbe4669f113bb7ff08ae006e",
     "packages": [
         {
             "name": "blob-solutions/vcr-am-sdk",
-            "version": "v0.8.0",
+            "version": "v0.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/blob-am/vcr-am-sdk-php.git",
-                "reference": "e0e2546781ee53899ef0907ccc1c0cc5bc22cbba"
+                "reference": "0d48fa2f8c45cad02514fcb4e8f598154a47fe86"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/blob-am/vcr-am-sdk-php/zipball/e0e2546781ee53899ef0907ccc1c0cc5bc22cbba",
-                "reference": "e0e2546781ee53899ef0907ccc1c0cc5bc22cbba",
+                "url": "https://api.github.com/repos/blob-am/vcr-am-sdk-php/zipball/0d48fa2f8c45cad02514fcb4e8f598154a47fe86",
+                "reference": "0d48fa2f8c45cad02514fcb4e8f598154a47fe86",
                 "shasum": ""
             },
             "require": {
                 "cuyz/valinor": "^2.4",
                 "ext-json": "*",
                 "ext-mbstring": "*",
-                "guzzlehttp/guzzle": "^7.10",
+                "guzzlehttp/guzzle": "^7.15.2",
                 "nyholm/psr7": "^1.8",
                 "php": "^8.2",
                 "php-http/discovery": "^1.20",
@@ -88,7 +88,7 @@
                 "issues": "https://github.com/blob-am/vcr-am-php/issues",
                 "source": "https://github.com/blob-am/vcr-am-sdk-php"
             },
-            "time": "2026-08-28T14:46:34+00:00"
+            "time": "2026-09-27T11:50:03+00:00"
         },
         {
             "name": "cuyz/valinor",
