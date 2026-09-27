@@ -169,7 +169,7 @@ This plugin follows the same conventions as the rest of the VCR.AM ecosystem:
 | 3 | FX handling — CBA rate fetcher with cache + stale-rate guards | ✅ done |
 | 4 | Refund automation (full refunds), customer-facing receipt link on thank-you page and emails | ✅ done |
 | 5 | E2E suite via wp-env + Playwright, against a mock VCR server | ✅ done |
-| 6 | Validate against a live register on a real store; first tagged release | next |
+| 6 | Validate against a live register on a real store — tagged releases and the distributable ZIP are done; nobody has yet run this against a real SRC register | next |
 | 7 | Idempotency key on every submission | ✅ done |
 | 8 | Partial refunds (needs per-item SRC ids from the SDK), B2B buyer, per-product unit, `hy_AM` / `ru_RU` translations, QR code, WordPress.org submission | planned |
 
