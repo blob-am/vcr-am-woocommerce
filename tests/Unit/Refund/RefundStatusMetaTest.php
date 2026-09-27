@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Tests\Unit\Refund;
 
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
+use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleRefundResponse;
 use Mockery;
@@ -165,15 +166,34 @@ it('markManualRequired flips status to manual_required', function (): void {
     $this->meta->markManualRequired($refund, 'partial refund — admin must handle');
 });
 
-it('resetForRetry deletes status and zeroes attempt count', function (): void {
+it('resetForRetry deletes status, zeroes attempt count, and moves to the next key', function (): void {
     $refund = Mockery::mock(WC_Order_Refund::class);
+    $refund->allows('get_meta')->with(RefundStatusMeta::META_IDEMPOTENCY_REVISION, true)->andReturn('');
 
     $refund->expects('delete_meta_data')->with(RefundStatusMeta::META_STATUS)->once();
     $refund->expects('update_meta_data')->with(RefundStatusMeta::META_ATTEMPT_COUNT, '0');
     $refund->expects('update_meta_data')->with(RefundStatusMeta::META_LAST_ERROR, '');
+    $refund->expects('update_meta_data')->with(RefundStatusMeta::META_IDEMPOTENCY_REVISION, '1');
     $refund->expects('save')->once();
 
     $this->meta->resetForRetry($refund);
+});
+
+it('derives the refund idempotency key from the refund external id and revision', function (): void {
+    $refund = Mockery::mock(WC_Order_Refund::class);
+    $refund->allows('get_id')->andReturn(77);
+    $refund->allows('get_meta')->with(RefundStatusMeta::META_IDEMPOTENCY_REVISION, true)->andReturn('');
+
+    expect($this->meta->idempotencyKey($refund))->toBe('refund_77');
+});
+
+it('keeps refund keys in their own shape so they cannot be read as a sale key', function (): void {
+    $refund = Mockery::mock(WC_Order_Refund::class);
+    $refund->allows('get_id')->andReturn(77);
+    $refund->allows('get_meta')->with(RefundStatusMeta::META_IDEMPOTENCY_REVISION, true)->andReturn('4');
+
+    expect($this->meta->idempotencyKey($refund))->toBe('refund_77_r4')
+        ->and($this->meta->idempotencyKey($refund))->not->toBe(FiscalStatusMeta::buildIdempotencyKey(77, 4));
 });
 
 it('externalId returns stored value when present', function (): void {

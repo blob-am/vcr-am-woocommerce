@@ -18,6 +18,7 @@ use BlobSolutions\WooCommerceVcrAm\Refund\SaleRefundRegistrarFactory;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrNetworkException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RefundAmount;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\PendingResource;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleRefundResponse;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\RefundReason;
 use Brain\Monkey\Functions;
@@ -49,6 +50,9 @@ beforeEach(function (): void {
     $this->logger->allows('warning')->byDefault();
     $this->logger->allows('error')->byDefault();
     $this->logger->allows('info')->byDefault();
+    // Every call to the API carries one; tests that care what it is layer
+    // their own expects() on top, which `byDefault()` lets through.
+    $this->refundMeta->allows('idempotencyKey')->andReturn('refund_123')->byDefault();
 
     $this->job = new RefundJob(
         configuration: $this->config,
@@ -81,7 +85,7 @@ function wireGetOrder(int $refundId, ?WC_Order_Refund $refund, ?int $parentId = 
     });
 }
 
-function makeRefundApiException(int $statusCode): VcrApiException
+function makeRefundApiException(int $statusCode, ?PendingResource $pending = null): VcrApiException
 {
     return new VcrApiException(
         statusCode: $statusCode,
@@ -90,7 +94,43 @@ function makeRefundApiException(int $statusCode): VcrApiException
         request: Mockery::mock(RequestInterface::class),
         response: Mockery::mock(ResponseInterface::class),
         requestId: 'req-test',
+        pending: $pending,
     );
+}
+
+/**
+ * Wires a refund that is ready to register, up to and including the registrar
+ * — which the caller supplies, since what it does is what each test is about.
+ *
+ * @return array{0: WC_Order_Refund, 1: WC_Order}
+ */
+function primeRegistrableRefund(SaleRefundRegistrar $registrar): array
+{
+    $refund = Mockery::mock(WC_Order_Refund::class);
+    $refund->allows('get_parent_id')->andReturn(50);
+    $refund->allows('get_id')->andReturn(123);
+    $refund->allows('get_reason')->andReturn('');
+
+    $parent = Mockery::mock(WC_Order::class);
+    $parent->allows('get_type')->andReturn('shop_order');
+    $parent->allows('get_id')->andReturn(50);
+    $parent->allows('add_order_note');
+
+    wireGetOrder(123, $refund, parentId: 50, parent: $parent);
+
+    test()->refundMeta->allows('status')->andReturn(null);
+    test()->config->allows('apiKey')->andReturn('key-abc');
+    test()->config->allows('isFullyConfigured')->andReturn(true);
+    test()->config->allows('defaultCashierId')->andReturn(7);
+    test()->fiscalMeta->allows('saleId')->andReturn(54321);
+    test()->eligibility->allows('check')->andReturn(RefundEligibility::full());
+    test()->reasonMapper->allows('map')->andReturn(RefundReason::CustomerRequest);
+    test()->paymentMapper->allows('map')->andReturn(new RefundAmount(nonCash: '100'));
+    test()->refundMeta->allows('recordAttempt');
+    test()->refundMeta->allows('attemptCount')->andReturn(1);
+    test()->registrarFactory->allows('create')->andReturn($registrar);
+
+    return [$refund, $parent];
 }
 
 it('returns failed when wc_get_order does not return a WC_Order_Refund', function (): void {
@@ -432,4 +472,77 @@ it('routes FiscalBuildException to ManualRequired (saleId disappeared between ga
     $outcome = $this->job->run(123);
 
     expect($outcome->status)->toBe(FiscalStatus::ManualRequired);
+});
+
+it('sends the refund idempotency key with the registration', function (): void {
+    // A refund resent after a timeout refunds the same goods twice, and that
+    // receipt is as unfixable as the sale's.
+    $captured = null;
+    $registrar = Mockery::mock(SaleRefundRegistrar::class);
+    $registrar->expects('registerSaleRefund')
+        ->with(Mockery::any(), Mockery::on(function ($key) use (&$captured): bool {
+            $captured = $key;
+
+            return true;
+        }))
+        ->andReturn(new RegisterSaleRefundResponse(
+            urlId: 'rfd-1',
+            saleRefundId: 999,
+            crn: 'REF-CRN',
+            receiptId: 5050,
+            fiscal: 'REF-FISC',
+        ));
+
+    [$refund] = primeRegistrableRefund($registrar);
+    $this->refundMeta->expects('idempotencyKey')->with($refund)->andReturn('refund_123');
+    $this->refundMeta->allows('markSuccess');
+
+    $this->job->run(123);
+
+    expect($captured)->toBe('refund_123');
+});
+
+it('retries a 409 with no pending document and keeps one with a document terminal', function (): void {
+    // Two answers behind one status code — see FiscalJob::isRetriableApiError().
+    $registrar = Mockery::mock(SaleRefundRegistrar::class);
+    $registrar->allows('registerSaleRefund')->andThrow(makeRefundApiException(409));
+    primeRegistrableRefund($registrar);
+    $this->refundMeta->expects('markRetriableFailure');
+
+    expect($this->job->run(123)->shouldRetry())->toBeTrue();
+});
+
+it('keeps a 409 that carries a pending document terminal', function (): void {
+    $registrar = Mockery::mock(SaleRefundRegistrar::class);
+    $registrar->allows('registerSaleRefund')->andThrow(makeRefundApiException(409, new PendingResource(
+        type: 'sale_refund',
+        id: 999,
+        statusUrl: '/api/v1/sales/54321',
+        mayResubmit: false,
+    )));
+    primeRegistrableRefund($registrar);
+    $this->refundMeta->expects('markFailed');
+
+    expect($this->job->run(123)->status)->toBe(FiscalStatus::Failed);
+});
+
+it('explains a 422 on the refund in shop-owner terms', function (): void {
+    $registrar = Mockery::mock(SaleRefundRegistrar::class);
+    $registrar->allows('registerSaleRefund')->andThrow(makeRefundApiException(422));
+    primeRegistrableRefund($registrar);
+
+    $captured = null;
+    $this->refundMeta->expects('markFailed')
+        ->withArgs(function ($r, $message) use (&$captured): bool {
+            $captured = $message;
+
+            return true;
+        });
+
+    expect($this->job->run(123)->status)->toBe(FiscalStatus::Failed)
+        // The label the meta box actually renders, not the one three comments
+        // used to claim. A message naming a button that does not exist is worse
+        // than one naming none.
+        ->and($captured)->toContain('Register refund now')
+        ->and($captured)->toContain('HTTP 422 [request req-test]');
 });

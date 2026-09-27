@@ -28,10 +28,20 @@ if (! defined('ABSPATH')) {
  *   3. Status transitions go through dedicated methods — no public
  *      `setStatus()` — so the call site doubles as a transition log.
  *
- * The "external id" we record on first enqueue is currently informational
- * (the SDK does not yet expose a sale-level external_id field on the wire).
- * Once it does, this is where the deterministic `order_<id>` value will be
- * read for the request payload to give us true server-side idempotency.
+ * The "external id" we record on first enqueue is still informational as far
+ * as the request body goes — the API has no sale-level external id field. It
+ * does seed the `Idempotency-Key` header, which is where the deterministic
+ * `order_<id>` value finally buys us server-side idempotency: the API replays
+ * the stored response instead of registering a second sale.
+ *
+ * One key covers one *intent*, not one attempt. Every retry of the same
+ * fiscalisation must send the same key or it protects nothing, so the key is
+ * derived from data on the order rather than minted per call; and an admin
+ * "Fiscalize now" after a failure is a new intent, so
+ * {@see self::resetForRetry()} bumps the revision and the next attempt goes
+ * out under a fresh key. Without that bump, an order whose cart the admin
+ * corrected would keep the key bound to the payload the API already saw and
+ * come back 422 for the 30 days the key is remembered.
  */
 /**
  * Not declared `final` so unit tests for FiscalJob and FiscalQueue can
@@ -48,6 +58,8 @@ class FiscalStatusMeta
     public const META_LAST_ATTEMPT_AT = '_vcr_last_attempt_at';
 
     public const META_EXTERNAL_ID = '_vcr_external_id';
+
+    public const META_IDEMPOTENCY_REVISION = '_vcr_idempotency_revision';
 
     public const META_URL_ID = '_vcr_url_id';
 
@@ -105,6 +117,46 @@ class FiscalStatusMeta
         // Lazy-allocate on first read so orders that pre-date this plugin
         // (or were imported) still get a deterministic id when re-fiscalised.
         return self::buildExternalId($order->get_id());
+    }
+
+    /**
+     * Which round of fiscalisation attempts the order is on. Zero until an
+     * admin re-fiscalises it, and bumped once per
+     * {@see self::resetForRetry()} — see {@see self::idempotencyKey()}.
+     */
+    public function idempotencyRevision(WC_Order $order): int
+    {
+        $raw = $order->get_meta(self::META_IDEMPOTENCY_REVISION, true);
+
+        if (is_int($raw)) {
+            return $raw;
+        }
+
+        if (is_string($raw) && $raw !== '' && ctype_digit($raw)) {
+            return (int) $raw;
+        }
+
+        return 0;
+    }
+
+    /**
+     * The `Idempotency-Key` for the order's current fiscalisation attempt
+     * round. Stable across every retry within a round, different in the next
+     * one.
+     *
+     * Derived rather than stored on purpose: a derived key cannot go missing.
+     * An order enqueued by an older version of the plugin has no meta to read,
+     * and a key that is absent on the one attempt that times out is the one
+     * attempt that could duplicate a receipt. The revision is the only part
+     * that needs persisting, and it defaults to the safe value.
+     *
+     * @return non-empty-string
+     */
+    public function idempotencyKey(WC_Order $order): string
+    {
+        $revision = $this->idempotencyRevision($order);
+
+        return self::buildIdempotencyKey($order->get_id(), $revision);
     }
 
     public function urlId(WC_Order $order): ?string
@@ -265,6 +317,14 @@ class FiscalStatusMeta
         $order->delete_meta_data(self::META_STATUS);
         $order->update_meta_data(self::META_ATTEMPT_COUNT, '0');
         $order->update_meta_data(self::META_LAST_ERROR, '');
+        // A new round of attempts is a new intent, and it deserves a key the
+        // API has never seen: whatever the admin fixed before pressing the
+        // button (a missing SKU, a corrected line) changes the request body,
+        // and the old key is bound to the body that failed.
+        $order->update_meta_data(
+            self::META_IDEMPOTENCY_REVISION,
+            (string) ($this->idempotencyRevision($order) + 1),
+        );
         $order->save();
     }
 
@@ -289,6 +349,7 @@ class FiscalStatusMeta
         $order->delete_meta_data(self::META_LAST_ERROR);
         $order->delete_meta_data(self::META_LAST_ATTEMPT_AT);
         $order->delete_meta_data(self::META_EXTERNAL_ID);
+        $order->delete_meta_data(self::META_IDEMPOTENCY_REVISION);
         $order->delete_meta_data(self::META_URL_ID);
         $order->delete_meta_data(self::META_CRN);
         $order->delete_meta_data(self::META_FISCAL);
@@ -302,10 +363,33 @@ class FiscalStatusMeta
      * Build the deterministic external id for a given WC order. Centralised
      * so the same value is used everywhere we'd want to identify the sale
      * from the outside (logs, future SRC idempotency, support tickets).
+     *
+     * @return non-empty-string
      */
     public static function buildExternalId(int $orderId): string
     {
         return 'order_' . $orderId;
+    }
+
+    /**
+     * Build the `Idempotency-Key` for a given order and attempt round.
+     *
+     * Deliberately readable and deliberately built on top of
+     * {@see self::buildExternalId()}: support is handed an order number, not a
+     * meta dump, and `order_412` is a value they can reconstruct from it. The
+     * first round carries the bare external id; later rounds get an `_rN`
+     * suffix, so the whole history of an order's keys is legible at a glance.
+     *
+     * Well under the API's 128-character cap for any order id WordPress can
+     * produce.
+     *
+     * @return non-empty-string
+     */
+    public static function buildIdempotencyKey(int $orderId, int $revision): string
+    {
+        $base = self::buildExternalId($orderId);
+
+        return $revision === 0 ? $base : $base . '_r' . $revision;
     }
 
     private function nowIso8601(): string

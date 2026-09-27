@@ -142,11 +142,62 @@ it('markManualRequired flips status and stores the operator-readable reason', fu
 
 it('resetForRetry deletes the status meta and zeroes the attempt counters', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_meta')->with(FiscalStatusMeta::META_IDEMPOTENCY_REVISION, true)->andReturn('');
 
     $order->expects('delete_meta_data')->with(FiscalStatusMeta::META_STATUS);
     $order->expects('update_meta_data')->with(FiscalStatusMeta::META_ATTEMPT_COUNT, '0');
     $order->expects('update_meta_data')->with(FiscalStatusMeta::META_LAST_ERROR, '');
+    $order->expects('update_meta_data')->with(FiscalStatusMeta::META_IDEMPOTENCY_REVISION, '1');
     $order->expects('save')->once();
 
     $this->meta->resetForRetry($order);
+});
+
+it('starts the idempotency key at the external id', function (): void {
+    // Same string as the external id on purpose: support is handed an order
+    // number, and `order_42` is what they can reconstruct from it.
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_id')->andReturn(42);
+    $order->allows('get_meta')->with(FiscalStatusMeta::META_IDEMPOTENCY_REVISION, true)->andReturn('');
+
+    expect($this->meta->idempotencyKey($order))->toBe('order_42')
+        ->and($this->meta->idempotencyKey($order))->toBe(FiscalStatusMeta::buildExternalId(42));
+});
+
+it('moves the idempotency key to the next revision once the order has been re-fiscalised', function (): void {
+    // A key the API has already seen is bound to the body it saw. After an
+    // admin fixes whatever failed, the body differs — so the key has to.
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_id')->andReturn(42);
+    $order->allows('get_meta')->with(FiscalStatusMeta::META_IDEMPOTENCY_REVISION, true)->andReturn('2');
+
+    expect($this->meta->idempotencyRevision($order))->toBe(2)
+        ->and($this->meta->idempotencyKey($order))->toBe('order_42_r2');
+});
+
+it('bumps the idempotency revision from an existing value on reset', function (): void {
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_meta')->with(FiscalStatusMeta::META_IDEMPOTENCY_REVISION, true)->andReturn('3');
+    $order->allows('delete_meta_data');
+    // `byDefault()` so the catch-all yields to the specific expectation below;
+    // declared first, it would otherwise consume the call itself.
+    $order->allows('update_meta_data')->byDefault();
+    $order->allows('save');
+
+    $order->expects('update_meta_data')->with(FiscalStatusMeta::META_IDEMPOTENCY_REVISION, '4');
+
+    $this->meta->resetForRetry($order);
+});
+
+it('keeps the key stable across attempts within one round', function (): void {
+    // The property the whole mechanism rests on: a value minted per attempt
+    // protects nothing. Two reads with no reset between them must agree.
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_id')->andReturn(9);
+    $order->allows('get_meta')->with(FiscalStatusMeta::META_IDEMPOTENCY_REVISION, true)->andReturn('');
+
+    $first = $this->meta->idempotencyKey($order);
+    $second = $this->meta->idempotencyKey($order);
+
+    expect($second)->toBe($first);
 });

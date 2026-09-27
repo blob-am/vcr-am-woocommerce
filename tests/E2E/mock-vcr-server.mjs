@@ -114,6 +114,11 @@ async function handleRequest(req, res) {
         method: req.method,
         url: req.url,
         body: body.length > 0 ? safeJsonParse(body) : null,
+        // This one header, not the whole set: the log is served over HTTP at
+        // /__test/log, and the request also carries X-API-Key. The plugin's
+        // protection against duplicate receipts is "every attempt sends the
+        // same Idempotency-Key", and that is only assertable from here.
+        idempotencyKey: req.headers['idempotency-key'] ?? null,
         timestamp: new Date().toISOString(),
     });
 

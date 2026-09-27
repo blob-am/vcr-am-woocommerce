@@ -31,6 +31,12 @@ if (! defined('ABSPATH')) {
  * so a separate enum would be parallel-but-identical without semantic
  * differentiation.
  *
+ * The external id also seeds the refund's `Idempotency-Key` header — see
+ * {@see \BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta} for why one
+ * key covers one intent rather than one attempt. The two namespaces cannot
+ * collide on the wire even so: the API scopes stored keys per endpoint, and a
+ * refund key reads `refund_<id>` against a sale's `order_<id>` regardless.
+ *
  * Not declared `final` so unit tests for RefundJob and RefundQueue can
  * mock the meta layer.
  */
@@ -45,6 +51,8 @@ class RefundStatusMeta
     public const META_LAST_ATTEMPT_AT = '_vcr_refund_last_attempt_at';
 
     public const META_EXTERNAL_ID = '_vcr_refund_external_id';
+
+    public const META_IDEMPOTENCY_REVISION = '_vcr_refund_idempotency_revision';
 
     public const META_URL_ID = '_vcr_refund_url_id';
 
@@ -100,6 +108,40 @@ class RefundStatusMeta
         }
 
         return self::buildExternalId($refund->get_id());
+    }
+
+    /**
+     * Which round of fiscalisation attempts the refund is on. Zero until an
+     * admin re-fiscalises it — see {@see self::idempotencyKey()}.
+     */
+    public function idempotencyRevision(WC_Order_Refund $refund): int
+    {
+        $raw = $refund->get_meta(self::META_IDEMPOTENCY_REVISION, true);
+
+        if (is_int($raw)) {
+            return $raw;
+        }
+
+        if (is_string($raw) && $raw !== '' && ctype_digit($raw)) {
+            return (int) $raw;
+        }
+
+        return 0;
+    }
+
+    /**
+     * The `Idempotency-Key` for the refund's current attempt round: stable
+     * across every retry within a round, different in the next one. Derived,
+     * not stored, for the reasons given on
+     * {@see \BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta::idempotencyKey()}.
+     *
+     * @return non-empty-string
+     */
+    public function idempotencyKey(WC_Order_Refund $refund): string
+    {
+        $revision = $this->idempotencyRevision($refund);
+
+        return self::buildIdempotencyKey($refund->get_id(), $revision);
     }
 
     public function urlId(WC_Order_Refund $refund): ?string
@@ -230,7 +272,7 @@ class RefundStatusMeta
 
     /**
      * Wipe terminal-state markers so the next enqueue treats the refund
-     * as fresh. Used by the admin "Fiscalize refund now" button.
+     * as fresh. Used by the admin "Register refund now" button.
      * Preserves external id; clears attempt counter and last error.
      */
     public function resetForRetry(WC_Order_Refund $refund): void
@@ -238,6 +280,11 @@ class RefundStatusMeta
         $refund->delete_meta_data(self::META_STATUS);
         $refund->update_meta_data(self::META_ATTEMPT_COUNT, '0');
         $refund->update_meta_data(self::META_LAST_ERROR, '');
+        // New round, new key — see FiscalStatusMeta::resetForRetry().
+        $refund->update_meta_data(
+            self::META_IDEMPOTENCY_REVISION,
+            (string) ($this->idempotencyRevision($refund) + 1),
+        );
         $refund->save();
     }
 
@@ -254,6 +301,7 @@ class RefundStatusMeta
         $refund->delete_meta_data(self::META_LAST_ERROR);
         $refund->delete_meta_data(self::META_LAST_ATTEMPT_AT);
         $refund->delete_meta_data(self::META_EXTERNAL_ID);
+        $refund->delete_meta_data(self::META_IDEMPOTENCY_REVISION);
         $refund->delete_meta_data(self::META_URL_ID);
         $refund->delete_meta_data(self::META_CRN);
         $refund->delete_meta_data(self::META_FISCAL);
@@ -263,9 +311,26 @@ class RefundStatusMeta
         $refund->save();
     }
 
+    /**
+     * @return non-empty-string
+     */
     public static function buildExternalId(int $refundId): string
     {
         return 'refund_' . $refundId;
+    }
+
+    /**
+     * Mirror of
+     * {@see \BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta::buildIdempotencyKey()}
+     * over the refund's own external id.
+     *
+     * @return non-empty-string
+     */
+    public static function buildIdempotencyKey(int $refundId, int $revision): string
+    {
+        $base = self::buildExternalId($refundId);
+
+        return $revision === 0 ? $base : $base . '_r' . $revision;
     }
 
     private function nowIso8601(): string

@@ -42,9 +42,10 @@ enum FiscalStatus: string
     case Success = 'success';
 
     /**
-     * Exhausted the retry schedule, OR hit a non-retriable API error
-     * (4xx other than 429). Order will not be retried automatically;
-     * admin must hit "Fiscalize now" in the order meta box (Phase 3c).
+     * Exhausted the retry schedule, OR hit a non-retriable API error — see
+     * {@see FiscalJob::isRetriableApiError()} for which those are. Order will
+     * not be retried automatically; admin must hit "Fiscalize now" in the
+     * order meta box (Phase 3c).
      */
     case Failed = 'failed';
 

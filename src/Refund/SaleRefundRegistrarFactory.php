@@ -53,9 +53,9 @@ class SaleRefundRegistrarFactory
             ) {
             }
 
-            public function registerSaleRefund(RegisterSaleRefundInput $input): RegisterSaleRefundResponse
+            public function registerSaleRefund(RegisterSaleRefundInput $input, string $idempotencyKey): RegisterSaleRefundResponse
             {
-                return $this->client->registerSaleRefund($input);
+                return $this->client->registerSaleRefund($input, $idempotencyKey);
             }
         };
     }

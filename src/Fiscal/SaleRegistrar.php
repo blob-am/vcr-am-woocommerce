@@ -30,5 +30,15 @@ if (! defined('ABSPATH')) {
  */
 interface SaleRegistrar
 {
-    public function registerSale(RegisterSaleInput $input): RegisterSaleResponse;
+    /**
+     * @param non-empty-string $idempotencyKey Stable across every retry of the
+     *                                         same sale, which is what makes
+     *                                         the API replay its stored answer
+     *                                         instead of registering a second
+     *                                         receipt. Required rather than
+     *                                         optional: an attempt that
+     *                                         forgets it is the attempt that
+     *                                         duplicates.
+     */
+    public function registerSale(RegisterSaleInput $input, string $idempotencyKey): RegisterSaleResponse;
 }

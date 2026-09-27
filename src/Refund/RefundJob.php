@@ -43,7 +43,7 @@ if (! defined('ABSPATH')) {
  *     parent sale by `saleId`. If the parent isn't in
  *     {@see FiscalStatus::Success}, we route to ManualRequired —
  *     retrying a refund whose sale never registered is a wasted
- *     budget burn. The admin "Fiscalize refund now" button can be
+ *     budget burn. The admin "Register refund now" button can be
  *     pressed once the parent sale registers.
  *
  *   - **No stale-skip.** Unlike sale registrations (which auto-skip
@@ -55,7 +55,11 @@ if (! defined('ABSPATH')) {
  *     route to ManualRequired than auto-skip silently.
  *
  *   - **Idempotent on Success.** Re-running a job for a refund that's
- *     already Success short-circuits without contacting the API.
+ *     already Success short-circuits without contacting the API, and
+ *     every call carries the refund's `Idempotency-Key`
+ *     ({@see RefundStatusMeta::idempotencyKey()}) so a retry after an
+ *     attempt whose outcome we never learned replays the first answer
+ *     instead of refunding the same goods twice.
  *
  * Reuses {@see FiscalJobOutcome} since refund and sale outcomes share
  * the exact same state shape.
@@ -147,9 +151,13 @@ class RefundJob
         $this->refundMeta->recordAttempt($refund);
         $attempt = $this->refundMeta->attemptCount($refund);
 
+        // Stable within the attempt round — see FiscalJob::run() and
+        // RefundStatusMeta::idempotencyKey().
+        $idempotencyKey = $this->refundMeta->idempotencyKey($refund);
+
         try {
             $registrar = $this->registrarFactory->create($apiKey);
-            $response = $registrar->registerSaleRefund($payload);
+            $response = $registrar->registerSaleRefund($payload, $idempotencyKey);
         } catch (Throwable $e) {
             return $this->handleFailure($refund, $parent, $e, $attempt);
         }
@@ -239,11 +247,17 @@ class RefundJob
 
     /**
      * Same retry classification as {@see FiscalJob::isRetriable()}:
-     * 5xx + 429 + network = retry; everything else = terminal.
+     * 5xx + 429 + network + an unclaimed-key 409 = retry; everything else =
+     * terminal. See {@see FiscalJob::isRetriableApiError()} for why a 409 has
+     * to be read off the body rather than the status line.
      */
     private function isRetriable(Throwable $error): bool
     {
         if ($error instanceof VcrApiException) {
+            if ($error->statusCode === 409) {
+                return $error->pending === null;
+            }
+
             return $error->statusCode >= 500 || $error->statusCode === 429;
         }
 
@@ -265,7 +279,7 @@ class RefundJob
     private function describeError(Throwable $error): string
     {
         if ($error instanceof VcrApiException) {
-            return sprintf(
+            $detail = sprintf(
                 'VCR API HTTP %d%s%s',
                 $error->statusCode,
                 // Was `apiErrorCode` until SDK 0.7.0 established there is no
@@ -274,6 +288,23 @@ class RefundJob
                 $error->requestId !== null ? ' [request ' . $error->requestId . ']' : '',
                 $error->apiErrorMessage !== null ? ': ' . $error->apiErrorMessage : '',
             );
+
+            if ($error->statusCode === 422) {
+                // The refund changed between attempts under one idempotency
+                // key — same situation as
+                // {@see FiscalJob::describeIdempotencyConflict()}, and the
+                // same remedy, on the refund's own button.
+                return sprintf(
+                    /* translators: 1: technical detail — HTTP status, API request id, server message. */
+                    __(
+                        'This refund changed after its first registration attempt, so it no longer matches what the tax service was asked to register. Use "Register refund now" on the order to register it as it stands. (%1$s)',
+                        'vcr-am-fiscal-receipts',
+                    ),
+                    $detail,
+                );
+            }
+
+            return $detail;
         }
 
         return $error->getMessage();

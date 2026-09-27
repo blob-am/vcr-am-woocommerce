@@ -17,6 +17,9 @@ import { resetMockLog, resetMockPlan, setMockPlan, getMockLog } from './helpers/
  *   - Validates the FiscalJob 5xx classification → retry path
  *   - Validates the FiscalQueue::scheduleNextRetry chain works
  *   - Validates the markFailed transition fires on budget exhaustion
+ *   - Pins the Idempotency-Key across all six attempts. A retry chain is
+ *     exactly where a per-attempt key would look fine and duplicate receipts
+ *     in production, and the mock records the header for this assertion.
  *
  * Implementation note on time-based retry:
  *   Action Scheduler schedules each retry with a delay (15s..2h). To
@@ -85,6 +88,16 @@ test.describe('VCR fiscal flow (failure → retry → Failed)', () => {
             (entry) => entry.url === '/api/v1/sales' && entry.method === 'POST',
         );
         expect(salesCalls.length).toBeGreaterThanOrEqual(MAX_ATTEMPTS);
+
+        // Every one of those attempts must have carried the SAME
+        // Idempotency-Key. This is the only place the property is observable
+        // end to end, and it is the whole defence: had any attempt gone out
+        // without the header, or with a freshly minted one, a real server
+        // would have registered that attempt as a second fiscal receipt
+        // instead of replaying the first answer.
+        const keys = new Set(salesCalls.map((entry) => entry.idempotencyKey));
+        expect(keys.size).toBe(1);
+        expect([...keys][0]).toBe(`order_${orderId}`);
     });
 
     test('first failure leaves order in Pending with attempt_count=1 and last_error captured', async () => {

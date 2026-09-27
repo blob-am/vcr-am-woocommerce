@@ -58,10 +58,12 @@ if (! defined('ABSPATH')) {
  *
  *     Residual race: if both hooks fire in the same microsecond and
  *     neither has yet committed an AS row, both will pass the dedup
- *     check. This is microscopic in practice; the proper defence is
- *     SDK-side idempotency keying (the SDK accepts an `Idempotency-Key`
- *     header derived from the order's stable external id) — out of
- *     scope for this WP-side fix.
+ *     check. That one is no longer ours to lose — every call carries the
+ *     order's `Idempotency-Key`
+ *     ({@see FiscalStatusMeta::idempotencyKey()}), so whichever request
+ *     arrives second is answered from the first one's record instead of
+ *     printing a second receipt. The dedup here stays regardless: it is
+ *     what keeps the common case from reaching the network at all.
  */
 /**
  * Not declared `final` so the OrderListener unit tests can mock the queue —

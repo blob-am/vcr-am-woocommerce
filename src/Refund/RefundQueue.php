@@ -77,7 +77,7 @@ class RefundQueue
         $status = $this->meta->status($refund);
 
         if ($status !== null && $status->isTerminal()) {
-            // Terminal — admin's job to retry via "Fiscalize refund now"
+            // Terminal — admin's job to retry via "Register refund now"
             // (Phase 3e UI). Don't auto-re-enqueue.
             return;
         }

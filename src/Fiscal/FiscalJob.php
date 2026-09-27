@@ -36,13 +36,24 @@ if (! defined('ABSPATH')) {
  *     can fire multiple times per order during the payment flow) this
  *     prevents duplicate registrations even if the queue mis-routes.
  *
+ *   - **Idempotent on the wire too.** Every call carries the order's
+ *     `Idempotency-Key` ({@see FiscalStatusMeta::idempotencyKey()}), so the
+ *     two cases the meta check cannot cover are covered by the API instead:
+ *     two hooks that race past {@see FiscalQueue}'s dedup before either has
+ *     committed a scheduler row, and a retry after an attempt whose outcome we
+ *     never learned (a timeout mid-request may well have registered the sale).
+ *     In both, the second request replays the first one's answer rather than
+ *     printing a second fiscal receipt — which is a real tax document that can
+ *     only be undone with a refund.
+ *
  *   - **Meta is always written before throwing.** The order's status meta
  *     reflects the result of *this* attempt before the function returns,
  *     regardless of which branch the call took. The queue layer can rely
  *     on the returned {@see FiscalJobOutcome} alone (no second meta read).
  *
  *   - **Retry classification is centralised here.** HTTP 5xx, 429, network
- *     timeouts -> retriable. HTTP 4xx (other than 429), schema validation
+ *     timeouts -> retriable, and so is the one 409 that means "another request
+ *     is holding your idempotency key". Every other 4xx, schema validation
  *     errors, and build errors -> terminal. {@see self::isRetriableApiError()}
  *     is the single source of truth.
  *
@@ -127,9 +138,14 @@ class FiscalJob
         $this->meta->recordAttempt($order);
         $attempt = $this->meta->attemptCount($order);
 
+        // The same value on every attempt in this round — that is the
+        // mechanism, not an optimisation. See
+        // FiscalStatusMeta::idempotencyKey().
+        $idempotencyKey = $this->meta->idempotencyKey($order);
+
         try {
             $registrar = $this->registrarFactory->create($apiKey);
-            $response = $registrar->registerSale($payload);
+            $response = $registrar->registerSale($payload, $idempotencyKey);
         } catch (Throwable $e) {
             return $this->handleFailure($order, $e, $attempt);
         }
@@ -270,13 +286,29 @@ class FiscalJob
             return true;
         }
 
+        // 409 is two different answers on this endpoint and only the body
+        // separates them. A rejection SRC actually issued always carries a
+        // `pending` document — "we answered in full, and we would answer the
+        // same way again" — and stays terminal. A 409 without one comes from
+        // the idempotency layer: some other request holds this key right now,
+        // which is precisely the double-fire the key exists to collapse, or an
+        // earlier attempt died mid-request and left its claim behind. Both
+        // want what a 5xx wants — come back later with the same key — and the
+        // API releases an abandoned claim after a few minutes, which the later
+        // slots of our backoff outlast. Calling it terminal instead would turn
+        // every duplicate we successfully collapsed into an order someone has
+        // to rescue by hand.
+        if ($error->statusCode === 409) {
+            return $error->pending === null;
+        }
+
         return false;
     }
 
     private function describeError(Throwable $error): string
     {
         if ($error instanceof VcrApiException) {
-            return sprintf(
+            $detail = sprintf(
                 'VCR API HTTP %d%s%s',
                 $error->statusCode,
                 // Was `apiErrorCode` until SDK 0.7.0 established there is no
@@ -285,9 +317,40 @@ class FiscalJob
                 $error->requestId !== null ? ' [request ' . $error->requestId . ']' : '',
                 $error->apiErrorMessage !== null ? ': ' . $error->apiErrorMessage : '',
             );
+
+            if ($error->statusCode === 422) {
+                return $this->describeIdempotencyConflict($detail);
+            }
+
+            return $detail;
         }
 
         return $error->getMessage();
+    }
+
+    /**
+     * The API binds an idempotency key to the body it first saw and answers
+     * 422 when the same key comes back with a different one; nothing else on
+     * this endpoint answers 422. So this is an order that changed between the
+     * first attempt and a retry — the admin edited a line, or the plugin
+     * started building the payload differently across an update.
+     *
+     * Worth its own wording because the API's own ("use a new key per distinct
+     * operation") is addressed to an integrator, and the person reading this
+     * is a shop owner looking at a failed order. Re-fiscalising is the remedy
+     * and it genuinely works: {@see FiscalStatusMeta::resetForRetry()} starts a
+     * new attempt round, which sends a key the API has never seen.
+     */
+    private function describeIdempotencyConflict(string $detail): string
+    {
+        return sprintf(
+            /* translators: 1: technical detail — HTTP status, API request id, server message. */
+            __(
+                'This order changed after its first fiscalisation attempt, so it no longer matches the receipt the tax service was asked to register. Use "Fiscalize now" on the order to register it as it stands. (%1$s)',
+                'vcr-am-fiscal-receipts',
+            ),
+            $detail,
+        );
     }
 
     /**

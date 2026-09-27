@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.1.4
+Stable tag: 0.1.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -95,6 +95,12 @@ For multi-currency stores (orders in USD, EUR, RUB, etc.), the plugin fetches th
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.5 =
+* Duplicate receipts: every sale and every refund now goes out with an idempotency key tied to that order. If a request times out or the plugin retries for any other reason, VCR answers with the receipt from the first attempt instead of registering a second one. A fiscal receipt cannot be deleted once issued, only refunded, which is why this is the headline.
+* Where that key tells VCR the same order is already being registered right now, the plugin waits and tries again shortly, and then picks up the first attempt's receipt. It does not treat it as a failure needing your attention.
+* If an order changes between a failed attempt and a retry, the order note now explains that and points at the "Fiscalize now" button, rather than quoting an API message written for developers.
+* The bundled VCR library no longer ships its own test suite and lint config inside the plugin: 55 files, 53 KB. Net of everything above, this release is about 49 KB smaller than 0.1.4.
 
 = 0.1.4 =
 * Security: the HTTP library the plugin bundles to talk to VCR (Guzzle) was a year out of date. The copy inside 0.1.3 and every earlier release carried thirteen published advisories, one of them rated high, in how it canonicalises hosts and handles redirects. This release ships the fixed version. Anyone on 0.1.3 or earlier should update.

@@ -157,7 +157,7 @@ This plugin follows the same conventions as the rest of the VCR.AM ecosystem:
 
 - **Domain over wire.** SRC field names (`adgCode`, `goodCode`, `uniqueCode`) live exclusively inside `blob-solutions/vcr-am-sdk` and below. Plugin-side surfaces — admin UI, customer UI, WC product meta — speak in domain terms (`department`, `unit`, `eMark codes`).
 - **Async over sync.** Fiscal API calls never run on the request thread. Action Scheduler queues jobs; SRC outages never block customer checkout.
-- **Idempotent over best-effort.** Every fiscal job carries a deterministic `external_id` derived from the WC order ID, so retries and double-fires produce one receipt.
+- **Idempotent over best-effort.** Every submission carries an `Idempotency-Key` derived from the order's deterministic `external_id`, so a retry or a double-fire is answered with the first attempt's receipt instead of registering a second one. The key covers one round of attempts: re-fiscalising an order the admin has corrected deliberately starts a new one.
 - **Observable over silent.** Every order surfaces fiscal state (`pending` / `queued` / `success` / `failed` / `manual_required`), every transition leaves a WC order note, every failed retry surfaces an admin notice.
 
 ## Roadmap
@@ -170,7 +170,7 @@ This plugin follows the same conventions as the rest of the VCR.AM ecosystem:
 | 4 | Refund automation (full refunds), customer-facing receipt link on thank-you page and emails | ✅ done |
 | 5 | E2E suite via wp-env + Playwright, against a mock VCR server | ✅ done |
 | 6 | Validate against a live register on a real store; first tagged release | next |
-| 7 | Idempotency key on every submission — blocked on a PHP SDK release carrying it | next |
+| 7 | Idempotency key on every submission | ✅ done |
 | 8 | Partial refunds (needs per-item SRC ids from the SDK), B2B buyer, per-product unit, `hy_AM` / `ru_RU` translations, QR code, WordPress.org submission | planned |
 
 Deliberately out of scope for now: excise marks (eMark), so shops selling alcohol, tobacco or pharmaceuticals cannot use this plugin yet; prepayment receipts; mixed/split tender.

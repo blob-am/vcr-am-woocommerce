@@ -23,5 +23,15 @@ if (! defined('ABSPATH')) {
  */
 interface SaleRefundRegistrar
 {
-    public function registerSaleRefund(RegisterSaleRefundInput $input): RegisterSaleRefundResponse;
+    /**
+     * @param non-empty-string $idempotencyKey Stable across every retry of the
+     *                                         same refund, which is what makes
+     *                                         the API replay its stored answer
+     *                                         instead of registering a second
+     *                                         refund receipt. Required rather than
+     *                                         optional: an attempt that
+     *                                         forgets it is the attempt that
+     *                                         duplicates.
+     */
+    public function registerSaleRefund(RegisterSaleRefundInput $input, string $idempotencyKey): RegisterSaleRefundResponse;
 }

@@ -21,7 +21,9 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrValid
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\AutoSettle;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Department;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Offer;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\SaleItem;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\PendingResource;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Unit;
 use Brain\Monkey\Functions;
@@ -86,7 +88,7 @@ function makeOrderMockReturnedByWcGetOrder(int $orderId = 123): WC_Order
     return $order;
 }
 
-function makeApiException(int $statusCode): VcrApiException
+function makeApiException(int $statusCode, ?PendingResource $pending = null): VcrApiException
 {
     return new VcrApiException(
         statusCode: $statusCode,
@@ -95,6 +97,22 @@ function makeApiException(int $statusCode): VcrApiException
         request: Mockery::mock(RequestInterface::class),
         response: Mockery::mock(ResponseInterface::class),
         requestId: 'req-test',
+        pending: $pending,
+    );
+}
+
+/**
+ * The `pending` document the API attaches to an error when the sale survived
+ * it. Its presence is what separates an SRC rejection from an idempotency
+ * conflict on a 409 — see {@see FiscalJob::isRetriableApiError()}.
+ */
+function makePendingSale(): PendingResource
+{
+    return new PendingResource(
+        type: 'sale',
+        id: 5122,
+        statusUrl: '/api/v1/sales/5122',
+        mayResubmit: false,
     );
 }
 
@@ -144,6 +162,12 @@ function primeBuildable(?string $comment = null): void
     /** @var \Mockery\MockInterface $commentBuilder */
     $commentBuilder = test()->commentBuilder;
     $commentBuilder->allows('build')->andReturn($comment);
+
+    // Permissive by default; `byDefault()` yields to a per-test expects() of
+    // the same method. The tests that care what the key is set their own.
+    /** @var \Mockery\MockInterface $meta */
+    $meta = test()->meta;
+    $meta->allows('idempotencyKey')->andReturn('order_123')->byDefault();
 }
 
 it('returns failed when wc_get_order returns null', function (): void {
@@ -288,7 +312,7 @@ it('passes the built comment through to the sale payload', function (): void {
             $captured = $input;
 
             return true;
-        }))
+        }), Mockery::type('string'))
         ->andReturn($response);
     $this->registrarFactory->expects('create')->andReturn($registrar);
 
@@ -329,12 +353,14 @@ it('classifies HTTP 4xx (other than 429) as terminal failure', function (): void
     $this->meta->allows('attemptCount')->with($order)->andReturn(1);
 
     $registrar = Mockery::mock(SaleRegistrar::class);
-    $registrar->expects('registerSale')->andThrow(makeApiException(422));
+    // 400, not 422: 422 is the idempotency-key conflict and carries its own
+    // message, so it stopped being the representative "generic 4xx" case.
+    $registrar->expects('registerSale')->andThrow(makeApiException(400));
     $this->registrarFactory->expects('create')->andReturn($registrar);
 
     // The request id is the only handle support has on a specific failed
     // call, so it has to survive into the message stored on the order.
-    $this->meta->expects('markFailed')->with($order, Mockery::pattern('/HTTP 422 \[request req-test\]/'));
+    $this->meta->expects('markFailed')->with($order, Mockery::pattern('/HTTP 400 \[request req-test\]/'));
     // Terminal failures go to logger at error level (vs warning for retriable).
     $this->logger->expects('error')->with(Mockery::pattern('/TERMINAL/'), Mockery::type('array'));
 
@@ -430,4 +456,112 @@ it('flips to Failed once the retry budget is exhausted, regardless of error clas
     $outcome = $this->job->run(123);
 
     expect($outcome->status)->toBe(FiscalStatus::Failed);
+});
+
+it('sends the order idempotency key with the sale', function (): void {
+    // The point of the whole mechanism: if this header is missing on the one
+    // attempt that times out, the retry prints a second fiscal receipt.
+    $order = makeOrderMockReturnedByWcGetOrder();
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    primeBuildable();
+
+    $this->meta->allows('recordAttempt')->with($order);
+    $this->meta->allows('attemptCount')->with($order)->andReturn(1);
+    $this->meta->expects('idempotencyKey')->with($order)->andReturn('order_123');
+    $this->meta->allows('markSuccess');
+    $order->allows('add_order_note');
+
+    $captured = null;
+    $registrar = Mockery::mock(SaleRegistrar::class);
+    $registrar->expects('registerSale')
+        ->with(Mockery::type(RegisterSaleInput::class), Mockery::on(function ($key) use (&$captured): bool {
+            $captured = $key;
+
+            return true;
+        }))
+        ->andReturn(new RegisterSaleResponse(
+            urlId: 'r-1',
+            saleId: 1,
+            crn: 'C',
+            srcReceiptId: 1,
+            fiscal: 'F',
+        ));
+    $this->registrarFactory->expects('create')->andReturn($registrar);
+
+    $this->job->run(123);
+
+    expect($captured)->toBe('order_123');
+});
+
+it('retries a 409 that carries no pending document (another request holds the key)', function (): void {
+    // This is the collapsed duplicate: two hooks raced, the other one is
+    // mid-flight under our key. Terminal here would turn every duplicate the
+    // key successfully caught into an order someone has to rescue by hand.
+    $order = makeOrderMockReturnedByWcGetOrder();
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    primeBuildable();
+
+    $this->meta->expects('recordAttempt')->with($order);
+    $this->meta->allows('attemptCount')->with($order)->andReturn(1);
+
+    $registrar = Mockery::mock(SaleRegistrar::class);
+    $registrar->expects('registerSale')->andThrow(makeApiException(409));
+    $this->registrarFactory->expects('create')->andReturn($registrar);
+
+    $this->meta->expects('markRetriableFailure')->with($order, Mockery::pattern('/HTTP 409/'));
+
+    $outcome = $this->job->run(123);
+
+    expect($outcome->shouldRetry())->toBeTrue();
+});
+
+it('keeps a 409 that carries a pending document terminal (SRC rejected the sale)', function (): void {
+    // Same status code, opposite meaning: SRC answered in full and would
+    // answer the same way to the same payload. Retrying burns the budget and
+    // the admin never hears about it.
+    $order = makeOrderMockReturnedByWcGetOrder();
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    primeBuildable();
+
+    $this->meta->expects('recordAttempt')->with($order);
+    $this->meta->allows('attemptCount')->with($order)->andReturn(1);
+
+    $registrar = Mockery::mock(SaleRegistrar::class);
+    $registrar->expects('registerSale')->andThrow(makeApiException(409, makePendingSale()));
+    $this->registrarFactory->expects('create')->andReturn($registrar);
+
+    $this->meta->expects('markFailed')->with($order, Mockery::pattern('/HTTP 409/'));
+
+    $outcome = $this->job->run(123);
+
+    expect($outcome->status)->toBe(FiscalStatus::Failed);
+});
+
+it('explains a 422 in shop-owner terms and keeps the technical detail', function (): void {
+    // The API's own wording ("use a new key per distinct operation") is
+    // addressed to an integrator; the person reading the order is not one.
+    $order = makeOrderMockReturnedByWcGetOrder();
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    primeBuildable();
+
+    $this->meta->expects('recordAttempt')->with($order);
+    $this->meta->allows('attemptCount')->with($order)->andReturn(1);
+
+    $registrar = Mockery::mock(SaleRegistrar::class);
+    $registrar->expects('registerSale')->andThrow(makeApiException(422));
+    $this->registrarFactory->expects('create')->andReturn($registrar);
+
+    $captured = null;
+    $this->meta->expects('markFailed')
+        ->with($order, Mockery::on(function ($message) use (&$captured): bool {
+            $captured = $message;
+
+            return true;
+        }));
+
+    $outcome = $this->job->run(123);
+
+    expect($outcome->status)->toBe(FiscalStatus::Failed)
+        ->and($captured)->toContain('Fiscalize now')
+        ->and($captured)->toContain('HTTP 422 [request req-test]');
 });

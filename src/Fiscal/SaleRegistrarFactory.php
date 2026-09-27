@@ -67,9 +67,9 @@ class SaleRegistrarFactory
             ) {
             }
 
-            public function registerSale(RegisterSaleInput $input): RegisterSaleResponse
+            public function registerSale(RegisterSaleInput $input, string $idempotencyKey): RegisterSaleResponse
             {
-                return $this->client->registerSale($input);
+                return $this->client->registerSale($input, $idempotencyKey);
             }
         };
     }
