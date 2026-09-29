@@ -366,9 +366,15 @@ if (! class_exists('wpdb', false)) {
 
 if (! class_exists('WC_Settings_Page', false)) {
     /**
-     * Bare-bones stub of WC's settings-page base class. Real WC fires a
-     * couple of actions in its constructor; the stub stays inert so unit
-     * tests can instantiate VcrSettingsTab without a hooks frenzy.
+     * Stub of WC's settings-page base class. The constructor stays inert —
+     * real WC adds four hooks there and unit tests don't want the frenzy —
+     * but the section dispatch is reproduced faithfully, because since
+     * 0.1.7 our tab relies on it: `get_settings()` hands over to
+     * `get_settings_for_section()`, which picks
+     * `get_settings_for_default_section()` or
+     * `get_settings_for_<id>_section()` and passes the result through the
+     * page's public filter. A stub that just returned `[]` here would make
+     * every field assertion in the suite vacuous.
      */
     class WC_Settings_Page
     {
@@ -378,6 +384,52 @@ if (! class_exists('WC_Settings_Page', false)) {
 
         public function __construct()
         {
+        }
+
+        /**
+         * @return array<int, mixed>
+         */
+        final public function get_settings_for_section(string $sectionId): array
+        {
+            $method = $sectionId === ''
+                ? 'get_settings_for_default_section'
+                : "get_settings_for_{$sectionId}_section";
+
+            $settings = method_exists($this, $method) ? $this->{$method}() : [];
+
+            /** @var array<int, mixed> $filtered */
+            $filtered = apply_filters('woocommerce_get_settings_' . $this->id, $settings, $sectionId);
+
+            return $filtered;
+        }
+
+        /**
+         * Real WC uses `func_get_arg` here to stay compatible with plugins
+         * that redeclared the method with a parameter. Ours declares one.
+         *
+         * @return array<int, mixed>
+         */
+        public function get_settings(): array
+        {
+            $sectionId = func_num_args() === 0 ? '' : func_get_arg(0);
+
+            return $this->get_settings_for_section(is_string($sectionId) ? $sectionId : '');
+        }
+
+        /**
+         * @return array<string, string>
+         */
+        public function get_sections(): array
+        {
+            return $this->get_own_sections();
+        }
+
+        /**
+         * @return array<string, string>
+         */
+        protected function get_own_sections(): array
+        {
+            return ['' => 'General'];
         }
     }
 }

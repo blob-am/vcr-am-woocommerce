@@ -11,6 +11,7 @@ use BlobSolutions\WooCommerceVcrAm\Admin\OrdersBulkAction;
 use BlobSolutions\WooCommerceVcrAm\Admin\OrdersListColumn;
 use BlobSolutions\WooCommerceVcrAm\Admin\OrdersListFilter;
 use BlobSolutions\WooCommerceVcrAm\Admin\PluginActionLinks;
+use BlobSolutions\WooCommerceVcrAm\Admin\ReadinessPanel;
 use BlobSolutions\WooCommerceVcrAm\Admin\SystemStatusReport;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
@@ -19,6 +20,8 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
 use BlobSolutions\WooCommerceVcrAm\Currency\CurrencyConverter;
 use BlobSolutions\WooCommerceVcrAm\Currency\VcrExchangeRateProvider;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\IdentityReaderFactory;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\CashPaymentResolver;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\CommentBuilder;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJob;
@@ -42,6 +45,8 @@ use BlobSolutions\WooCommerceVcrAm\Refund\RefundReasonMapper;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundReceiptUrlBuilder;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
 use BlobSolutions\WooCommerceVcrAm\Refund\SaleRefundRegistrarFactory;
+use BlobSolutions\WooCommerceVcrAm\Settings\AdvancedFields;
+use BlobSolutions\WooCommerceVcrAm\Settings\GeneralFields;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\SettingsPage;
 
@@ -136,7 +141,17 @@ final class Plugin
         // Migration handler runs first so any schema/option changes
         // a future version needs are in place before downstream
         // services touch them.
-        (new Migrator($this->version))->maybeMigrate();
+        $migrator = new Migrator($this->version);
+        // 0.1.7 removed the "Test mode" checkbox. It wrote `vcr_test_mode`
+        // and nothing ever read it: whether receipts are test receipts is a
+        // property of the register, which the API reports, not something a
+        // store can choose from here. The literal option name is spelled out
+        // because a migration names what used to exist — there is no
+        // constant for it any more, and there should not be one.
+        $migrator->addMigration('0.1.7', static function (): void {
+            delete_option('vcr_test_mode');
+        });
+        $migrator->maybeMigrate();
 
         // Credential storage needs libsodium — the native extension, or the
         // pure-PHP one WordPress bundles for hosts built without it. If
@@ -160,12 +175,28 @@ final class Plugin
             new DepartmentListerFactory($config, $clientFactory),
         );
 
+        // Diagnostics: one probe, shared by every screen that says
+        // something about the connection, so the settings checklist, the
+        // status report and `wp vcr status` cannot disagree — and so a
+        // single admin page costs at most one /whoami call.
+        $identityFactory = new IdentityReaderFactory($config, $clientFactory);
+        $probe = new ConnectionProbe($config, $identityFactory);
+        $panel = new ReadinessPanel($probe, $cashierCatalog, $departmentCatalog, $config);
+
         (new PluginActionLinks($this->pluginFile))->register();
 
-        (new SettingsPage($keyStore, $cashierCatalog, $departmentCatalog))->register();
+        (new SettingsPage(
+            $keyStore,
+            $cashierCatalog,
+            $departmentCatalog,
+            $probe,
+            new GeneralFields($keyStore, $cashierCatalog, $panel),
+            new AdvancedFields($departmentCatalog),
+        ))->register();
         (new ConnectionTester(
             $keyStore,
             $listerFactory,
+            $identityFactory,
             $this->pluginFile,
             $this->version,
         ))->register();
@@ -226,7 +257,7 @@ final class Plugin
 
         // WooCommerce → Status → System Status — surface plugin config +
         // queue health for support staff.
-        (new SystemStatusReport($this->version, $config))->register();
+        (new SystemStatusReport($this->version, $config, $probe))->register();
 
         // GDPR personal-data exporter + eraser. We always retain fiscal
         // records (Armenian tax law mandates retention) and report
@@ -235,7 +266,7 @@ final class Plugin
 
         // WP-CLI commands (only loaded under wp-cli).
         if (defined('WP_CLI') && WP_CLI) {
-            (new CliCommands($config, $meta, $queue, $refundMeta, $refundQueue))->register();
+            (new CliCommands($config, $probe, $meta, $queue, $refundMeta, $refundQueue))->register();
         }
 
         $receiptUrlBuilder = new ReceiptUrlBuilder($config, $meta);

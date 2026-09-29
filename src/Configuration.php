@@ -33,8 +33,6 @@ class Configuration
 {
     public const OPT_BASE_URL = 'vcr_base_url';
 
-    public const OPT_TEST_MODE = 'vcr_test_mode';
-
     public const OPT_DEFAULT_CASHIER_ID = 'vcr_default_cashier_id';
 
     public const OPT_DEFAULT_DEPARTMENT_ID = 'vcr_default_department_id';
@@ -126,11 +124,6 @@ class Configuration
         $trimmed = trim($stored);
 
         return $trimmed === '' ? VcrClient::DEFAULT_BASE_URL : $trimmed;
-    }
-
-    public function isTestMode(): bool
-    {
-        return get_option(self::OPT_TEST_MODE, 'no') === 'yes';
     }
 
     /**

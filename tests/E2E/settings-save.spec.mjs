@@ -81,3 +81,52 @@ test.describe('filter arguments other plugins can pass', () => {
         expect(result.apiKey).toBe('');
     });
 });
+
+/**
+ * The setup screen itself. 0.1.7 turned it from a flat form into a
+ * checklist, after a merchant with a working plugin wrote in asking which
+ * parameters to enter — the screen could not tell him that his register had
+ * no cashiers, and said "check your API key permissions" instead.
+ *
+ * Driven through real WooCommerce because the section dispatch
+ * (`get_settings_for_default_section` and friends) is WC's, and because the
+ * checklist's first line is only true if the plugin really did reach
+ * `GET /whoami` over the wire.
+ */
+test.describe('setup checklist', () => {
+    test('reports the register the key belongs to, sandbox and all', async () => {
+        const result = JSON.parse(await evalFile('render-settings-sections.php'));
+
+        expect(result.error).toBeUndefined();
+        // Straight out of the mock's /whoami answer — nothing in the plugin
+        // knows these strings.
+        expect(result.checklist).toContain('E2E Merchant LLC');
+        expect(result.checklist).toContain('01234567');
+        expect(result.checklist).toContain('register #90');
+        expect(result.checklist).toContain('sandbox');
+        // Seeded cashier 1 is selected, so the cashier line is satisfied and
+        // the panel's worst level is the sandbox warning, not an error.
+        expect(result.checklist).toContain('notice-warning');
+        expect(result.checklist).not.toContain('notice-error');
+        // The sentence this release exists to delete.
+        expect(result.checklist).not.toContain('API key permissions');
+    });
+
+    test('keeps the base URL and the department override out of the first screen', async () => {
+        const result = JSON.parse(await evalFile('render-settings-sections.php'));
+
+        expect(result.sections).toEqual(['', 'advanced']);
+
+        expect(result.generalIds).toContain('vcr_api_key');
+        expect(result.generalIds).toContain('vcr_default_cashier_id');
+        expect(result.generalIds).toContain('vcr_shipping_sku');
+        expect(result.generalIds).not.toContain('vcr_base_url');
+        expect(result.generalIds).not.toContain('vcr_default_department_id');
+        // And the checkbox that wrote an option nothing read is gone from
+        // both sections.
+        expect(result.generalIds).not.toContain('vcr_test_mode');
+        expect(result.advancedIds).not.toContain('vcr_test_mode');
+
+        expect(result.advancedIds).toEqual(['vcr_base_url', 'vcr_default_department_id']);
+    });
+});

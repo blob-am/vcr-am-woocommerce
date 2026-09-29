@@ -2,11 +2,16 @@
 
 declare(strict_types=1);
 
+use BlobSolutions\WooCommerceVcrAm\Admin\ReadinessPanel;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\IdentityReaderFactory;
+use BlobSolutions\WooCommerceVcrAm\Settings\AdvancedFields;
+use BlobSolutions\WooCommerceVcrAm\Settings\GeneralFields;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\SettingsPage;
 use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
@@ -31,7 +36,19 @@ it('hooks into woocommerce_get_settings_pages on register', function (): void {
         $config,
         new DepartmentListerFactory($config, new VcrClientFactory()),
     );
-    (new SettingsPage($keyStore, $catalog, $departments))->register();
+    $probe = new ConnectionProbe(
+        $config,
+        new IdentityReaderFactory($config, new VcrClientFactory()),
+    );
+
+    (new SettingsPage(
+        $keyStore,
+        $catalog,
+        $departments,
+        $probe,
+        new GeneralFields($keyStore, $catalog, new ReadinessPanel($probe, $catalog, $departments, $config)),
+        new AdvancedFields($departments),
+    ))->register();
 });
 
 // `VcrSettingsTab` extends `WC_Settings_Page` — exercising `addTab()` would

@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Catalog;
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionFailure;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProblem;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ProblemClassifier;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\DepartmentListItem;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\TaxRegime;
 use Throwable;
@@ -19,8 +22,8 @@ if (! defined('ABSPATH')) {
  * can fiscalise against.
  *
  * Structurally a copy of {@see CashierCatalog} — same transient, same
- * TTL, same "every failure collapses to an empty list so a dropdown
- * render can't kill the admin page" contract. What differs is the label:
+ * TTL, same "nothing thrown from a dropdown render, every outcome a
+ * {@see CatalogListing}" contract. What differs is the label:
  * **every option leads with the tax regime.**
  *
  * That is the whole point of this class. The department, not the offer,
@@ -49,25 +52,25 @@ class DepartmentCatalog
     public function __construct(
         private readonly Configuration $config,
         private readonly DepartmentListerFactory $listerFactory,
+        private readonly ProblemClassifier $classifier = new ProblemClassifier(),
     ) {
     }
 
-    /**
-     * @return array<int, string> Map of department internal id → human-readable label.
-     */
-    public function list(): array
+    public function list(): CatalogListing
     {
         $cached = get_transient(self::TRANSIENT_KEY);
         if (is_array($cached)) {
             // We trust the shape we wrote ourselves on the way in — the
             // only writer is `shapeForDropdown()` below.
             /** @var array<int, string> $cached */
-            return $cached;
+            return CatalogListing::of($cached);
         }
 
         $apiKey = $this->config->apiKey();
         if ($apiKey === null) {
-            return [];
+            return CatalogListing::unavailable(
+                new ConnectionFailure(ConnectionProblem::NoApiKey),
+            );
         }
 
         try {
@@ -75,7 +78,7 @@ class DepartmentCatalog
         } catch (Throwable $e) {
             // Don't cache failures — a blip shouldn't hide the list for
             // the next hour.
-            return [];
+            return CatalogListing::unavailable($this->classifier->classify($e));
         }
 
         $shaped = $this->shapeForDropdown($departments);
@@ -86,7 +89,7 @@ class DepartmentCatalog
             set_transient(self::TRANSIENT_KEY, $shaped, self::TTL_SECONDS);
         }
 
-        return $shaped;
+        return CatalogListing::of($shaped);
     }
 
     public function refresh(): void

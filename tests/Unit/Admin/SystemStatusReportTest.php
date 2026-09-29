@@ -5,6 +5,11 @@ declare(strict_types=1);
 use Automattic\WooCommerce\Utilities\OrderUtil;
 use BlobSolutions\WooCommerceVcrAm\Admin\SystemStatusReport;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionFailure;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProblem;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionState;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\RegisterIdentity;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
 
@@ -70,10 +75,12 @@ afterEach(function (): void {
     OrderUtil::$hposEnabled = false;
 });
 
-function makeReport(): array
+function makeReport(?ConnectionState $state = null): array
 {
     $config = Mockery::mock(Configuration::class);
-    $report = new SystemStatusReport('0.5.0', $config);
+    $probe = Mockery::mock(ConnectionProbe::class);
+    $probe->allows('state')->andReturn($state ?? ConnectionState::noApiKey());
+    $report = new SystemStatusReport('0.5.0', $config, $probe);
 
     return [$report, $config];
 }
@@ -91,7 +98,6 @@ function primeConfig(\Mockery\MockInterface $config, array $overrides = []): voi
     $defaults = [
         'hasCredentials' => true,
         'baseUrl' => 'https://vcr.am/api/v1',
-        'isTestMode' => false,
         'defaultCashierId' => 5,
         'defaultDepartmentId' => 7,
         'shippingSku' => 'SHIP-1',
@@ -143,19 +149,41 @@ it('reports "No" for missing API key without leaking the key itself', function (
         ->not->toContain('Bearer');
 });
 
-it('reports test mode and configuration completeness flags', function (): void {
-    [$report, $config] = makeReport();
-    primeConfig($config, [
-        'isTestMode' => true,
-        'isFullyConfigured' => false,
-    ]);
+it('names the register it is actually talking to, sandbox and all', function (): void {
+    // This row replaced "Test mode: Disabled", which reported a plugin
+    // option nothing read. Support's first question on any report is
+    // whether the store is pointed at a sandbox — and only the register
+    // can answer that.
+    [$report, $config] = makeReport(ConnectionState::connected(new RegisterIdentity(
+        vcrId: 90,
+        crn: '99123456',
+        isSandbox: true,
+        tradingName: 'Kravec Sandbox',
+        entityName: 'Kravec LLC',
+        tin: '01234567',
+    )));
+    primeConfig($config, ['isFullyConfigured' => false]);
 
     $html = captureSystemStatus($report);
 
     expect($html)
-        ->toContain('Test mode')
-        ->toContain('Enabled')
-        ->toContain('Fully configured');
+        ->toContain('Register')
+        ->toContain('#90')
+        ->toContain('sandbox')
+        ->toContain('01234567')
+        ->toContain('Fully configured')
+        ->not->toContain('Test mode');
+});
+
+it('says plainly that the register is unknown when the key was rejected', function (): void {
+    [$report, $config] = makeReport(ConnectionState::failed(
+        new ConnectionFailure(ConnectionProblem::KeyRejected),
+    ));
+    primeConfig($config);
+
+    $html = captureSystemStatus($report);
+
+    expect($html)->toContain('API key rejected');
 });
 
 it('surfaces the per-status order counts from postmeta', function (): void {

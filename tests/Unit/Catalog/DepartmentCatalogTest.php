@@ -6,6 +6,7 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentLister;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProblem;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Language;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\DepartmentListItem;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\DepartmentLocalizedTitle;
@@ -60,13 +61,16 @@ function makeDepartmentFactory(array $departments): DepartmentListerFactory
     return $factory;
 }
 
-it('returns an empty list when credentials are not configured', function (): void {
+it('reports "no API key" without calling the API when credentials are missing', function (): void {
     $factory = Mockery::mock(DepartmentListerFactory::class);
     $factory->expects('create')->never();
 
     $catalog = new DepartmentCatalog(makeDepartmentConfig(null), $factory);
+    $listing = $catalog->list();
 
-    expect($catalog->list())->toBe([]);
+    expect($listing->entries)->toBe([])
+        ->and($listing->isAvailable())->toBeFalse()
+        ->and($listing->failure?->problem)->toBe(ConnectionProblem::NoApiKey);
 });
 
 it('returns the cached value verbatim when the transient is hot', function (): void {
@@ -79,7 +83,7 @@ it('returns the cached value verbatim when the transient is hot', function (): v
 
     $catalog = new DepartmentCatalog(makeDepartmentConfig('test-key'), $factory);
 
-    expect($catalog->list())->toBe($cached);
+    expect($catalog->list()->entries)->toBe($cached);
 });
 
 it('refresh deletes the cache transient', function (): void {
@@ -114,7 +118,7 @@ it('leads every label with the tax regime', function (): void {
         ]),
     );
 
-    expect($catalog->list())->toBe([
+    expect($catalog->list()->entries)->toBe([
         1 => 'VAT — Հացաբուլկեղեն (#1)',
         4 => 'Micro-enterprise — Ծառայություններ (#4)',
     ]);
@@ -131,7 +135,7 @@ it('names every regime the API can return', function (): void {
         ]),
     );
 
-    expect($catalog->list())->toBe([
+    expect($catalog->list()->entries)->toBe([
         1 => 'VAT (#1)',
         2 => 'VAT-exempt (#2)',
         3 => 'Turnover tax (#3)',
@@ -151,7 +155,7 @@ it('falls back to a non-Armenian title, then to the id, rather than inventing on
         ]),
     );
 
-    expect($catalog->list())->toBe([
+    expect($catalog->list()->entries)->toBe([
         7 => 'Turnover tax — Services (#7)',
         9 => 'VAT-exempt (#9)',
     ]);
@@ -171,6 +175,11 @@ it('collapses an API failure to an empty list without caching it', function (): 
     $catalog = new DepartmentCatalog(makeDepartmentConfig('test-key'), $factory);
 
     // The settings page must still render — a dropdown that can't load is
-    // an inconvenience, an admin page that fatals is an outage.
-    expect($catalog->list())->toBe([]);
+    // an inconvenience, an admin page that fatals is an outage. What it must
+    // NOT do is look like a register with no departments: that reads as a
+    // configuration problem, and this one is a network problem.
+    $listing = $catalog->list();
+
+    expect($listing->entries)->toBe([])
+        ->and($listing->isAvailable())->toBeFalse();
 });

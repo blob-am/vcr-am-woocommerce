@@ -36,6 +36,19 @@ const HOST = process.env.MOCK_VCR_HOST ?? '0.0.0.0';
  * without it, one test's 5xx override would leak into every later spec.
  */
 const DEFAULT_PLAN = {
+    // GET /whoami — who the key belongs to. The settings checklist and the
+    // "Test connection" button both ask, and both report a sandbox register
+    // as one, so the mock has to answer as a real register would.
+    whoami: {
+        status: 200,
+        body: {
+            vcrId: 90,
+            crn: '99123456',
+            mode: 'sandbox',
+            tradingPlatformName: 'E2E Store',
+            businessEntity: { tin: '01234567', name: 'E2E Merchant LLC' },
+        },
+    },
     listCashiers: {
         status: 200,
         body: [
@@ -148,6 +161,11 @@ async function handleRequest(req, res) {
             return jsonResponse(res, 200, { ok: true, plan: responsePlan[update.endpoint] });
         }
         return jsonResponse(res, 400, { error: 'invalid plan payload' });
+    }
+
+    if (req.url.startsWith('/api/v1/whoami') && req.method === 'GET') {
+        const plan = responsePlan.whoami;
+        return jsonResponse(res, plan.status, plan.body);
     }
 
     if (req.url.startsWith('/api/v1/cashiers') && req.method === 'GET') {

@@ -36,7 +36,6 @@ add_action('init', static function (): void {
         // shape the plugin actually sends. Override via the env var to
         // exercise the opt-in path.
         'vcr_default_department_id' => getenv('VCR_E2E_DEPARTMENT_ID') ?: '',
-        'vcr_test_mode' => 'no',
         'vcr_shipping_sku' => 'shipping',
         'vcr_fee_sku' => 'fee',
         // Plugin is Armenia-focused; the natural test currency is AMD.

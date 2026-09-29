@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Admin;
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionSummary;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
@@ -62,6 +64,8 @@ class SystemStatusReport
     public function __construct(
         private readonly string $pluginVersion,
         private readonly Configuration $config,
+        private readonly ConnectionProbe $probe,
+        private readonly ConnectionSummary $summary = new ConnectionSummary(),
     ) {
     }
 
@@ -114,7 +118,12 @@ class SystemStatusReport
             __('HTTP transport', 'vcr-am-fiscal-receipts') => $this->httpTransport(),
             __('API key configured', 'vcr-am-fiscal-receipts') => $this->config->hasCredentials() ? __('Yes', 'vcr-am-fiscal-receipts') : __('No', 'vcr-am-fiscal-receipts'),
             __('Base URL', 'vcr-am-fiscal-receipts') => $this->stripCredentials($this->config->baseUrl()),
-            __('Test mode', 'vcr-am-fiscal-receipts') => $this->config->isTestMode() ? __('Enabled', 'vcr-am-fiscal-receipts') : __('Disabled', 'vcr-am-fiscal-receipts'),
+            // Which register, straight from the API — this replaced a "Test
+            // mode" row that reported an option nothing in the plugin read.
+            // Support's first question on any report is whether the store is
+            // pointed at a sandbox, and only the register can answer it.
+            // The probe caches, so a status render costs at most one request.
+            __('Register', 'vcr-am-fiscal-receipts') => $this->summary->line($this->probe->state()),
             __('Default cashier configured', 'vcr-am-fiscal-receipts') => $this->config->defaultCashierId() !== null ? __('Yes', 'vcr-am-fiscal-receipts') : __('No', 'vcr-am-fiscal-receipts'),
             __('Default department configured', 'vcr-am-fiscal-receipts') => $this->config->defaultDepartmentId() !== null ? __('Yes', 'vcr-am-fiscal-receipts') : __('No', 'vcr-am-fiscal-receipts'),
             __('Shipping SKU configured', 'vcr-am-fiscal-receipts') => $this->config->shippingSku() !== null ? __('Yes', 'vcr-am-fiscal-receipts') : __('No', 'vcr-am-fiscal-receipts'),

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Cli;
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionSummary;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
@@ -48,10 +50,12 @@ class CliCommands
 
     public function __construct(
         private readonly Configuration $configuration,
+        private readonly ConnectionProbe $probe,
         private readonly FiscalStatusMeta $fiscalMeta,
         private readonly FiscalQueue $fiscalQueue,
         private readonly RefundStatusMeta $refundMeta,
         private readonly RefundQueue $refundQueue,
+        private readonly ConnectionSummary $summary = new ConnectionSummary(),
     ) {
     }
 
@@ -214,7 +218,7 @@ class CliCommands
         $rows = [
             ['key' => 'API key configured', 'value' => $this->configuration->hasCredentials() ? 'yes' : 'no'],
             ['key' => 'Base URL', 'value' => $this->configuration->baseUrl()],
-            ['key' => 'Test mode', 'value' => $this->configuration->isTestMode() ? 'yes' : 'no'],
+            ['key' => 'Register', 'value' => $this->summary->line($this->probe->state())],
             ['key' => 'Default cashier id', 'value' => (string) ($this->configuration->defaultCashierId() ?? 'unset')],
             ['key' => 'Default department id', 'value' => (string) ($this->configuration->defaultDepartmentId() ?? 'unset')],
             ['key' => 'Shipping SKU', 'value' => $this->configuration->shippingSku() ?? 'unset'],

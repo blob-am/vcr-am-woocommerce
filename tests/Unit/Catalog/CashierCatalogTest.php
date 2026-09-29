@@ -6,6 +6,7 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierLister;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProblem;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Language;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\CashierListItem;
@@ -50,13 +51,16 @@ function makeConfigWithApiKey(?string $apiKey): Configuration
     return $config;
 }
 
-it('returns an empty list when credentials are not configured', function (): void {
+it('reports "no API key" without calling the API when credentials are missing', function (): void {
     $factory = Mockery::mock(CashierListerFactory::class);
     $factory->expects('create')->never();
 
     $catalog = new CashierCatalog(makeConfigWithApiKey(null), $factory);
+    $listing = $catalog->list();
 
-    expect($catalog->list())->toBe([]);
+    expect($listing->entries)->toBe([])
+        ->and($listing->isAvailable())->toBeFalse()
+        ->and($listing->failure?->problem)->toBe(ConnectionProblem::NoApiKey);
 });
 
 it('returns the cached value verbatim when the transient is hot', function (): void {
@@ -69,7 +73,7 @@ it('returns the cached value verbatim when the transient is hot', function (): v
 
     $catalog = new CashierCatalog(makeConfigWithApiKey('test-key'), $factory);
 
-    expect($catalog->list())->toBe($cached);
+    expect($catalog->list()->entries)->toBe($cached);
 });
 
 it('refresh deletes the cache transient', function (): void {
@@ -111,11 +115,11 @@ it('fetches from the API when no transient is cached and stores the result', fun
     $catalog = new CashierCatalog(makeConfigWithApiKey('test-key'), $factory);
     $shaped = $catalog->list();
 
-    expect($shaped)->toBe([
+    expect($shaped->entries)->toBe([
         1 => 'Անի (desk A1)',
         2 => 'Բակո (desk B2)',
     ]);
-    expect($stored)->toBe($shaped);
+    expect($stored)->toBe($shaped->entries);
 });
 
 it('falls back to the first available language when Armenian name is missing', function (): void {
@@ -132,7 +136,7 @@ it('falls back to the first available language when Armenian name is missing', f
     $catalog = new CashierCatalog(makeConfigWithApiKey('k'), $factory);
 
     // First language available is Russian — falls back to it.
-    expect($catalog->list())->toBe([7 => 'Иван (desk Z9)']);
+    expect($catalog->list()->entries)->toBe([7 => 'Иван (desk Z9)']);
 });
 
 it('uses the bare internal id when no localised name exists at all', function (): void {
@@ -148,10 +152,10 @@ it('uses the bare internal id when no localised name exists at all', function ()
 
     $catalog = new CashierCatalog(makeConfigWithApiKey('k'), $factory);
 
-    expect($catalog->list())->toBe([42 => '#42 (desk NONAME)']);
+    expect($catalog->list()->entries)->toBe([42 => '#42 (desk NONAME)']);
 });
 
-it('returns an empty list and does NOT cache when the API call throws', function (): void {
+it('reports a classified failure, and does NOT cache, when the API call throws', function (): void {
     $cacheWritten = false;
     Functions\when('set_transient')->alias(function () use (&$cacheWritten): bool {
         $cacheWritten = true;
@@ -167,11 +171,17 @@ it('returns an empty list and does NOT cache when the API call throws', function
 
     $catalog = new CashierCatalog(makeConfigWithApiKey('k'), $factory);
 
-    expect($catalog->list())->toBe([])
+    $listing = $catalog->list();
+
+    expect($listing->entries)->toBe([])
+        ->and($listing->isAvailable())->toBeFalse()
+        // A RuntimeException is not one of the SDK's own, so the honest
+        // classification is "we do not know", never a guess at the cause.
+        ->and($listing->failure?->problem)->toBe(ConnectionProblem::Unexpected)
         ->and($cacheWritten)->toBeFalse();
 });
 
-it('returns an empty list without caching when the API succeeds with zero cashiers', function (): void {
+it('separates "the register has none" from "we could not ask"', function (): void {
     $cacheWritten = false;
     Functions\when('set_transient')->alias(function () use (&$cacheWritten): bool {
         $cacheWritten = true;
@@ -187,7 +197,15 @@ it('returns an empty list without caching when the API succeeds with zero cashie
 
     $catalog = new CashierCatalog(makeConfigWithApiKey('k'), $factory);
 
-    expect($catalog->list())->toBe([])
+    $listing = $catalog->list();
+
+    // The distinction the settings screen is built on: the fetch worked,
+    // the register simply has no cashiers. 0.1.6 could not tell this apart
+    // from a rejected key and told merchants to check their key.
+    expect($listing->entries)->toBe([])
+        ->and($listing->isAvailable())->toBeTrue()
+        ->and($listing->isEmpty())->toBeTrue()
+        ->and($listing->failure)->toBeNull()
         // Empty list deliberately NOT cached. The bootstrap workflow
         // (admin saves key, then creates first cashier in VCR, then
         // returns to settings) breaks if we cache empty for an hour —

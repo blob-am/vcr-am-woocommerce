@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionState;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\RegisterIdentity;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
@@ -11,14 +14,16 @@ use BlobSolutions\WooCommerceVcrAm\Refund\RefundQueue;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
 use Brain\Monkey\Functions;
 
-function makeCli(): array
+function makeCli(?ConnectionState $state = null): array
 {
     $config = Mockery::mock(Configuration::class);
+    $probe = Mockery::mock(ConnectionProbe::class);
+    $probe->allows('state')->andReturn($state ?? ConnectionState::noApiKey());
     $fiscalMeta = Mockery::mock(FiscalStatusMeta::class);
     $fiscalQueue = Mockery::mock(FiscalQueue::class);
     $refundMeta = Mockery::mock(RefundStatusMeta::class);
     $refundQueue = Mockery::mock(RefundQueue::class);
-    $cli = new CliCommands($config, $fiscalMeta, $fiscalQueue, $refundMeta, $refundQueue);
+    $cli = new CliCommands($config, $probe, $fiscalMeta, $fiscalQueue, $refundMeta, $refundQueue);
 
     return [$cli, $config, $fiscalMeta, $fiscalQueue, $refundMeta, $refundQueue];
 }
@@ -174,10 +179,16 @@ it('retry-failed in dry-run mode logs but does not enqueue', function (): void {
 // ---------- status ----------
 
 it('status emits the configured fields in the chosen format', function (): void {
-    [$cli, $config] = makeCli();
+    [$cli, $config] = makeCli(ConnectionState::connected(new RegisterIdentity(
+        vcrId: 64,
+        crn: '52470004',
+        isSandbox: false,
+        tradingName: 'Bakery',
+        entityName: 'Bakery LLC',
+        tin: '01234567',
+    )));
     $config->allows('hasCredentials')->andReturn(true);
     $config->allows('baseUrl')->andReturn('https://vcr.am/api/v1');
-    $config->allows('isTestMode')->andReturn(false);
     $config->allows('defaultCashierId')->andReturn(5);
     $config->allows('defaultDepartmentId')->andReturn(7);
     $config->allows('shippingSku')->andReturn('SHIP-1');
@@ -192,5 +203,12 @@ it('status emits the configured fields in the chosen format', function (): void 
     expect($output)
         ->toContain('API key configured')
         ->toContain('https://vcr.am/api/v1')
-        ->toContain('SHIP-1');
+        ->toContain('SHIP-1')
+        // Which register, from the API — a support paste that says
+        // "production, TIN 01234567" answers the first three questions
+        // support used to have to ask.
+        ->toContain('Register')
+        ->toContain('#64')
+        ->toContain('production')
+        ->not->toContain('Test mode');
 });

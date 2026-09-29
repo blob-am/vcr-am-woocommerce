@@ -5,6 +5,9 @@ declare(strict_types=1);
 use BlobSolutions\WooCommerceVcrAm\Admin\ConnectionTester;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierLister;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\IdentityReader;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\IdentityReaderFactory;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\RegisterIdentity;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
 use Brain\Monkey\Actions;
@@ -49,6 +52,7 @@ it('enqueue survives admin_enqueue_scripts fired with no arguments', function ()
     $tester = new ConnectionTester(
         new KeyStore('vcr_test_keystore_option'),
         Mockery::mock(CashierListerFactory::class),
+        Mockery::mock(IdentityReaderFactory::class),
         '/tmp/plugin.php',
         '0.1.0',
     );
@@ -66,6 +70,7 @@ it('registers the AJAX action and admin_enqueue_scripts hooks', function (): voi
     (new ConnectionTester(
         $keyStore,
         Mockery::mock(CashierListerFactory::class),
+        Mockery::mock(IdentityReaderFactory::class),
         '/tmp/plugin.php',
         '0.1.0',
     ))->register();
@@ -76,12 +81,44 @@ it('registers the AJAX action and admin_enqueue_scripts hooks', function (): voi
  * KeyStore, ready for handle() invocation. The KeyStore mock returns
  * the saved API key (or null) per test.
  */
-function makeTester(?string $savedApiKey, CashierListerFactory $factory): ConnectionTester
+function testerIdentity(bool $isSandbox = false): RegisterIdentity
 {
+    return new RegisterIdentity(
+        vcrId: 64,
+        crn: $isSandbox ? '99123456' : '52470004',
+        isSandbox: $isSandbox,
+        tradingName: 'Bakery',
+        entityName: 'Bakery LLC',
+        tin: '01234567',
+    );
+}
+
+function stubIdentityFactory(?RegisterIdentity $identity = null): IdentityReaderFactory
+{
+    $reader = Mockery::mock(IdentityReader::class);
+    $reader->allows('identify')->andReturn($identity ?? testerIdentity());
+
+    $factory = Mockery::mock(IdentityReaderFactory::class);
+    $factory->allows('create')->andReturn($reader);
+
+    return $factory;
+}
+
+function makeTester(
+    ?string $savedApiKey,
+    CashierListerFactory $factory,
+    ?IdentityReaderFactory $identityFactory = null,
+): ConnectionTester {
     $keyStore = Mockery::mock(KeyStore::class);
     $keyStore->allows('get')->andReturn($savedApiKey);
 
-    return new ConnectionTester($keyStore, $factory, '/tmp/plugin.php', '0.1.0');
+    return new ConnectionTester(
+        $keyStore,
+        $factory,
+        $identityFactory ?? stubIdentityFactory(),
+        '/tmp/plugin.php',
+        '0.1.0',
+    );
 }
 
 it('rejects requests without manage_woocommerce capability', function (): void {
@@ -166,7 +203,7 @@ it('passes the form-typed base URL through to the factory when non-empty', funct
     ]);
 });
 
-it('returns success with cashier count on successful listCashiers', function (): void {
+it('names the register, its mode and its cashier count on success', function (): void {
     $_POST['api_key'] = 'k';
 
     // CashierListItem is final — build real instances. ConnectionTester
@@ -193,6 +230,37 @@ it('returns success with cashier count on successful listCashiers', function ():
 
     expect(fn () => $tester->handle())->toThrow(RuntimeException::class, 'json_success_sent');
     expect($captured['count'])->toBe(3);
+    // "The key works" was never the whole answer: a key pasted from the
+    // wrong register, or from a sandbox, used to look exactly like success.
+    expect($captured['message'])
+        ->toContain('Bakery LLC')
+        ->toContain('01234567')
+        ->toContain('#64')
+        ->toContain('production')
+        ->toContain('3 cashiers');
+});
+
+it('says a sandbox key is a sandbox key, and that a register with no cashiers cannot issue', function (): void {
+    $_POST['api_key'] = 'k';
+
+    $lister = Mockery::mock(CashierLister::class);
+    $lister->expects('listCashiers')->andReturn([]);
+
+    $factory = Mockery::mock(CashierListerFactory::class);
+    $factory->allows('create')->andReturn($lister);
+
+    $captured = null;
+    Functions\when('wp_send_json_success')->alias(function (array $payload) use (&$captured): void {
+        $captured = $payload;
+        throw new RuntimeException('json_success_sent');
+    });
+
+    $tester = makeTester(null, $factory, stubIdentityFactory(testerIdentity(isSandbox: true)));
+
+    expect(fn () => $tester->handle())->toThrow(RuntimeException::class, 'json_success_sent');
+    expect($captured['message'])
+        ->toContain('test-only')
+        ->toContain('no cashiers');
 });
 
 it('reports VcrException messages directly on failure', function (): void {

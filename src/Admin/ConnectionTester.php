@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Admin;
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\IdentityReaderFactory;
 use BlobSolutions\WooCommerceVcrAm\Net\SafeUrlValidator;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
@@ -20,8 +21,8 @@ if (! defined('ABSPATH')) {
  * "Test connection" AJAX endpoint surfaced under the API key field on the
  * settings page. Constructs a one-shot {@see VcrClient} from the values
  * the admin currently has in the form (or the stored KeyStore key, if the
- * field was left empty), calls `listCashiers()`, and returns the
- * cashier count plus a friendly success/failure message.
+ * field was left empty), asks the register who it is and how many
+ * cashiers it has, and returns that as one plain-text line.
  *
  * AJAX is the right transport here:
  *
@@ -49,6 +50,7 @@ class ConnectionTester
     public function __construct(
         private readonly KeyStore $keyStore,
         private readonly CashierListerFactory $listerFactory,
+        private readonly IdentityReaderFactory $identityFactory,
         private readonly string $pluginFile,
         private readonly string $version,
         private readonly SafeUrlValidator $urlValidator = new SafeUrlValidator(),
@@ -164,26 +166,54 @@ class ConnectionTester
             }
         }
 
+        // The form's base URL field — if non-empty — overrides the saved
+        // one for these calls. Lets admins probe a not-yet-saved staging
+        // endpoint before persisting.
+        $baseUrlOverride = $baseUrl !== '' ? $baseUrl : null;
+
         try {
-            // The form's base URL field — if non-empty — overrides the
-            // saved one for this single AJAX call. Lets admins probe a
-            // not-yet-saved staging endpoint before persisting.
+            // Two questions, because "the key works" was never the whole
+            // answer: which register it belongs to (a key pasted from the
+            // wrong register, or from a sandbox, is a common mistake that
+            // looked identical to success), and whether that register can
+            // actually issue a receipt.
+            $identity = $this->identityFactory
+                ->create($apiKey, $baseUrlOverride)
+                ->identify();
             $cashiers = $this->listerFactory
-                ->create($apiKey, $baseUrl !== '' ? $baseUrl : null)
+                ->create($apiKey, $baseUrlOverride)
                 ->listCashiers();
             $count = count($cashiers);
 
-            wp_send_json_success([
-                'message' => sprintf(
-                    /* translators: %d is the number of cashiers visible to this API key. */
+            $where = sprintf(
+                /* translators: 1: business name, 2: TIN, 3: register id, 4: "sandbox" or "production". */
+                __('Connected to %1$s (TIN %2$s), register #%3$d — %4$s.', 'vcr-am-fiscal-receipts'),
+                $identity->entityName,
+                $identity->tin,
+                $identity->vcrId,
+                $identity->isSandbox
+                    ? __('sandbox, receipts are test-only', 'vcr-am-fiscal-receipts')
+                    : __('production', 'vcr-am-fiscal-receipts'),
+            );
+
+            $cashierNote = $count === 0
+                ? __(
+                    'This register has no cashiers yet, so no receipt can be issued. The register owner adds the first one in the VCR dashboard.',
+                    'vcr-am-fiscal-receipts',
+                )
+                : sprintf(
+                    /* translators: %d is the number of cashiers on the register. */
                     _n(
-                        'Connected. %d cashier visible to this API key.',
-                        'Connected. %d cashiers visible to this API key.',
+                        '%d cashier available.',
+                        '%d cashiers available.',
                         $count,
                         'vcr-am-fiscal-receipts',
                     ),
                     $count,
-                ),
+                );
+
+            wp_send_json_success([
+                'message' => $where . ' ' . $cashierNote,
                 'count' => $count,
             ]);
         } catch (VcrException $e) {

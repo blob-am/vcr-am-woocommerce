@@ -54,17 +54,6 @@ it('baseUrl returns the trimmed override when set', function (): void {
     expect($config->baseUrl())->toBe('https://staging.vcr.am/api/v1');
 });
 
-it('isTestMode is false unless option is exactly "yes"', function (): void {
-    withOptionMap([Configuration::OPT_TEST_MODE => 'yes']);
-    expect((new Configuration(new KeyStore('vcr_x')))->isTestMode())->toBeTrue();
-
-    withOptionMap([Configuration::OPT_TEST_MODE => 'no']);
-    expect((new Configuration(new KeyStore('vcr_x')))->isTestMode())->toBeFalse();
-
-    withOptionMap([]);
-    expect((new Configuration(new KeyStore('vcr_x')))->isTestMode())->toBeFalse();
-});
-
 it('defaultCashierId returns null on missing or zero, positive int otherwise', function (): void {
     withOptionMap([]);
     expect((new Configuration(new KeyStore('vcr_x')))->defaultCashierId())->toBeNull();

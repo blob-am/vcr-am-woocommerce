@@ -6,6 +6,7 @@ namespace BlobSolutions\WooCommerceVcrAm\Settings;
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -26,6 +27,9 @@ final class SettingsPage
         private readonly KeyStore $keyStore,
         private readonly CashierCatalog $cashierCatalog,
         private readonly DepartmentCatalog $departmentCatalog,
+        private readonly ConnectionProbe $probe,
+        private readonly GeneralFields $general,
+        private readonly AdvancedFields $advanced,
     ) {
     }
 
@@ -57,6 +61,9 @@ final class SettingsPage
             $this->keyStore,
             $this->cashierCatalog,
             $this->departmentCatalog,
+            $this->probe,
+            $this->general,
+            $this->advanced,
         );
 
         return $pages;

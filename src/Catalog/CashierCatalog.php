@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Catalog;
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionFailure;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProblem;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ProblemClassifier;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\CashierListItem;
 use Throwable;
 
@@ -23,11 +26,12 @@ if (! defined('ABSPATH')) {
  * conservative (1h) to bound staleness when a cashier is added or
  * renamed in the VCR dashboard between explicit refreshes.
  *
- * Failure modes — missing credentials, network error, API rejection —
- * all collapse to "empty list". The settings UI surfaces this as a
- * helpful "save your API key first" or "couldn't reach VCR" message;
- * we don't propagate exceptions because the dropdown render path
- * shouldn't kill the entire admin page.
+ * Nothing here throws: a dropdown render must not be able to kill the
+ * admin page. But a failure is no longer indistinguishable from an empty
+ * register either — every outcome comes back as a {@see CatalogListing},
+ * which carries the classified reason when there is one. A register with
+ * no cashiers and a host that cannot reach VCR are different problems with
+ * different fixes, and the settings screen says which one it is.
  */
 /**
  * Not declared `final` so unit tests can mock — there's no production
@@ -45,27 +49,25 @@ class CashierCatalog
     public function __construct(
         private readonly Configuration $config,
         private readonly CashierListerFactory $listerFactory,
+        private readonly ProblemClassifier $classifier = new ProblemClassifier(),
     ) {
     }
 
-    /**
-     * @return array<int, string> Map of cashier internal id → human-readable label.
-     */
-    public function list(): array
+    public function list(): CatalogListing
     {
         $cached = get_transient(self::TRANSIENT_KEY);
         if (is_array($cached)) {
-            // We trust the shape we wrote ourselves on the way in. The
-            // PHPDoc declaration above is the contract; the in-memory
-            // cache obeys it because `set_transient` only ever sees
-            // values produced by `shapeForDropdown()`.
+            // We trust the shape we wrote ourselves on the way in: the
+            // only writer is `shapeForDropdown()` below.
             /** @var array<int, string> $cached */
-            return $cached;
+            return CatalogListing::of($cached);
         }
 
         $apiKey = $this->config->apiKey();
         if ($apiKey === null) {
-            return [];
+            return CatalogListing::unavailable(
+                new ConnectionFailure(ConnectionProblem::NoApiKey),
+            );
         }
 
         try {
@@ -73,7 +75,7 @@ class CashierCatalog
         } catch (Throwable $e) {
             // Don't cache failures — a transient failure shouldn't lock
             // the admin out of seeing cashiers for the next hour.
-            return [];
+            return CatalogListing::unavailable($this->classifier->classify($e));
         }
 
         $shaped = $this->shapeForDropdown($cashiers);
@@ -90,7 +92,7 @@ class CashierCatalog
             set_transient(self::TRANSIENT_KEY, $shaped, self::TTL_SECONDS);
         }
 
-        return $shaped;
+        return CatalogListing::of($shaped);
     }
 
     public function refresh(): void
