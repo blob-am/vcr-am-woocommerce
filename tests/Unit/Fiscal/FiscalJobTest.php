@@ -27,6 +27,7 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\PendingResou
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Unit;
 use Brain\Monkey\Functions;
+use InvalidArgumentException;
 use Mockery;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -38,7 +39,8 @@ use WC_Order;
  * configuration gap, build error, and the four failure classifications
  * (5xx, 429, 4xx, network, validation, unknown). The non-trivial bit is
  * the retry-budget check — we exercise both the "still has budget"
- * (retriable) and the "exhausted budget" (failed) branches.
+ * (retriable) and the "exhausted budget" (failed) branches, for each of
+ * the two budgets.
  */
 beforeEach(function (): void {
     $this->config = Mockery::mock(Configuration::class);
@@ -438,7 +440,7 @@ it('classifies validation errors as terminal', function (): void {
     expect($outcome->status)->toBe(FiscalStatus::Failed);
 });
 
-it('flips to Failed once the retry budget is exhausted, regardless of error class', function (): void {
+it('flips to Failed once a classified error has used the full budget', function (): void {
     $order = makeOrderMockReturnedByWcGetOrder();
     $this->meta->allows('status')->with($order)->andReturn(null);
     primeBuildable();
@@ -451,6 +453,94 @@ it('flips to Failed once the retry budget is exhausted, regardless of error clas
     $this->registrarFactory->expects('create')->andReturn($registrar);
 
     $this->meta->expects('markFailed')->with($order, Mockery::pattern('/Gave up after 6 attempts/'));
+    $order->allows('add_order_note');
+
+    $outcome = $this->job->run(123);
+
+    expect($outcome->status)->toBe(FiscalStatus::Failed);
+});
+
+it('gives an error the SDK did not classify one retry, not the full budget', function (): void {
+    // A TypeError from a collaborator or a fatal from a neighbouring plugin's
+    // filter arrives here as a bare Throwable. Retrying it for two and a half
+    // hours keeps the order reading `pending` while nothing gets better.
+    $order = makeOrderMockReturnedByWcGetOrder();
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    primeBuildable();
+
+    $this->meta->expects('recordAttempt')->with($order);
+    $this->meta->allows('attemptCount')->with($order)->andReturn(1);
+
+    $registrar = Mockery::mock(SaleRegistrar::class);
+    $registrar->expects('registerSale')->andThrow(new RuntimeException('some other plugin exploded'));
+    $this->registrarFactory->expects('create')->andReturn($registrar);
+
+    $this->meta->expects('markRetriableFailure')->with($order, Mockery::any());
+    $order->allows('add_order_note');
+
+    $outcome = $this->job->run(123);
+
+    expect($outcome->shouldRetry())->toBeTrue();
+});
+
+it('stops an unclassified error after its second attempt, while a 5xx keeps going', function (): void {
+    $order = makeOrderMockReturnedByWcGetOrder();
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    primeBuildable();
+
+    $this->meta->expects('recordAttempt')->with($order);
+    $this->meta->allows('attemptCount')->with($order)->andReturn(FiscalJob::UNCLASSIFIED_ERROR_MAX_ATTEMPTS);
+
+    $registrar = Mockery::mock(SaleRegistrar::class);
+    $registrar->expects('registerSale')->andThrow(new RuntimeException('still exploding'));
+    $this->registrarFactory->expects('create')->andReturn($registrar);
+
+    $this->meta->expects('markFailed')->with($order, Mockery::pattern('/Gave up after 2 attempts/'));
+    $order->allows('add_order_note');
+
+    $outcome = $this->job->run(123);
+
+    expect($outcome->status)->toBe(FiscalStatus::Failed)
+        // The budgets are different numbers on purpose: an outage at the tax
+        // authority is worth the whole schedule, a bug is not.
+        ->and(FiscalJob::UNCLASSIFIED_ERROR_MAX_ATTEMPTS)->toBeLessThan(FiscalJob::MAX_ATTEMPTS);
+});
+
+it('keeps retrying a 5xx at the attempt where an unclassified error would have stopped', function (): void {
+    $order = makeOrderMockReturnedByWcGetOrder();
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    primeBuildable();
+
+    $this->meta->expects('recordAttempt')->with($order);
+    $this->meta->allows('attemptCount')->with($order)->andReturn(FiscalJob::UNCLASSIFIED_ERROR_MAX_ATTEMPTS);
+
+    $registrar = Mockery::mock(SaleRegistrar::class);
+    $registrar->expects('registerSale')->andThrow(makeApiException(503));
+    $this->registrarFactory->expects('create')->andReturn($registrar);
+
+    $this->meta->expects('markRetriableFailure')->with($order, Mockery::any());
+    $order->allows('add_order_note');
+
+    $outcome = $this->job->run(123);
+
+    expect($outcome->shouldRetry())->toBeTrue();
+});
+
+it('treats the SDK refusing one of our arguments as terminal', function (): void {
+    // Nothing about the next attempt differs, so retrying spends the budget on
+    // a refusal that needs a settings change or a plugin fix.
+    $order = makeOrderMockReturnedByWcGetOrder();
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    primeBuildable();
+
+    $this->meta->expects('recordAttempt')->with($order);
+    $this->meta->allows('attemptCount')->with($order)->andReturn(1);
+
+    $registrar = Mockery::mock(SaleRegistrar::class);
+    $registrar->expects('registerSale')->andThrow(new InvalidArgumentException('integration must contain printable ASCII only'));
+    $this->registrarFactory->expects('create')->andReturn($registrar);
+
+    $this->meta->expects('markFailed')->with($order, Mockery::any());
     $order->allows('add_order_note');
 
     $outcome = $this->job->run(123);

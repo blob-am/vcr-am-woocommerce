@@ -15,6 +15,7 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Buyer;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\CashierId;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Department;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterSaleInput;
+use InvalidArgumentException;
 use Throwable;
 use WC_Order;
 
@@ -58,9 +59,11 @@ if (! defined('ABSPATH')) {
  *     is the single source of truth.
  *
  *   - **Max-attempts is enforced here, not in the queue.** Once the job
- *     records the configured number of attempts, it transitions the order
- *     to {@see FiscalStatus::Failed} regardless of error class — even a
- *     persistent 5xx eventually stops being retried.
+ *     records the attempts that error class is worth, it transitions the
+ *     order to {@see FiscalStatus::Failed} — even a persistent 5xx
+ *     eventually stops being retried. The budget is the full
+ *     {@see self::MAX_ATTEMPTS} for a failure the SDK named and
+ *     {@see self::UNCLASSIFIED_ERROR_MAX_ATTEMPTS} for one it did not.
  */
 /**
  * Not declared `final` so the FiscalQueue unit tests can mock the job —
@@ -74,6 +77,20 @@ class FiscalJob
      * The queue's backoff schedule has `MAX_ATTEMPTS - 1` retry delays.
      */
     public const MAX_ATTEMPTS = 6;
+
+    /**
+     * Attempts allowed for a failure the SDK did not classify.
+     *
+     * The full budget spans about two and a half hours (15s, 60s, 5m, 30m, 2h),
+     * which is the right shape for a tax-authority outage and the wrong shape
+     * for a bug. A `TypeError` from a collaborator, a fatal from a neighbouring
+     * plugin's filter, the SDK refusing an argument — none of those get better
+     * on the sixth try, and while they repeat the order reads `pending` to the
+     * merchant and nobody is told. One retry rides out a worker that died on a
+     * memory spike; after that the order goes to the needs-attention list,
+     * where re-fiscalising it is one click.
+     */
+    public const UNCLASSIFIED_ERROR_MAX_ATTEMPTS = 2;
 
     public function __construct(
         private readonly Configuration $configuration,
@@ -221,7 +238,7 @@ class FiscalJob
             return FiscalJobOutcome::failed($message);
         }
 
-        if ($attempt >= self::MAX_ATTEMPTS) {
+        if ($attempt >= $this->attemptBudget($error)) {
             // Gave it the full retry budget — flip to terminal so we stop
             // taking up queue slots and the order shows up in admin's
             // "needs attention" view.
@@ -248,6 +265,14 @@ class FiscalJob
             return $this->isRetriableApiError($error);
         }
 
+        if ($error instanceof InvalidArgumentException) {
+            // The SDK (or Guzzle) refusing one of our own inputs: an
+            // idempotency key over the cap, a base URL that is not a URL, a
+            // User-Agent token some filter mangled. The next attempt sends the
+            // same thing and earns the same refusal.
+            return false;
+        }
+
         if ($error instanceof VcrNetworkException) {
             return true;
         }
@@ -266,9 +291,22 @@ class FiscalJob
             return false;
         }
 
-        // Any other throwable (out-of-memory, plugin conflict, etc.) is
-        // treated as transient — a fresh worker tick may have a clean slate.
+        // Any other throwable (out-of-memory, plugin conflict, etc.) gets a
+        // fresh worker tick to prove itself, on the short budget: see
+        // UNCLASSIFIED_ERROR_MAX_ATTEMPTS.
         return true;
+    }
+
+    /**
+     * How many attempts a failure of this kind is worth. Only errors the SDK
+     * named — an HTTP status, a transport failure — earn the full schedule;
+     * see {@see UNCLASSIFIED_ERROR_MAX_ATTEMPTS} for why.
+     */
+    private function attemptBudget(Throwable $error): int
+    {
+        return $error instanceof VcrException
+            ? self::MAX_ATTEMPTS
+            : self::UNCLASSIFIED_ERROR_MAX_ATTEMPTS;
     }
 
     /**
