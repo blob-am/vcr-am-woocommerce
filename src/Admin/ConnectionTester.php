@@ -198,7 +198,7 @@ class ConnectionTester
 
             $cashierNote = $count === 0
                 ? __(
-                    'This register has no cashiers yet, so no receipt can be issued. The register owner adds the first one in the VCR dashboard.',
+                    'This register has no cashiers yet, so no receipt can be issued. Add the first one in the VCR dashboard — owner, accountant and developer accounts can all do it.',
                     'vcr-am-fiscal-receipts',
                 )
                 : sprintf(

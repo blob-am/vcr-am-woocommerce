@@ -37,7 +37,7 @@ The official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Re
 2. Activate the plugin through the **Plugins** menu in WordPress.
 3. Go to **WooCommerce → Settings → VCR**, paste your VCR.AM API key and press **Save changes**.
 4. The screen then opens with a checklist of what is ready and what is not. It names the register the key belongs to — the business, the TIN, the register number — says whether its receipts are real or test, and lists anything still missing with the one next step that applies and who can take it. Work down the list.
-5. Pick the **default cashier**. The dropdown loads from your VCR account once the key is stored. If it is empty, the register has no cashier yet: only the register's owner can add one, and opening the register's desk once in the VCR dashboard is enough.
+5. Pick the **default cashier**. The dropdown loads from your VCR account once the key is stored. If it is empty, the register has no cashier yet: add one in the VCR dashboard — owner, accountant and developer accounts can all do it — and for a one-person shop, opening the register's desk once is enough.
 6. If you take cash on delivery, choose under **Cash on delivery** when its receipt is issued: when the order is placed (the default) or when you mark the order Completed. Orders paid online are always fiscalized the moment the payment clears.
 7. Leave the **Advanced** tab alone unless you know you need it. It holds the Base URL, for stores pointed at a staging VCR endpoint, and an **override department**, which books every line of every order under one department regardless of the department its offer was registered with. The department determines the tax regime (VAT, VAT-exempt, turnover tax, micro-enterprise) printed on the receipt, and a fiscal receipt can only be refunded and reissued, never corrected.
 
@@ -49,7 +49,7 @@ Yes. The plugin issues receipts through the VCR.AM gateway, which talks to the S
 
 = The cashier dropdown is empty. What do I enter? =
 
-Nothing — read the checklist at the top of the settings screen, which says which of four things happened: the server could not be reached, the key was rejected, the register never finished activation with the tax service, or the register simply has no cashier yet. The last one is the common case and is not a settings problem: the register's owner adds the first cashier in the VCR dashboard, and opening the register's desk once is enough. Reload the settings screen afterwards and the cashier appears.
+Nothing — read the checklist at the top of the settings screen, which says which of four things happened: the server could not be reached, the key was rejected, the register never finished activation with the tax service, or the register simply has no cashier yet. The last one is not a settings problem: add a cashier in the VCR dashboard — owner, accountant and developer accounts can all do it, and for a one-person shop, opening the register's desk once is enough. Reload the settings screen afterwards and the cashier appears.
 
 = Does it support multi-currency stores? =
 
@@ -95,7 +95,7 @@ For a multi-currency store the plugin also asks this same gateway for the AMD ra
 
 = 0.1.7 =
 * The VCR settings screen now opens with a checklist of what is and is not ready, instead of a form you have to already understand. It names the register your API key belongs to — the business, the TIN, the register number — and says plainly whether receipts from it are real or test.
-* When the cashier list comes up empty, the screen says why. Previously it said "check your API key permissions" for every possible cause, including the most common one: a working key on a register that simply has no cashier yet, which only the register's owner can add. It now tells apart an unreachable server, a rejected key, a register that never finished activation with the tax service, and a register with nothing on it — each with the one next step that applies.
+* When the cashier list comes up empty, the screen says why. Previously it said "check your API key permissions" for every possible cause, including the most common one: a working key on a register that simply has no cashier yet. It now tells apart an unreachable server, a rejected key, a register that never finished activation with the tax service, and a register with nothing on it — each with the one next step that applies.
 * The "Test mode" checkbox is gone. It wrote a setting nothing in the plugin ever read, so ticking it changed nothing while suggesting your receipts had become test receipts. Whether a register is a sandbox is the register's own property, and the checklist reports it.
 * Base URL and Override department moved to an Advanced tab. For almost every store the correct value of both is "empty", and the department override silently replaces the tax regime on every line of every receipt — not something to meet on your first visit.
 * If your store charges for delivery and has no Shipping SKU set, the checklist warns you now rather than letting you find out when an order is held.

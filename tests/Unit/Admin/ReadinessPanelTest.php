@@ -113,10 +113,11 @@ it('blocks on a register that has no registration number yet', function (): void
         ->toContain('no registration number');
 });
 
-it('says the register has no cashiers, and whose job that is', function (): void {
-    // The exact state of entity 58 / VCR 90 on 2026-09-29: working key,
-    // `GET /cashiers` -> 200 [], and an integrator who cannot create one
-    // because DEVELOPER has no such permission.
+it('says the register has no cashiers, and who can add one', function (): void {
+    // The state entity 58 / VCR 90 was in on 2026-09-29: working key,
+    // `GET /cashiers` -> 200 []. A register that becomes able to file is
+    // given a cashier now, so reaching this state means an older register,
+    // and every role on the business can add one — the integrator's too.
     $html = makePanel(
         ConnectionState::connected(panelIdentity()),
         cashiers: CatalogListing::of([]),
@@ -124,7 +125,7 @@ it('says the register has no cashiers, and whose job that is', function (): void
 
     expect($html)->toContain('notice-error')
         ->toContain('no cashiers yet')
-        ->toContain('register owner')
+        ->toContain('developer accounts')
         ->toContain('vcr.am/dashboard')
         ->not->toContain('API key');
 });

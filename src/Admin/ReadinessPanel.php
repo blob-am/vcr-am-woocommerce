@@ -231,13 +231,15 @@ final class ReadinessPanel
         // produced the support email 0.1.7 was written for: the old screen
         // said "check your API key permissions", which had nothing to do
         // with it. A receipt has to name a cashier, so nothing can be
-        // issued until the register has one, and only the register's owner
-        // can add it — an integrator's key holds no such permission.
+        // issued until the register has one. Since 2026-09-29 a register is
+        // given its first cashier the moment it becomes able to file, so
+        // this state means a register older than that — and any role on the
+        // business can fix it, integrator included.
         if ($listing->isEmpty()) {
             return new ReadinessStep(
                 $label,
                 __(
-                    'This register has no cashiers yet, and every receipt has to name one. The register owner adds the first one in the VCR dashboard — opening the register\'s desk once is enough — after which this page will find it.',
+                    'This register has no cashiers yet, and every receipt has to name one. Add one in the VCR dashboard — owner, accountant and developer accounts can all do it, and for a one-person shop opening the register\'s desk once is enough — after which this page will find it.',
                     'vcr-am-fiscal-receipts',
                 ) . ' ' . $this->externalLink(self::DASHBOARD_URL, __('Open the VCR dashboard', 'vcr-am-fiscal-receipts')),
                 ReadinessLevel::Blocked,
