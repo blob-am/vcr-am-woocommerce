@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Cli;
 
+use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\Checker;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionSummary;
@@ -30,6 +31,7 @@ if (! defined('ABSPATH')) {
  *   - `wp vcr fiscalize-refund <refund_id>` — manually enqueue a refund
  *   - `wp vcr retry-failed [--dry-run]` — re-queue all Failed/Manual orders
  *   - `wp vcr status` — print plugin config + queue health summary
+ *   - `wp vcr check-catalog` — list products that cannot be fiscalised
  *
  * Why CLI is essential even with admin UI:
  *
@@ -55,7 +57,9 @@ class CliCommands
         private readonly FiscalQueue $fiscalQueue,
         private readonly RefundStatusMeta $refundMeta,
         private readonly RefundQueue $refundQueue,
+        private readonly Checker $coverage,
         private readonly ConnectionSummary $summary = new ConnectionSummary(),
+        private readonly CoverageTable $table = new CoverageTable(),
     ) {
     }
 
@@ -73,6 +77,7 @@ class CliCommands
         WP_CLI::add_command(self::COMMAND_NAMESPACE . ' fiscalize-refund', [$this, 'fiscalizeRefund']);
         WP_CLI::add_command(self::COMMAND_NAMESPACE . ' retry-failed', [$this, 'retryFailed']);
         WP_CLI::add_command(self::COMMAND_NAMESPACE . ' status', [$this, 'status']);
+        WP_CLI::add_command(self::COMMAND_NAMESPACE . ' check-catalog', [$this, 'checkCatalog']);
     }
 
     /**
@@ -234,6 +239,88 @@ class CliCommands
             foreach ($rows as $row) {
                 WP_CLI::log("{$row['key']}: {$row['value']}");
             }
+        }
+    }
+
+    /**
+     * `wp vcr check-catalog [--orphans] [--format=<format>]` — read the
+     * store's SKUs against the register's offers and list what would stop
+     * a receipt. Answers before an order arrives the question the fiscal
+     * path can only answer after the customer has paid.
+     *
+     * Exits non-zero when anything would block a receipt, so a host or CI
+     * job can run it on a schedule and be told.
+     *
+     * ## OPTIONS
+     *
+     * [--orphans]
+     * : Also list offers on the register that no product here references.
+     * Off by default — a register's catalogue legitimately holds offers
+     * sold through other channels.
+     *
+     * [--format=<format>]
+     * : Render as table (default), csv, json or yaml.
+     *
+     * @param array<int, string> $args
+     * @param array<string, string> $assoc
+     */
+    public function checkCatalog(array $args, array $assoc): void
+    {
+        $format = $assoc['format'] ?? 'table';
+
+        // Prose goes to stdout, so it would corrupt a machine-readable
+        // render. Only the table wants a narrative around it.
+        $narrate = $format === 'table';
+
+        $report = $this->coverage->check(isset($assoc['orphans']));
+
+        if (! $report->isAvailable()) {
+            $this->fail('Cannot read the register catalog: ' . $this->summary->failureLine($report->failure));
+        }
+
+        if ($narrate) {
+            WP_CLI::log(sprintf(
+                'Live offers found for %d of %d SKUs in this store.',
+                $report->coveredCount,
+                $report->checkedCount,
+            ));
+        }
+
+        if ($report->catalogTruncated && $narrate) {
+            WP_CLI::warning(sprintf(
+                'The register lists at least %d offers, which is all the API returns at once, '
+                . 'so the catalog could not be read whole. SKUs missing from it were checked '
+                . 'one at a time, up to %d of them; anything past that is reported as unverified.',
+                Checker::OFFER_LIST_CAP,
+                Checker::MAX_EXACT_LOOKUPS,
+            ));
+        }
+
+        $rows = $this->table->rows($report);
+
+        if ($rows !== []) {
+            if (function_exists('WP_CLI\Utils\format_items')) {
+                \WP_CLI\Utils\format_items($format, $rows, CoverageTable::COLUMNS);
+            } else {
+                // Fallback when running under a WP-CLI version without
+                // format_items — print one row per line.
+                foreach ($rows as $row) {
+                    WP_CLI::log("{$row['problem']}\t{$row['sku']}\t{$row['product']}");
+                }
+            }
+        }
+
+        if ($report->hasBlockers()) {
+            $this->fail(sprintf(
+                '%d catalog problems would stop a receipt. Fix them in the VCR dashboard and re-run.',
+                count($report->withoutSku) + count($report->missing) + count($report->archived),
+            ));
+        }
+
+        if ($narrate) {
+            WP_CLI::success($report->unverified === []
+                ? 'Every SKU this store sells has a live offer.'
+                : 'No problems found among the SKUs that could be checked.');
         }
     }
 

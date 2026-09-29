@@ -2,9 +2,14 @@
 
 declare(strict_types=1);
 
+use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\Checker;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\Report;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\StoreSku;
 use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionFailure;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProblem;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionState;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\RegisterIdentity;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
@@ -23,9 +28,10 @@ function makeCli(?ConnectionState $state = null): array
     $fiscalQueue = Mockery::mock(FiscalQueue::class);
     $refundMeta = Mockery::mock(RefundStatusMeta::class);
     $refundQueue = Mockery::mock(RefundQueue::class);
-    $cli = new CliCommands($config, $probe, $fiscalMeta, $fiscalQueue, $refundMeta, $refundQueue);
+    $coverage = Mockery::mock(Checker::class);
+    $cli = new CliCommands($config, $probe, $fiscalMeta, $fiscalQueue, $refundMeta, $refundQueue, $coverage);
 
-    return [$cli, $config, $fiscalMeta, $fiscalQueue, $refundMeta, $refundQueue];
+    return [$cli, $config, $fiscalMeta, $fiscalQueue, $refundMeta, $refundQueue, $coverage];
 }
 
 function captureCliOutput(callable $fn): string
@@ -211,4 +217,92 @@ it('status emits the configured fields in the chosen format', function (): void 
         ->toContain('#64')
         ->toContain('production')
         ->not->toContain('Test mode');
+});
+
+// ---------- check-catalog ----------
+
+/**
+ * @param list<StoreSku> $missing
+ * @param list<StoreSku> $unverified
+ */
+function cleanReport(array $missing = [], array $unverified = [], bool $truncated = false): Report
+{
+    return Report::of(
+        withoutSku: [],
+        missing: $missing,
+        archived: [],
+        unverified: $unverified,
+        orphanOffers: [],
+        checkedCount: 3,
+        coveredCount: 3 - count($missing),
+        catalogTruncated: $truncated,
+    );
+}
+
+it('says the store is ready when every SKU has an offer', function (): void {
+    [$cli, , , , , , $coverage] = makeCli();
+    $coverage->expects('check')->with(false)->andReturn(cleanReport());
+
+    $output = captureCliOutput(fn () => $cli->checkCatalog([], []));
+
+    expect($output)->toContain('Live offers found for 3 of 3 SKUs')
+        ->toContain('Every SKU this store sells has a live offer');
+});
+
+it('refuses to guess when the register catalog cannot be read', function (): void {
+    [$cli, , , , , , $coverage] = makeCli();
+    $coverage->expects('check')->andReturn(
+        Report::unavailable(new ConnectionFailure(ConnectionProblem::NoApiKey)),
+    );
+
+    expect(fn () => $cli->checkCatalog([], []))
+        ->toThrow(RuntimeException::class, 'Cannot read the register catalog: No API key saved');
+});
+
+it('exits non-zero and counts the blockers, so a scheduled run is heard', function (): void {
+    [$cli, , , , , , $coverage] = makeCli();
+    $coverage->expects('check')->andReturn(cleanReport(missing: [
+        new StoreSku('tea', 'Tea', 11),
+        new StoreSku('cocoa', 'Cocoa', 13),
+    ]));
+
+    // The command prints the table and *then* errors, so the buffer has to be
+    // closed on the way out or the test is flagged risky rather than failing.
+    ob_start();
+    try {
+        expect(fn () => $cli->checkCatalog([], []))
+            ->toThrow(RuntimeException::class, '2 catalog problems would stop a receipt');
+    } finally {
+        ob_end_clean();
+    }
+});
+
+it('does not claim a clean store when the row cap left SKUs undecided', function (): void {
+    [$cli, , , , , , $coverage] = makeCli();
+    $coverage->expects('check')->andReturn(
+        cleanReport(unverified: [new StoreSku('cocoa', 'Cocoa', 13)], truncated: true),
+    );
+
+    $output = captureCliOutput(fn () => $cli->checkCatalog([], []));
+
+    expect($output)->toContain('could not be read whole')
+        ->toContain('No problems found among the SKUs that could be checked')
+        ->not->toContain('Every SKU this store sells');
+});
+
+it('passes --orphans through, and asks for nothing extra without it', function (): void {
+    [$cli, , , , , , $coverage] = makeCli();
+    $coverage->expects('check')->with(true)->andReturn(cleanReport());
+
+    captureCliOutput(fn () => $cli->checkCatalog([], ['orphans' => '1']));
+});
+
+it('keeps prose out of a machine-readable render', function (): void {
+    [$cli, , , , , , $coverage] = makeCli();
+    $coverage->expects('check')->andReturn(cleanReport());
+
+    $output = captureCliOutput(fn () => $cli->checkCatalog([], ['format' => 'json']));
+
+    expect($output)->not->toContain('Live offers found for')
+        ->and($output)->not->toContain('Every SKU this store sells');
 });

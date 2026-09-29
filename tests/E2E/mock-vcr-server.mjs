@@ -28,6 +28,12 @@ const PORT = Number(process.env.MOCK_VCR_PORT ?? 9876);
 const HOST = process.env.MOCK_VCR_HOST ?? '0.0.0.0';
 
 /**
+ * Rows `GET /offers` returns at most, mirroring the server-side cap the
+ * SDK documents. Kept in step with `Checker::OFFER_LIST_CAP` in the plugin.
+ */
+const OFFER_LIST_CAP = 500;
+
+/**
  * Pristine baseline response plan. `responsePlan` (below) is cloned
  * from this; individual entries can be overridden via POST to
  * `/__test/plan` (`{ "endpoint": "registerSale", "status": 503 }`), and
@@ -56,6 +62,26 @@ const DEFAULT_PLAN = {
                 deskId: 'A1',
                 internalId: 1,
                 name: { hy: { language: 'hy', content: 'Test cashier' } },
+            },
+        ],
+    },
+    // GET /offers — what the catalog coverage check reads. The real API
+    // filters by `externalId` and caps the list server-side, so this mock
+    // does both: the plugin only falls back to exact-match lookups when the
+    // list came back capped, and that path is worth exercising for real.
+    listOffers: {
+        status: 200,
+        body: [
+            {
+                id: 1,
+                externalId: 'E2E-COVERED',
+                type: 'product',
+                classifierCode: '47.91',
+                defaultMeasureUnit: 'pc',
+                defaultDepartment: { internalId: 1 },
+                title: [],
+                archivedAt: null,
+                createdAt: '2026-09-01T00:00:00Z',
             },
         ],
     },
@@ -175,6 +201,28 @@ async function handleRequest(req, res) {
     if (req.url.startsWith('/api/v1/cashiers') && req.method === 'GET') {
         const plan = responsePlan.listCashiers;
         return jsonResponse(res, plan.status, plan.body);
+    }
+
+    if (req.url.startsWith('/api/v1/offers') && req.method === 'GET') {
+        const plan = responsePlan.listOffers;
+
+        // Honour both halves of the real endpoint's behaviour, because the
+        // plugin's answer depends on them: an exact-match filter, and a
+        // server-side row cap on the unfiltered list. Planning more than
+        // OFFER_LIST_CAP rows is how a spec reaches the truncated path — the
+        // overflow rows are then only findable by asking for them by id,
+        // exactly as on a register with a catalogue that large.
+        const asked = new URL(req.url, 'http://mock').searchParams.get('externalId');
+
+        if (!Array.isArray(plan.body)) {
+            return jsonResponse(res, plan.status, plan.body);
+        }
+
+        const body = asked !== null
+            ? plan.body.filter((offer) => offer.externalId === asked)
+            : plan.body.slice(0, OFFER_LIST_CAP);
+
+        return jsonResponse(res, plan.status, body);
     }
 
     if (req.url === '/api/v1/sales' && req.method === 'POST') {

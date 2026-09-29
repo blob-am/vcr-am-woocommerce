@@ -22,8 +22,11 @@ use BlobSolutions\WooCommerceVcrAm\Admin\ReadinessPanel;
 use BlobSolutions\WooCommerceVcrAm\Admin\SystemStatusReport;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\Checker;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\StoreSkuReader;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\OfferListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
 use BlobSolutions\WooCommerceVcrAm\Currency\CurrencyConverter;
 use BlobSolutions\WooCommerceVcrAm\Currency\VcrExchangeRateProvider;
@@ -266,9 +269,16 @@ final class Plugin
         // accordingly via WP's privacy tooling.
         (new PrivacyHandler($meta, $refundMeta))->register();
 
-        // WP-CLI commands (only loaded under wp-cli).
+        // WP-CLI commands (only loaded under wp-cli). The coverage check is
+        // built here rather than above because walking the product catalogue
+        // is a command, not something a page render should be able to start.
         if (defined('WP_CLI') && WP_CLI) {
-            (new CliCommands($config, $probe, $meta, $queue, $refundMeta, $refundQueue))->register();
+            $coverage = new Checker(
+                $config,
+                new OfferListerFactory($config, $clientFactory),
+                new StoreSkuReader($config),
+            );
+            (new CliCommands($config, $probe, $meta, $queue, $refundMeta, $refundQueue, $coverage))->register();
         }
 
         $receiptUrlBuilder = new ReceiptUrlBuilder($config, $meta);

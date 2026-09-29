@@ -184,6 +184,40 @@ if (! class_exists('WC_Product', false)) {
         {
             return '';
         }
+
+        public function get_id(): int
+        {
+            return 0;
+        }
+
+        public function get_type(): string
+        {
+            return 'simple';
+        }
+    }
+}
+
+if (! class_exists('WC_Product_Variable', false)) {
+    /**
+     * `get_children()` lives here and NOT on `WC_Product`, mirroring real
+     * WooCommerce. Putting it on the base class would let a unit test pass
+     * for code that calls it on a simple product, which is a fatal error in
+     * production — the same shape of trap as `WC_Order_Refund` below.
+     */
+    class WC_Product_Variable extends WC_Product
+    {
+        public function get_type(): string
+        {
+            return 'variable';
+        }
+
+        /**
+         * @return array<int, int>
+         */
+        public function get_children(): array
+        {
+            return [];
+        }
     }
 }
 
@@ -309,6 +343,11 @@ if (! class_exists('WP_CLI', false)) {
         }
 
         public static function success(string $message): void
+        {
+            echo $message . "\n";
+        }
+
+        public static function warning(string $message): void
         {
             echo $message . "\n";
         }

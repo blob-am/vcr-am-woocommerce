@@ -55,6 +55,42 @@ export async function wpCli(args, opts = {}) {
 }
 
 /**
+ * Run `wp ...` and report the exit code instead of rejecting on it.
+ *
+ * `wpCli` treats a non-zero exit as a failure, which is right for setup
+ * commands. It is wrong for a command whose job includes failing: `wp vcr
+ * check-catalog` exits non-zero when it finds something that would stop a
+ * receipt, so a host can schedule it and be told. Asserting on that needs
+ * the exit code as data.
+ *
+ * @param {string[]} args - Args after `wp`
+ * @returns {Promise<{ code: number, stdout: string, stderr: string }>}
+ */
+export async function wpCliAllowFailure(args) {
+    return new Promise((resolve, reject) => {
+        const child = spawn(WP_ENV_BIN, ['run', 'cli', 'wp', ...args], {
+            cwd: process.cwd(),
+            env: process.env,
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        child.stdout.on('data', (chunk) => {
+            stdout += chunk.toString('utf8');
+        });
+        child.stderr.on('data', (chunk) => {
+            stderr += chunk.toString('utf8');
+        });
+
+        child.on('error', reject);
+        child.on('close', (code) => {
+            resolve({ code: code ?? -1, stdout: stdout.trim(), stderr: stderr.trim() });
+        });
+    });
+}
+
+/**
  * Convenience: parse a wp-cli `--format=json` output.
  */
 export async function wpCliJson(args) {

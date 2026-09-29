@@ -42,7 +42,18 @@ final class ConnectionSummary
             );
         }
 
-        $failure = $state->failure();
+        return $this->failureLine($state->failure());
+    }
+
+    /**
+     * The same short labels for a fetch that came back with a reason
+     * instead of a register -- the catalog coverage check has a
+     * {@see \BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionFailure}
+     * in hand and no `ConnectionState` to wrap it in. One vocabulary, so
+     * two surfaces cannot name the same problem differently.
+     */
+    public function failureLine(?ConnectionFailure $failure): string
+    {
         $problem = $failure === null ? ConnectionProblem::Unexpected : $failure->problem;
 
         return match ($problem) {
