@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm;
 
+// Above the imports on purpose: WP.org's Plugin Check only reads a file's
+// first 50 lines when it looks for this guard, and the imports below run past
+// that.
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 use BlobSolutions\WooCommerceVcrAm\Admin\ConnectionTester;
 use BlobSolutions\WooCommerceVcrAm\Admin\FiscalizeNowHandler;
 use BlobSolutions\WooCommerceVcrAm\Admin\OrderMetaBox;
@@ -49,11 +56,6 @@ use BlobSolutions\WooCommerceVcrAm\Settings\AdvancedFields;
 use BlobSolutions\WooCommerceVcrAm\Settings\GeneralFields;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\SettingsPage;
-
-if (! defined('ABSPATH')) {
-    exit;
-}
-
 
 /**
  * Top-level plugin bootstrap.

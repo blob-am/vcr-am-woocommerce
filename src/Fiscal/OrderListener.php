@@ -6,6 +6,10 @@ namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 
+if (! defined('ABSPATH')) {
+    exit;
+}
+
 /**
  * Wire WooCommerce order-state events to {@see FiscalQueue::enqueue()}.
  *
@@ -53,10 +57,6 @@ use BlobSolutions\WooCommerceVcrAm\Configuration;
  * SDK call ({@see \BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient::registerSaleRefund()})
  * with their own listener (Phase 3e).
  */
-
-if (! defined('ABSPATH')) {
-    exit;
-}
 
 final class OrderListener
 {

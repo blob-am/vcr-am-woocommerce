@@ -103,8 +103,8 @@ final class ReadinessPanel
     {
         $identity = $state->identity();
         if ($identity !== null) {
-            /* translators: 1: business name, 2: TIN, 3: register id, 4: register name. */
             $who = sprintf(
+                /* translators: 1: business name, 2: TIN, 3: register id, 4: register name. */
                 __('Connected to %1$s (TIN %2$s), register #%3$d %4$s.', 'vcr-am-fiscal-receipts'),
                 '<strong>' . esc_html($identity->entityName) . '</strong>',
                 esc_html($identity->tin),
