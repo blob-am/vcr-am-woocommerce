@@ -34,7 +34,12 @@ if (! defined('ABSPATH')) {
  * return null rather than throwing — the caller surfaces a "please
  * re-enter your API key" admin notice. Exceptions are reserved for
  * environment misconfiguration that the user can't recover from at
- * runtime (libsodium missing).
+ * runtime (no libsodium at all, native or polyfilled).
+ *
+ * A host without the native ext-sodium is supported: WordPress bundles
+ * the pure-PHP sodium_compat polyfill and loads it exactly when the
+ * extension is absent, and encryption works through it. The one thing
+ * the polyfill cannot do is wipe memory — see {@see self::wipe()}.
  */
 /**
  * Not declared `final` so unit tests for ConnectionTester can mock
@@ -46,10 +51,14 @@ class KeyStore
     public function __construct(
         private readonly string $optionName,
     ) {
+        // WordPress guarantees this: the native extension since PHP 7.2, or
+        // its own bundled polyfill when the extension was left out of the
+        // build. Reaching the throw means neither is present, which is a
+        // broken WordPress install rather than an unusual host.
         if (! function_exists('sodium_crypto_secretbox')) {
             throw new RuntimeException(
-                'libsodium (ext-sodium) is required for VCR encrypted credential storage. '
-                . 'It ships with PHP 7.2+ and is enabled by default; check your PHP build.',
+                'libsodium is required for VCR encrypted credential storage, and neither '
+                . 'ext-sodium nor WordPress\'s bundled sodium_compat polyfill is available.',
             );
         }
     }
@@ -75,7 +84,7 @@ class KeyStore
         // boot, not on every page load. Keeps `wp_options` autoload payload lean.
         $saved = update_option($this->optionName, $encoded, false);
 
-        sodium_memzero($key);
+        $this->wipe($key);
 
         // The nonce is fresh per write, so the stored ciphertext always
         // changes — `update_option`'s "value-didn't-change → false" path
@@ -115,7 +124,7 @@ class KeyStore
 
         $key = $this->deriveKey();
         $plaintext = sodium_crypto_secretbox_open($ciphertext, $nonce, $key);
-        sodium_memzero($key);
+        $this->wipe($key);
 
         if ($plaintext === false) {
             $this->logFailure(
@@ -136,6 +145,39 @@ class KeyStore
     public function forget(): void
     {
         delete_option($this->optionName);
+    }
+
+    /**
+     * Overwrite a derived key in memory, on the hosts where that is
+     * actually possible.
+     *
+     * `sodium_memzero()` is defined on every WordPress install, but on a
+     * host without the native ext-sodium the definition is WordPress's
+     * bundled sodium_compat polyfill, and that implementation throws
+     * `SodiumException` by design — PHP cannot overwrite a string's buffer
+     * in place, so the polyfill refuses rather than pretending. Calling it
+     * unguarded turned "save your API key" into a WordPress critical error
+     * on those hosts, and left the settings page fatal on every later
+     * render, because reading the key wipes a derived key too.
+     *
+     * `function_exists()` is the wrong question — the polyfill answers it
+     * yes. `extension_loaded('sodium')` asks the real one: can this wipe
+     * happen at all? Where it can't, the derived key is left to ordinary
+     * garbage collection. That is weaker, but it is what the rest of
+     * WordPress does with its secrets on the same host, and the
+     * alternative on offer is not a wipe — it is an exception.
+     *
+     * @param-out string|null $derivedKey Discarded by `sodium_memzero()`
+     *   where the wipe happened, untouched where it did not. Either way
+     *   the caller is done with the value by the time this returns.
+     */
+    private function wipe(string &$derivedKey): void
+    {
+        if (! extension_loaded('sodium')) {
+            return;
+        }
+
+        sodium_memzero($derivedKey);
     }
 
     private function deriveKey(): string

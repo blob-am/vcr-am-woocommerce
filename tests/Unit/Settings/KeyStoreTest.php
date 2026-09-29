@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
+use BlobSolutions\WooCommerceVcrAm\Tests\SodiumEnvironment;
 use Brain\Monkey\Functions;
 
 /**
@@ -158,3 +159,24 @@ it('throws when wp_options write fails', function (): void {
     $store = new KeyStore('vcr_test_option');
     $store->put('any-key');
 })->throws(RuntimeException::class, 'Failed to persist encrypted credential');
+
+// A host without the native ext-sodium is not exotic: the extension ships
+// with PHP but the build or the hosting panel can leave it out, and
+// WordPress covers for it with its bundled pure-PHP polyfill. The polyfill
+// encrypts fine and refuses, loudly, to wipe memory. Calling memzero
+// anyway is what made saving an API key a WordPress critical error, and
+// then kept the settings page fatal on every later render, because reading
+// the key wipes a derived key too.
+it('stores and reads the key on a host that only has the sodium polyfill', function (): void {
+    $storage = '';
+    vcrStubOptionStorage($storage, 'vcr_test_option');
+
+    SodiumEnvironment::withoutNativeExtension(function () use (&$storage): void {
+        $store = new KeyStore('vcr_test_option');
+        $store->put('vcr_live_my-secret-api-key-12345');
+
+        expect($storage)->not->toBe('');
+        expect($store->get())->toBe('vcr_live_my-secret-api-key-12345');
+        expect($store->isSet())->toBeTrue();
+    });
+});

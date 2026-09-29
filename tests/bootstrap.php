@@ -59,3 +59,9 @@ defined('ARRAY_N') || define('ARRAY_N', 'ARRAY_N');
 // (e.g. in wp-env-backed integration tests in Phase 4).
 require_once __DIR__ . '/Stubs/wc-classes.php';
 require_once __DIR__ . '/Stubs/wc-namespaced-classes.php';
+
+// Namespaced shadows of the two environment calls KeyStore makes, so a
+// test can run as if the host had no native ext-sodium. Must be loaded
+// before KeyStore is first called, not before it is autoloaded: PHP
+// resolves the namespaced candidate at call time.
+require_once __DIR__ . '/Stubs/sodium-environment.php';
