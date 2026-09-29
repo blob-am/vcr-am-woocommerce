@@ -132,6 +132,10 @@ async function handleRequest(req, res) {
         // protection against duplicate receipts is "every attempt sends the
         // same Idempotency-Key", and that is only assertable from here.
         idempotencyKey: req.headers['idempotency-key'] ?? null,
+        // Also not a secret, and the only place the plugin's own product token
+        // can be observed arriving: what vcr.am's request log will show for a
+        // store running this build.
+        userAgent: req.headers['user-agent'] ?? null,
         timestamp: new Date().toISOString(),
     });
 

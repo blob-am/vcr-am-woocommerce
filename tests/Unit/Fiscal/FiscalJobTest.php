@@ -26,11 +26,11 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\SaleItem;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\PendingResource;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Unit;
+use BlobSolutions\WooCommerceVcrAm\Vendor\Psr\Http\Message\RequestInterface;
+use BlobSolutions\WooCommerceVcrAm\Vendor\Psr\Http\Message\ResponseInterface;
 use Brain\Monkey\Functions;
 use InvalidArgumentException;
 use Mockery;
-use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
 use WC_Order;
 

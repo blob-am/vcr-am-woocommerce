@@ -21,10 +21,10 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RefundAmount
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\PendingResource;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleRefundResponse;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\RefundReason;
+use BlobSolutions\WooCommerceVcrAm\Vendor\Psr\Http\Message\RequestInterface;
+use BlobSolutions\WooCommerceVcrAm\Vendor\Psr\Http\Message\ResponseInterface;
 use Brain\Monkey\Functions;
 use Mockery;
-use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
 use WC_Order;
 use WC_Order_Refund;

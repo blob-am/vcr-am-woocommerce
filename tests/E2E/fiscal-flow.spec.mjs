@@ -105,5 +105,13 @@ test.describe('VCR fiscal flow (happy path)', () => {
         // `bacs`, which CashPaymentResolver maps to nonCash.
         expect(payload.amount).toBeUndefined();
         expect(payload.autoSettle).toEqual({ tender: 'nonCash' });
+
+        // The request names the SDK and then this plugin, with the platform it
+        // is running on. Before the plugin sent its own token every caller
+        // looked alike in vcr.am's log, so a support question about a
+        // WooCommerce store could not be answered from it.
+        expect(salesCalls[0].userAgent).toMatch(
+            /^vcr-am-sdk-php\/[\d.]+ \(\+\S+\) vcr-am-woocommerce\/[\d.]+ \(WordPress\/[^;]+; WooCommerce\/[^;]+; PHP\/[^)]+\)$/,
+        );
     });
 });

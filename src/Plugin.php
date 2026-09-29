@@ -167,7 +167,7 @@ final class Plugin
 
         $keyStore = new KeyStore(self::API_KEY_OPTION);
         $config = new Configuration($keyStore);
-        $clientFactory = new VcrClientFactory();
+        $clientFactory = new VcrClientFactory(IntegrationToken::forPlugin($this->version));
         $listerFactory = new CashierListerFactory($config, $clientFactory);
         $cashierCatalog = new CashierCatalog($config, $listerFactory);
         $departmentCatalog = new DepartmentCatalog(

@@ -10,10 +10,10 @@ use BlobSolutions\WooCommerceVcrAm\Diagnostics\IdentityReaderFactory;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\RegisterIdentity;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
+use BlobSolutions\WooCommerceVcrAm\Vendor\Psr\Http\Message\RequestInterface;
+use BlobSolutions\WooCommerceVcrAm\Vendor\Psr\Http\Message\ResponseInterface;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
-use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\ResponseInterface;
 
 beforeEach(function (): void {
     Functions\when('wp_salt')->justReturn(str_repeat('x', 64));

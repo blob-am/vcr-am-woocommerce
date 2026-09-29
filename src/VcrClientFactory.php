@@ -49,6 +49,16 @@ class VcrClientFactory
      */
     public const DEFAULT_CONNECT_TIMEOUT_SECONDS = 10;
 
+    /**
+     * @param ?string $integration `User-Agent` product token naming this
+     *                             plugin, from {@see IntegrationToken}. Null
+     *                             where there is no site to describe — the
+     *                             tests — and the SDK then sends only its own.
+     */
+    public function __construct(private readonly ?string $integration = null)
+    {
+    }
+
     public function create(
         string $apiKey,
         ?string $baseUrl = null,
@@ -64,6 +74,7 @@ class VcrClientFactory
             apiKey: $apiKey,
             baseUrl: $baseUrl ?? VcrClient::DEFAULT_BASE_URL,
             httpClient: $guzzle,
+            integration: $this->integration,
         );
     }
 }
