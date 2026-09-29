@@ -25,8 +25,8 @@ What sets it apart from existing options:
 
 | | Minimum | Tested up to |
 | --- | --- | --- |
-| WordPress | 6.7 | 6.8 |
-| WooCommerce | 9.4 | 10.7 |
+| WordPress | 6.7 | 7.1 |
+| WooCommerce | 9.4 | 11.1 |
 | PHP | 8.3 | 8.4 |
 
 ## Installation

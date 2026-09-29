@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.1.5
+Stable tag: 0.1.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -95,6 +95,14 @@ For multi-currency stores (orders in USD, EUR, RUB, etc.), the plugin fetches th
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.6 =
+* Fixes a critical error that hit the moment you saved your API key, on hosting where PHP is built without the libsodium extension. WordPress substitutes its own pure-PHP version of libsodium on those servers, and the plugin was calling the one function that version refuses to perform. The key was stored, but the VCR settings tab and WooCommerce > Status stayed broken on every later visit. Nothing needs re-entering after the update — the stored key is intact and readable again.
+* That bug was one of a family, so the rest of the family went with it. The settings screen is shared with every other plugin on your store, and a neighbour that misbehaves can no longer take the page down through us: the VCR tab, the receipt link in customer emails, and the connection test all survive arguments they did not expect.
+* Your Base URL is no longer cleared by a save that did not include that field. Stores on a staging or self-hosted VCR endpoint were the ones at risk.
+* A server the plugin genuinely cannot run on — no libsodium at all, or PHP older than 8.3 — now shows an explanatory notice in the admin and stops there, instead of taking the whole site down with it.
+* WooCommerce > Status gained two lines support asks for first: which libsodium this server has, and whether the server can make outbound HTTPS calls at all. A store that cannot reach VCR used to look like an API key problem.
+* Installing the wrong download now says so. GitHub's "Download ZIP" button gives you the source code, which cannot run as a plugin; the notice now names the release file to download instead of asking for Composer.
 
 = 0.1.5 =
 * Duplicate receipts: every sale and every refund now goes out with an idempotency key tied to that order. If a request times out or the plugin retries for any other reason, VCR answers with the receipt from the first attempt instead of registering a second one. A fiscal receipt cannot be deleted once issued, only refunded, which is why this is the headline.
