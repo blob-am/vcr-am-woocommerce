@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.1.7
+Stable tag: 0.1.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,12 @@ For a multi-currency store the plugin also asks this same gateway for the AMD ra
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.8 =
+* New: `wp vcr check-catalog` lists the products this store cannot put on a receipt yet, before an order arrives instead of after one is stuck. It separates a product with no SKU, a SKU with no offer in your VCR catalog, and a SKU whose offer has been archived, because each needs a different fix. It exits with an error code when it finds something, so a host can run it on a schedule.
+* An unexplained failure no longer retries for two and a half hours. A problem the plugin recognises — the tax service down, a network timeout — still gets the full six attempts over that window, because those do come back. A failure it cannot classify now gets one retry and then stops, because a bug does not fix itself on the sixth attempt and until it stopped, the order sat unfiscalised with nobody told.
+* Requests now say which plugin and which platform sent them. Support could previously see only that "some version" of the plugin called; a stuck receipt can now be traced to a plugin, WordPress, WooCommerce and PHP version without asking you for any of them.
+* The empty-cashier notice no longer says only the register's owner can add the first cashier. Accountant and developer accounts have been able to do it since the last release, and for a one-person shop simply opening the register's desk once is enough.
 
 = 0.1.7 =
 * The VCR settings screen now opens with a checklist of what is and is not ready, instead of a form you have to already understand. It names the register your API key belongs to — the business, the TIN, the register number — and says plainly whether receipts from it are real or test.
