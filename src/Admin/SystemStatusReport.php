@@ -98,6 +98,20 @@ class SystemStatusReport
     {
         $rows = [
             __('Plugin version', 'vcr-am-fiscal-receipts') => $this->pluginVersion,
+            // The API key is encrypted with libsodium. Both answers here
+            // work, but they are not the same host: without the native
+            // extension the ciphertext is produced by WordPress's pure-PHP
+            // polyfill, which behaves differently in ways that have bitten
+            // us before. Worth one line in the report support staff read.
+            __('libsodium', 'vcr-am-fiscal-receipts') => extension_loaded('sodium')
+                ? __('Native extension', 'vcr-am-fiscal-receipts')
+                : __('WordPress polyfill (ext-sodium not installed)', 'vcr-am-fiscal-receipts'),
+            // Without either of these the bundled HTTP client cannot even be
+            // constructed, and every symptom points somewhere else: the
+            // cashier dropdown says "check your API key permissions", and
+            // each order quietly burns its whole retry budget. One row turns
+            // that into a one-line answer.
+            __('HTTP transport', 'vcr-am-fiscal-receipts') => $this->httpTransport(),
             __('API key configured', 'vcr-am-fiscal-receipts') => $this->config->hasCredentials() ? __('Yes', 'vcr-am-fiscal-receipts') : __('No', 'vcr-am-fiscal-receipts'),
             __('Base URL', 'vcr-am-fiscal-receipts') => $this->stripCredentials($this->config->baseUrl()),
             __('Test mode', 'vcr-am-fiscal-receipts') => $this->config->isTestMode() ? __('Enabled', 'vcr-am-fiscal-receipts') : __('Disabled', 'vcr-am-fiscal-receipts'),
@@ -216,6 +230,25 @@ class SystemStatusReport
         }
 
         return $counts;
+    }
+
+    /**
+     * What the bundled Guzzle will find to send requests with. It picks
+     * cURL first and falls back to PHP streams, which need
+     * `allow_url_fopen`; with neither it refuses to construct at all.
+     */
+    private function httpTransport(): string
+    {
+        if (extension_loaded('curl')) {
+            return __('cURL', 'vcr-am-fiscal-receipts');
+        }
+
+        $allowUrlFopen = ini_get('allow_url_fopen');
+        if ($allowUrlFopen !== false && $allowUrlFopen !== '' && $allowUrlFopen !== '0') {
+            return __('PHP streams (allow_url_fopen)', 'vcr-am-fiscal-receipts');
+        }
+
+        return __('None — no ext-curl and allow_url_fopen is off; VCR is unreachable from this server', 'vcr-am-fiscal-receipts');
     }
 
     /**

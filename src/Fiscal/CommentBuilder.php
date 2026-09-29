@@ -56,7 +56,13 @@ class CommentBuilder
 
         // VCR trims and strips control characters server-side; the plugin only
         // guards the length so the request can't be rejected for it.
-        return mb_substr($comment, 0, self::MAX_LENGTH);
+        //
+        // The encoding is passed explicitly because on a host without
+        // ext-mbstring this is WordPress's polyfill, and that one resolves a
+        // missing encoding from `blog_charset` — cutting bytes rather than
+        // characters when the site is not declared UTF-8, which would put an
+        // invalid sequence on the wire.
+        return mb_substr($comment, 0, self::MAX_LENGTH, 'UTF-8');
     }
 
     /**

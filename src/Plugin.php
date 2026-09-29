@@ -138,6 +138,18 @@ final class Plugin
         // services touch them.
         (new Migrator($this->version))->maybeMigrate();
 
+        // Credential storage needs libsodium — the native extension, or the
+        // pure-PHP one WordPress bundles for hosts built without it. If
+        // neither answers, go inert with a notice rather than let KeyStore's
+        // constructor throw: this runs on `plugins_loaded`, so an uncaught
+        // throw here takes down the storefront, not just the admin. Same
+        // treatment the plugin entry file gives a missing autoloader.
+        if (! function_exists('sodium_crypto_secretbox')) {
+            add_action('admin_notices', [$this, 'showLibsodiumMissingNotice']);
+
+            return;
+        }
+
         $keyStore = new KeyStore(self::API_KEY_OPTION);
         $config = new Configuration($keyStore);
         $clientFactory = new VcrClientFactory();
@@ -237,6 +249,18 @@ final class Plugin
         echo esc_html(
             __(
                 'VCR — Fiscal Receipts for Armenia requires WooCommerce to be installed and active.',
+                'vcr-am-fiscal-receipts',
+            ),
+        );
+        echo '</p></div>';
+    }
+
+    public function showLibsodiumMissingNotice(): void
+    {
+        echo '<div class="notice notice-error"><p>';
+        echo esc_html(
+            __(
+                'VCR — Fiscal Receipts for Armenia cannot store your API key: this server has no libsodium. Ask your host to enable the PHP sodium extension.',
                 'vcr-am-fiscal-receipts',
             ),
         );
