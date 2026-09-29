@@ -66,8 +66,16 @@ class ConnectionTester
      * button under the API key field. Loaded only on the WC settings page,
      * VCR tab — never elsewhere in the admin.
      */
-    public function enqueue(string $hook): void
+    public function enqueue(mixed $hook = null): void
     {
+        // Both the parameter's default and its `mixed` type earn their
+        // keep. WordPress always passes the hook suffix, but plugins that
+        // render their own admin frame re-fire `admin_enqueue_scripts`
+        // with no arguments at all — a pattern WooCommerce itself shipped
+        // in its (deprecated) setup wizard, and one that copy-paste has
+        // spread widely. A required `string` parameter turns that into an
+        // ArgumentCountError, and the merchant gets a critical error page
+        // on somebody else's admin screen with our name in the trace.
         if ($hook !== 'woocommerce_page_wc-settings') {
             return;
         }

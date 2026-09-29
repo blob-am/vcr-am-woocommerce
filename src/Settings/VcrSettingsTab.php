@@ -98,12 +98,23 @@ final class VcrSettingsTab extends WC_Settings_Page
      * mid-flight, and we'd rather end up at the SDK default than at a
      * malicious URL with the API key already in the wp_options row.
      *
+     * Null is different from the empty string here, and the difference is
+     * load-bearing: WC skips an option whose filtered value is null
+     * (`if ( is_null( $value ) ) { continue; }`), which is how it leaves
+     * a field that never reached the server alone. Returning '' for that
+     * case would silently move a staging or self-hosted store back to the
+     * production endpoint.
+     *
      * @param  mixed                $value
      * @param  array<string, mixed> $option
      * @param  mixed                $rawValue
      */
-    public function sanitizeBaseUrlSave($value, array $option, $rawValue): string
+    public function sanitizeBaseUrlSave($value, array $option, $rawValue): ?string
     {
+        if ($value === null) {
+            return null;
+        }
+
         $candidate = is_string($value) ? trim(esc_url_raw($value)) : '';
         if ($candidate === '') {
             return '';
@@ -286,11 +297,20 @@ final class VcrSettingsTab extends WC_Settings_Page
      * common case where the admin opens the page without intending to
      * change the key).
      *
+     * `$rawValue` is typed `mixed` deliberately. WooCommerce computes it as
+     * `isset($data[$id]) ? wp_unslash($data[$id]) : null` and passes it to
+     * this filter either way, so a field absent from the POST body — a
+     * disabled input, a truncated form, a save driven from code — hands us
+     * null. Under `strict_types` a `string` parameter would turn that into
+     * an uncaught TypeError, which WooCommerce does not catch anywhere in
+     * its save path: the merchant gets a WordPress critical error instead
+     * of saved settings.
+     *
      * @param  mixed              $value
      * @param  array<string,mixed> $option
-     * @param  string             $rawValue
+     * @param  mixed              $rawValue
      */
-    public function interceptApiKeySave(mixed $value, array $option, string $rawValue): string
+    public function interceptApiKeySave(mixed $value, array $option, mixed $rawValue): string
     {
         if (is_string($value)) {
             // Trim before persisting. Pasted-from-clipboard credentials

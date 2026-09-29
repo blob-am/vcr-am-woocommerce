@@ -38,6 +38,26 @@ afterEach(function (): void {
     $_POST = [];
 });
 
+it('enqueue survives admin_enqueue_scripts fired with no arguments', function (): void {
+    // WordPress always passes the hook suffix, but plugins that render
+    // their own admin frame re-fire this action bare — WooCommerce's own
+    // deprecated setup wizard does it, which is how the pattern spread.
+    // A required parameter would make that an ArgumentCountError, and the
+    // merchant would get a critical error page on someone else's screen.
+    Functions\expect('wp_enqueue_script')->never();
+
+    $tester = new ConnectionTester(
+        new KeyStore('vcr_test_keystore_option'),
+        Mockery::mock(CashierListerFactory::class),
+        '/tmp/plugin.php',
+        '0.1.0',
+    );
+
+    // Reaching this line at all is the assertion that matters: a bare
+    // call must not be an ArgumentCountError.
+    $tester->enqueue();
+});
+
 it('registers the AJAX action and admin_enqueue_scripts hooks', function (): void {
     Actions\expectAdded('wp_ajax_vcr_test_connection')->once();
     Actions\expectAdded('admin_enqueue_scripts')->once();

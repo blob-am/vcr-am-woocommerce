@@ -121,6 +121,34 @@ it('interceptApiKeySave returns "" for non-string input without touching KeyStor
         ->and($tab->interceptApiKeySave(['array'], [], ''))->toBe('');
 });
 
+it('interceptApiKeySave survives the null raw value WC passes for an absent field', function (): void {
+    // WC computes the third filter argument as
+    // `isset($data[$id]) ? wp_unslash($data[$id]) : null` and passes it
+    // whether or not the field was submitted. A `string` type on that
+    // parameter would make an absent field an uncaught TypeError — and
+    // nothing in WC's save path catches, so the merchant gets a
+    // WordPress critical error instead of saved settings.
+    $keyStore = Mockery::mock(KeyStore::class);
+    $keyStore->expects('put')->never();
+
+    $catalog = Mockery::mock(CashierCatalog::class);
+    $tab = new VcrSettingsTab($keyStore, $catalog, stubDepartmentCatalog());
+
+    expect($tab->interceptApiKeySave(null, [], null))->toBe('');
+});
+
+it('sanitizeBaseUrlSave returns null so WC leaves an unsubmitted field alone', function (): void {
+    // WC skips an option whose filtered value is null, which is how a
+    // field that never reached the server keeps its stored value. Return
+    // '' here instead and a staging or self-hosted store is silently
+    // moved back to the production endpoint by an unrelated save.
+    $keyStore = Mockery::mock(KeyStore::class);
+    $catalog = Mockery::mock(CashierCatalog::class);
+    $tab = new VcrSettingsTab($keyStore, $catalog, stubDepartmentCatalog());
+
+    expect($tab->sanitizeBaseUrlSave(null, [], null))->toBeNull();
+});
+
 it('invalidateCaches refreshes both catalogs', function (): void {
     // Both dropdowns are populated with the same API key, so a
     // credentials change has to drop both caches. Refreshing only the

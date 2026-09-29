@@ -35,11 +35,24 @@ final class SettingsPage
     }
 
     /**
-     * @param  array<int, mixed>  $pages
+     * A filter value is whatever the callback before us returned. One
+     * plugin whose `woocommerce_get_settings_pages` callback forgets to
+     * return the array — a bare `return;` gives null — would turn an
+     * `array` parameter here into a TypeError on every wc-settings load,
+     * and the stack trace would name us for someone else's bug. Narrow
+     * instead, the way every other filter callback in this plugin does.
+     *
+     * @param  mixed $pages
      * @return array<int, mixed>
      */
-    public function addTab(array $pages): array
+    public function addTab(mixed $pages): array
     {
+        // array_values, not a bare cast: WooCommerce only ever iterates
+        // this collection, and re-indexing is what keeps the list shape
+        // the return type promises even if an upstream filter handed us
+        // a keyed array.
+        $pages = is_array($pages) ? array_values($pages) : [];
+
         $pages[] = new VcrSettingsTab(
             $this->keyStore,
             $this->cashierCatalog,

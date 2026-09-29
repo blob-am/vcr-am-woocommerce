@@ -61,20 +61,33 @@ class CustomerReceiptDisplay
     }
 
     /**
+     * The two flags are `mixed` rather than `bool` on purpose. Core always
+     * passes real booleans, but this action runs inside `wp_mail()` during
+     * checkout, and the email layer is the most heavily filtered surface in
+     * WooCommerce. A customiser plugin passing null for either flag would
+     * be a TypeError mid-checkout — a customer-facing fatal, to save a
+     * type hint we do not need.
+     *
      * @param  WC_Order|mixed $order
      * @param  mixed         $email   WC_Email instance, unused — present so
      *                                we honour the action's full signature
      */
-    public function renderInEmail($order, bool $sentToAdmin = false, bool $plainText = false, $email = null): void
+    public function renderInEmail($order, mixed $sentToAdmin = false, mixed $plainText = false, $email = null): void
     {
-        if ($sentToAdmin || ! $order instanceof WC_Order) {
+        // Cast rather than type-hint: this is the same coercion the `bool`
+        // hint used to perform in weak mode, done where a surprising value
+        // costs a skipped link instead of a fatal.
+        $isAdminCopy = (bool) $sentToAdmin;
+        $isPlainText = (bool) $plainText;
+
+        if ($isAdminCopy || ! $order instanceof WC_Order) {
             return;
         }
 
         // Sale receipt link (when order is registered with SRC).
         $url = $this->urlBuilder->build($order);
         if ($url !== null) {
-            if ($plainText) {
+            if ($isPlainText) {
                 echo "\n" . esc_html(__('View your fiscal receipt:', 'vcr-am-fiscal-receipts')) . ' ' . esc_url($url) . "\n";
             } else {
                 printf(
@@ -93,7 +106,7 @@ class CustomerReceiptDisplay
         // alongside the original receipt link above; the `customer-
         // processing-order` email won't have any refunds yet so this
         // section will simply render nothing.
-        $this->renderRefundReceiptLinks($order, $plainText);
+        $this->renderRefundReceiptLinks($order, $isPlainText);
     }
 
     /**

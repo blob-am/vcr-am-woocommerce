@@ -88,6 +88,21 @@ it('email: renders nothing when builder returns null (order not yet fiscalised)'
     expect($html)->toBe('');
 });
 
+it('email: survives null flags from an email customiser', function (): void {
+    // This action fires inside wp_mail() during checkout, and the email
+    // layer is the most heavily filtered surface in WooCommerce. A plugin
+    // re-firing it with nulls must not become a TypeError there — that is
+    // a fatal the customer sees, not the merchant.
+    $order = mockOrder();
+    $builder = Mockery::mock(ReceiptUrlBuilder::class);
+    $builder->expects('build')->with($order)->andReturn(null);
+
+    $html = captureDisplayOutput(fn () => (makeDisplay($builder))
+        ->renderInEmail($order, null, null, null));
+
+    expect($html)->toBe('');
+});
+
 it('email: renders an HTML link block when URL is available', function (): void {
     $order = mockOrder();
     $builder = Mockery::mock(ReceiptUrlBuilder::class);
