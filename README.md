@@ -69,7 +69,7 @@ vcr-am-woocommerce/
 │   ├── Fiscal/                   ← the sale pipeline: listener → queue → job → SDK
 │   ├── Logging/                  ← log routing
 │   ├── Migration/                ← option/meta upgrades between plugin versions
-│   ├── Net/                      ← HTTP client plumbing, incl. the SSRF guard
+│   ├── Net/                      ← the SSRF guard on the configurable base URL
 │   ├── Privacy/                  ← GDPR exporter and eraser
 │   ├── Receipt/                  ← customer-facing receipt link
 │   ├── Refund/                   ← the refund pipeline, parallel to Fiscal/
