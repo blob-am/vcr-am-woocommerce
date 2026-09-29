@@ -18,7 +18,7 @@ The official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Re
 
 * **Direct SRC integration.** Talks to the official VCR.AM gateway, not a third-party reseller.
 * **Asynchronous fiscalization.** Uses WooCommerce Action Scheduler — customer checkout is never blocked by SRC slowness; failed transmissions retry automatically.
-* **Multi-currency first-class.** Orders in USD/EUR/RUB convert to AMD using the Central Bank of Armenia rate at fiscalization time.
+* **Multi-currency first-class.** Orders in USD/EUR/RUB are sent in their own currency and converted to AMD by VCR, at the Central Bank of Armenia rate the law names for that day. Your store never has to reach the Central Bank itself.
 * **Refund-aware.** A full refund of an order is reversed at the tax authority automatically. A partial refund is flagged for you to register by hand, because the reversal has to name the exact lines.
 * **Customer-facing receipt.** A verification link to the official receipt page on the thank-you page and in transactional emails.
 * **HPOS + Cart/Checkout Blocks compatible.**
@@ -35,9 +35,11 @@ The official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Re
 
 1. Upload the plugin folder to `/wp-content/plugins/`, or install via the WordPress plugin directory.
 2. Activate the plugin through the **Plugins** menu in WordPress.
-3. Go to **WooCommerce → Settings → VCR** and paste your VCR.AM API key.
-4. Save, then pick the **default cashier** — the dropdown loads from your VCR account once the key is stored. Leave **override department** empty: each offer already carries the department you chose when you added it in VCR, and orders use it automatically. Set it only if you deliberately want every line of every order booked under one department regardless of what its offer says. The department determines the tax regime (VAT, VAT-exempt, turnover tax, micro-enterprise) printed on the receipt, and a fiscal receipt can only be refunded and reissued, never corrected.
-5. If you take cash on delivery, choose under **Cash on delivery** when its receipt is issued: when the order is placed (the default) or when you mark the order Completed. Orders paid online are always fiscalized the moment the payment clears.
+3. Go to **WooCommerce → Settings → VCR**, paste your VCR.AM API key and press **Save changes**.
+4. The screen then opens with a checklist of what is ready and what is not. It names the register the key belongs to — the business, the TIN, the register number — says whether its receipts are real or test, and lists anything still missing with the one next step that applies and who can take it. Work down the list.
+5. Pick the **default cashier**. The dropdown loads from your VCR account once the key is stored. If it is empty, the register has no cashier yet: only the register's owner can add one, and opening the register's desk once in the VCR dashboard is enough.
+6. If you take cash on delivery, choose under **Cash on delivery** when its receipt is issued: when the order is placed (the default) or when you mark the order Completed. Orders paid online are always fiscalized the moment the payment clears.
+7. Leave the **Advanced** tab alone unless you know you need it. It holds the Base URL, for stores pointed at a staging VCR endpoint, and an **override department**, which books every line of every order under one department regardless of the department its offer was registered with. The department determines the tax regime (VAT, VAT-exempt, turnover tax, micro-enterprise) printed on the receipt, and a fiscal receipt can only be refunded and reissued, never corrected.
 
 == Frequently Asked Questions ==
 
@@ -45,9 +47,13 @@ The official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Re
 
 Yes. The plugin issues receipts through the VCR.AM gateway, which talks to the State Revenue Committee on your behalf. Sign up at [vcr.am](https://vcr.am).
 
+= The cashier dropdown is empty. What do I enter? =
+
+Nothing — read the checklist at the top of the settings screen, which says which of four things happened: the server could not be reached, the key was rejected, the register never finished activation with the tax service, or the register simply has no cashier yet. The last one is the common case and is not a settings problem: the register's owner adds the first cashier in the VCR dashboard, and opening the register's desk once is enough. Reload the settings screen afterwards and the cashier appears.
+
 = Does it support multi-currency stores? =
 
-Yes. Orders in non-AMD currencies are converted to AMD using the Central Bank of Armenia daily rate. The rate is cached and refreshed daily; if the cache is stale (more than 48 hours), the order is flagged for manual attention rather than fiscalized at an outdated rate.
+Yes. Orders in non-AMD currencies go to VCR in the currency the customer paid in, and VCR converts each line to AMD at the Central Bank of Armenia rate the law names for that day — the same conversion that goes on the receipt. A refund asks VCR for the rate that governed, so it cannot drift from the sale it reverses; if VCR cannot answer, the refund is held for you to register by hand rather than filed at a made-up figure.
 
 = What happens if SRC is down? =
 
@@ -63,13 +69,15 @@ Yes — declared compatible.
 
 == External services ==
 
-This plugin connects to two external services. Both connections are made server-to-server from your WordPress installation; no third-party JavaScript is loaded into your customers' browsers.
+This plugin connects to one external service. The connection is made server-to-server from your WordPress installation; no third-party JavaScript is loaded into your customers' browsers.
 
-= 1. VCR.AM gateway (vcr.am) =
+= VCR.AM gateway (vcr.am) =
 
 When an order is paid (or, for cash-on-delivery, marked completed) the plugin transmits the order's fiscal data to the VCR.AM gateway, which forwards a fiscal receipt to the Armenian State Revenue Committee (SRC). When a refund is issued the plugin transmits a corresponding refund record.
 
 **What is sent:** line items (product name, SKU, quantity, unit price, tax), order total, payment method (cash / non-cash split), currency, the configured cashier and department identifiers, and — for refunds — the refund amount and refund-reason text. **No customer name, email, phone number, billing address, or IP address is transmitted.**
+
+For a multi-currency store the plugin also asks this same gateway for the AMD rate that governs a refund. That request names the currency and nothing else — no order data and no customer data.
 
 **Why it is sent:** to fulfil the merchant's obligation under Armenian Tax Code Article 380.1 (HO-280-N) and Government Decision 1976-N to issue a fiscal receipt for every taxable sale through a registered electronic Cash Register (e-HDM).
 
@@ -77,17 +85,6 @@ When an order is paid (or, for cash-on-delivery, marked completed) the plugin tr
 
 **Service Terms of Use:** https://vcr.am/terms
 **Service Privacy Policy:** https://vcr.am/privacy
-
-= 2. Central Bank of Armenia (cba.am) — exchange rates =
-
-For multi-currency stores (orders in USD, EUR, RUB, etc.), the plugin fetches the official Central Bank of Armenia daily exchange rate so it can convert the order total to AMD before transmitting the receipt.
-
-**What is sent:** an HTTP request for the published daily rates. No order data, no customer data, and no merchant identifiers are sent. The request is identical to a public website hit.
-
-**Where data is sent:** `https://api.cba.am/exchangerates.asmx` (SOAP) and/or `https://www.cba.am/_layouts/rssreader.aspx` (RSS), depending on the response of the primary endpoint. Rates are cached locally for 24 hours; the plugin refuses to fiscalize an order if the cached rate is older than 48 hours, so a CBA outage cannot result in incorrect fiscal data.
-
-**Service Terms of Use:** https://www.cba.am/en/SitePages/copyright.aspx
-**Service Privacy Policy:** the CBA endpoints serve a public dataset; CBA's general site policy applies.
 
 = GDPR / data-transfer notes =
 

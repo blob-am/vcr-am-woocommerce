@@ -5,7 +5,7 @@
 
 Official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Register — issue Armenian fiscal receipts (eHDM) directly to the State Revenue Committee from WooCommerce orders.
 
-> **Status:** the fiscal flow is built and covered by tests, but the plugin has never run against a live SRC register — every end-to-end test so far has been against a mock. It is unreleased (no tag, no WordPress.org listing) and wants a supervised pilot on a real store before anyone depends on it. See [Roadmap](#roadmap).
+> **Status:** released on GitHub through v0.1.7 — install the ZIP from [Releases](https://github.com/blob-am/vcr-am-woocommerce/releases/latest). Not on WordPress.org yet. The fiscal flow is built and covered by tests, but it has never run against a live SRC register: every end-to-end test so far has been against a mock, so it still wants a supervised pilot on a real store before anyone depends on it. See [Roadmap](#roadmap).
 
 ## Why this plugin
 
@@ -15,7 +15,7 @@ What sets it apart from existing options:
 
 - **Direct SRC integration** — talks to the official VCR.AM gateway, not to a third-party reseller. No per-receipt rake from intermediaries.
 - **Asynchronous fiscalization** — uses WooCommerce's Action Scheduler. Customer checkout is never blocked by SRC slowness; failed transmissions retry automatically with exponential backoff.
-- **Multi-currency first-class** — orders in USD/EUR/RUB are sent to the VCR per-line in their own currency; the VCR converts each line to AMD server-side at the previous-business-day Central Bank of Armenia rate and records the HO-234-N foreign-input audit trail. The whole AMD total is derived and settled server-side (auto-settle), so the plugin never guesses the AMD magnitude. (Refunds, which reverse an already-AMD receipt, resolve the AMD amount through the plugin's own cached CBA rate with stale-rate guards.)
+- **Multi-currency first-class** — orders in USD/EUR/RUB are sent to the VCR per-line in their own currency; the VCR converts each line to AMD server-side at the previous-business-day Central Bank of Armenia rate and records the HO-234-N foreign-input audit trail. The whole AMD total is derived and settled server-side (auto-settle), so the plugin never guesses the AMD magnitude. (Refunds, which reverse an already-AMD receipt, ask the VCR for the rate that governed instead of working it out locally: which day's publication applies is a legal rule — Tax Code art. 16, amended by ՀՕ-83-Ն from 2027-01-01 — and a second implementation of it would eventually disagree with the receipt being reversed. No rate, no guess: the refund routes to manual registration.)
 - **Refund-aware** — a full refund of an order is reversed at the tax authority automatically. A partial refund is flagged for you to register by hand, because the reversal has to name the exact lines and the SDK does not yet expose per-item SRC ids.
 - **Customer-facing receipt** — a verification link to the official receipt page on the thank-you page, in transactional emails and in order details.
 - **HPOS + Cart/Checkout Blocks compatible** out of the box.
@@ -35,7 +35,7 @@ Download `vcr-am-fiscal-receipts.zip` from the [latest release](https://github.c
 
 > Do not install from the green **Code -> Download ZIP** button, and do not upload a `git clone` of this repository. The source tree deliberately excludes `vendor/` and `vendor-prefixed/`, so WordPress will activate the plugin and immediately show *"missing composer dependencies (run composer install)"*. The release ZIP is the same tree with those directories built in.
 
-After activating, configure it under **WooCommerce -> Settings -> VCR** (steps 3-5 of the Installation section in `readme.txt`).
+After activating, configure it under **WooCommerce -> Settings -> VCR**: paste the API key, save, and work down the checklist the screen then shows. The Installation section of `readme.txt` spells the steps out.
 
 ## Installation (development)
 
@@ -61,10 +61,11 @@ vcr-am-woocommerce/
 ├── src/
 │   ├── Plugin.php                ← bootstrap + wiring (HPOS / Blocks declarations, WC active guard)
 │   ├── Configuration.php         ← every stored option, read through one class
-│   ├── Admin/                    ← order meta box, orders-list column, bulk action, system status
+│   ├── Admin/                    ← setup checklist, order meta box, orders-list column, bulk action, system status
 │   ├── Catalog/                  ← cashier and department lookups against the VCR account
 │   ├── Cli/                      ← WP-CLI commands
-│   ├── Currency/                 ← CBA rate fetch + cache for non-AMD orders
+│   ├── Currency/                 ← AMD rate for non-AMD orders, resolved by the VCR
+│   ├── Diagnostics/              ← what the API key points at, and why a call failed
 │   ├── Fiscal/                   ← the sale pipeline: listener → queue → job → SDK
 │   ├── Logging/                  ← log routing
 │   ├── Migration/                ← option/meta upgrades between plugin versions
@@ -72,7 +73,7 @@ vcr-am-woocommerce/
 │   ├── Privacy/                  ← GDPR exporter and eraser
 │   ├── Receipt/                  ← customer-facing receipt link
 │   ├── Refund/                   ← the refund pipeline, parallel to Fiscal/
-│   ├── Settings/                 ← the WooCommerce settings tab
+│   ├── Settings/                 ← the WooCommerce settings tab (General + Advanced)
 │   └── VcrClientFactory.php      ← builds the vendored SDK client from settings
 └── tests/
     ├── Pest.php
@@ -131,7 +132,7 @@ Layout:
 | `.wp-env.json` | wp-env config — pins PHP 8.3, mounts `build/e2e/` + the mu-plugin + the fixture scripts |
 | `tests/E2E/scripts/setup-env.mjs` | Installs and activates WooCommerce, sets the order datastore, activates the plugin. Runs as `pretest:e2e` |
 | `tests/E2E/mu-plugins/vcr-e2e-bootstrap.php` | mu-plugin loaded inside WP — points the plugin at the mock VCR |
-| `tests/E2E/mock-vcr-server.mjs` | Node HTTP server on `:9876` answering `/api/v1/cashiers`, `/api/v1/sales`, `/api/v1/sales/refund`, `/api/v1/exchange-rate`. Programmable per test via `/__test/plan` |
+| `tests/E2E/mock-vcr-server.mjs` | Node HTTP server on `:9876` answering `/api/v1/whoami`, `/api/v1/cashiers`, `/api/v1/sales`, `/api/v1/sales/refund`, `/api/v1/exchange-rate`. Programmable per test via `/__test/plan` |
 | `tests/E2E/helpers/wp-cli.mjs` | `wp ...` runner, plus the storage-agnostic order-meta helpers |
 | `tests/E2E/helpers/mock-vcr.mjs` | Test-side client for `/__test/log` (assertions) and `/__test/plan` (scenario programming) |
 | `tests/E2E/scripts/*.php` | Fixtures run via `wp eval-file` — create orders, read back `_vcr_*` meta, reset state |
@@ -166,7 +167,7 @@ This plugin follows the same conventions as the rest of the VCR.AM ecosystem:
 | --- | --- | --- |
 | 1 | Repo scaffold, tooling, plugin shell, HPOS / Blocks declarations | ✅ done |
 | 2 | SDK + Guzzle as production deps, Strauss vendor scoping, core fiscal flow (order-status hooks, Action Scheduler queue), settings page | ✅ done |
-| 3 | FX handling — CBA rate fetcher with cache + stale-rate guards | ✅ done |
+| 3 | FX handling — non-AMD orders converted by the VCR, refund rates resolved through it | ✅ done |
 | 4 | Refund automation (full refunds), customer-facing receipt link on thank-you page and emails | ✅ done |
 | 5 | E2E suite via wp-env + Playwright, against a mock VCR server | ✅ done |
 | 6 | Validate against a live register on a real store — tagged releases and the distributable ZIP are done; nobody has yet run this against a real SRC register | next |
