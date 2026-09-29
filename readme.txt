@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.1.6
+Stable tag: 0.1.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -95,6 +95,15 @@ For multi-currency stores (orders in USD, EUR, RUB, etc.), the plugin fetches th
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.7 =
+* The VCR settings screen now opens with a checklist of what is and is not ready, instead of a form you have to already understand. It names the register your API key belongs to — the business, the TIN, the register number — and says plainly whether receipts from it are real or test.
+* When the cashier list comes up empty, the screen says why. Previously it said "check your API key permissions" for every possible cause, including the most common one: a working key on a register that simply has no cashier yet, which only the register's owner can add. It now tells apart an unreachable server, a rejected key, a register that never finished activation with the tax service, and a register with nothing on it — each with the one next step that applies.
+* The "Test mode" checkbox is gone. It wrote a setting nothing in the plugin ever read, so ticking it changed nothing while suggesting your receipts had become test receipts. Whether a register is a sandbox is the register's own property, and the checklist reports it.
+* Base URL and Override department moved to an Advanced tab. For almost every store the correct value of both is "empty", and the department override silently replaces the tax regime on every line of every receipt — not something to meet on your first visit.
+* If your store charges for delivery and has no Shipping SKU set, the checklist warns you now rather than letting you find out when an order is held.
+* "Test connection" now answers with which register answered, whether it is a sandbox, and how many cashiers it has, instead of just a count.
+* WooCommerce > Status and `wp vcr status` report the register they are actually talking to, in place of the old "Test mode" line.
 
 = 0.1.6 =
 * Fixes a critical error that hit the moment you saved your API key, on hosting where PHP is built without the libsodium extension. WordPress substitutes its own pure-PHP version of libsodium on those servers, and the plugin was calling the one function that version refuses to perform. The key was stored, but the VCR settings tab and WooCommerce > Status stayed broken on every later visit. Nothing needs re-entering after the update — the stored key is intact and readable again.
