@@ -33,6 +33,7 @@ final class GeneralFields
         private readonly ReadinessPanel $panel,
         private readonly CatalogSelect $select = new CatalogSelect(),
         private readonly IntroDescription $intro = new IntroDescription(),
+        private readonly ?ConnectButton $connect = null,
     ) {
     }
 
@@ -47,9 +48,13 @@ final class GeneralFields
                 'type' => 'title',
                 // The checklist goes first: it is the answer to "will my
                 // next order get a receipt?", which is why anyone opens
-                // this screen. The legal disclosure follows it and still
-                // sits above the API key field, which is what it has to.
-                'desc' => $this->panel->render() . $this->intro->render(),
+                // this screen. Then the connect button, because for most
+                // stores it is the answer to the checklist. The legal
+                // disclosure follows and still sits above the API key
+                // field, which is what it has to.
+                'desc' => $this->panel->render()
+                    . $this->connectButton()->render()
+                    . $this->intro->render(),
                 'id' => 'vcr_section',
             ],
             [
@@ -168,5 +173,15 @@ final class GeneralFields
                 'id' => 'vcr_reconciliation_section',
             ],
         ];
+    }
+
+    /**
+     * Defaulted rather than required so the existing construction sites — and
+     * the tests that build this class directly — need no change; the button
+     * only needs the same KeyStore this class already holds.
+     */
+    private function connectButton(): ConnectButton
+    {
+        return $this->connect ?? new ConnectButton($this->keyStore);
     }
 }

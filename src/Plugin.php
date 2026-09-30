@@ -42,6 +42,11 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\OrderListener;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\PaymentMapper;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrarFactory;
 use BlobSolutions\WooCommerceVcrAm\Migration\Migrator;
+use BlobSolutions\WooCommerceVcrAm\Pairing\PairingClientFactory;
+use BlobSolutions\WooCommerceVcrAm\Pairing\PairingNotices;
+use BlobSolutions\WooCommerceVcrAm\Pairing\PairingSession;
+use BlobSolutions\WooCommerceVcrAm\Pairing\ReturnHandler;
+use BlobSolutions\WooCommerceVcrAm\Pairing\StartHandler;
 use BlobSolutions\WooCommerceVcrAm\Privacy\PrivacyHandler;
 use BlobSolutions\WooCommerceVcrAm\Receipt\CustomerReceiptDisplay;
 use BlobSolutions\WooCommerceVcrAm\Receipt\ReceiptUrlBuilder;
@@ -205,6 +210,26 @@ final class Plugin
             $this->pluginFile,
             $this->version,
         ))->register();
+
+        // Pairing: the connect button and the two halves of the handshake it
+        // runs. Registered next to ConnectionTester because they answer the
+        // same question — "is this store talking to a register?" — from the
+        // two ends, one testing a key the merchant typed and one fetching a
+        // key so they do not have to.
+        $pairingSession = new PairingSession();
+        $pairingClientFactory = new PairingClientFactory(IntegrationToken::forPlugin($this->version));
+
+        (new StartHandler($config, $pairingSession, $pairingClientFactory))->register();
+        (new ReturnHandler(
+            $config,
+            $keyStore,
+            $pairingSession,
+            $pairingClientFactory,
+            $probe,
+            $cashierCatalog,
+            $departmentCatalog,
+        ))->register();
+        (new PairingNotices())->register();
 
         // Currency converter wired once per request for the REFUND path only.
         // The sale path never converts here: foreign-currency sales send

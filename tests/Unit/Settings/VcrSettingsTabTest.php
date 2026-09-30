@@ -20,6 +20,18 @@ use Brain\Monkey\Functions;
 beforeEach(function (): void {
     Functions\when('wp_salt')->justReturn(str_repeat('x', 64));
     Functions\when('wp_kses_post')->returnArg(1);
+
+    // The section description now also carries the connect button, which
+    // builds a nonced admin-post URL. These are WordPress's, not ours; the
+    // button's own wording and target are covered in ConnectButtonTest.
+    Functions\when('admin_url')->alias(
+        static fn (string $path = ''): string => 'https://shop.example/wp-admin/' . $path,
+    );
+    Functions\when('wp_nonce_url')->alias(
+        static fn (string $url, string $action): string => $url . '&_wpnonce=test-nonce&a=' . $action,
+    );
+    Functions\when('esc_url')->returnArg(1);
+    Functions\when('esc_html')->returnArg(1);
 });
 
 /**

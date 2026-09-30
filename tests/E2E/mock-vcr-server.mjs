@@ -85,6 +85,26 @@ const DEFAULT_PLAN = {
             },
         ],
     },
+    // POST /connect/requests — step one of pairing. Unauthenticated, like the
+    // real one: a store being paired has no key yet. Only `status` is read
+    // from here on the success path; the body is built per request, because
+    // the response has to name the request that was just registered.
+    registerPairingRequest: {
+        status: 201,
+        body: null,
+    },
+    // POST /connect/exchange — step two. The key it hands back is what the
+    // plugin must end up storing, so the spec asserts on this exact value.
+    exchangePairingCode: {
+        status: 200,
+        body: {
+            apiKey: 'paired-key-from-exchange',
+            expiresAt: '2028-01-01T00:00:00.000Z',
+            vcrId: 90,
+            crn: '99123456',
+            registerName: 'E2E Store',
+        },
+    },
     registerSale: {
         status: 200,
         body: {
@@ -129,6 +149,13 @@ let responsePlan = structuredClone(DEFAULT_PLAN);
 /** Audit log of inbound requests — exposed via `/__test/log` for assertions. */
 const requestLog = [];
 
+/**
+ * Pairing requests registered this run, keyed by the id handed back. The
+ * real server keeps a row per request; `/__test/approve` needs the same
+ * lookup, because the merchant's browser carries only the id.
+ */
+const pairingRequests = new Map();
+
 function jsonResponse(res, status, body) {
     res.statusCode = status;
     res.setHeader('Content-Type', 'application/json');
@@ -171,6 +198,7 @@ async function handleRequest(req, res) {
 
     if (req.url === '/__test/log/reset' && req.method === 'POST') {
         requestLog.length = 0;
+        pairingRequests.clear();
         return jsonResponse(res, 200, { ok: true });
     }
 
@@ -223,6 +251,57 @@ async function handleRequest(req, res) {
             : plan.body.slice(0, OFFER_LIST_CAP);
 
         return jsonResponse(res, plan.status, body);
+    }
+
+    if (req.url === '/api/v1/connect/requests' && req.method === 'POST') {
+        const plan = responsePlan.registerPairingRequest;
+
+        // A spec that forced an error status wants that error verbatim.
+        if (plan.status >= 400) {
+            return jsonResponse(res, plan.status, plan.body ?? { error: 'pairing refused' });
+        }
+
+        // Store what the caller registered, exactly as the real server does:
+        // the browser then carries only an opaque id, and `/__test/approve`
+        // has to look the redirect back up rather than be handed it. That is
+        // what makes this able to catch a plugin sending a wrong redirectUri.
+        const registered = safeJsonParse(body);
+        const requestId = `req_e2e_${pairingRequests.size + 1}`;
+        pairingRequests.set(requestId, registered);
+
+        return jsonResponse(res, plan.status, {
+            requestId,
+            connectUrl: `http://localhost:${PORT}/__test/approve?request=${requestId}`,
+            expiresAt: '2030-01-01T00:00:00.000Z',
+        });
+    }
+
+    if (req.url === '/api/v1/connect/exchange' && req.method === 'POST') {
+        const plan = responsePlan.exchangePairingCode;
+        return jsonResponse(res, plan.status, plan.body);
+    }
+
+    // Stands in for the merchant approving on vcr.am. The real consent screen
+    // needs a signed-in merchant, which an E2E run has no way to be, so this
+    // approves unconditionally and redirects to the URI the store registered.
+    if (req.url.startsWith('/__test/approve') && req.method === 'GET') {
+        const asked = new URL(req.url, 'http://mock');
+        const registered = pairingRequests.get(asked.searchParams.get('request'));
+
+        if (registered === undefined) {
+            return jsonResponse(res, 404, { error: 'unknown pairing request' });
+        }
+
+        // searchParams.set, not string concatenation: the plugin's callback is
+        // a wp-admin URL that already carries ?page= and ?tab=, and losing
+        // those would send the merchant to a different screen.
+        const target = new URL(registered.redirectUri);
+        target.searchParams.set('code', 'e2e-pairing-code');
+        target.searchParams.set('state', registered.state);
+
+        res.statusCode = 302;
+        res.setHeader('Location', target.toString());
+        return res.end();
     }
 
     if (req.url === '/api/v1/sales' && req.method === 'POST') {
