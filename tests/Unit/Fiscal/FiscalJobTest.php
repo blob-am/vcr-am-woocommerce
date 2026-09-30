@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Tests\Unit\Fiscal;
 
+use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogPolicy;
+use BlobSolutions\WooCommerceVcrAm\Catalog\OfferBinding;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\CommentBuilder;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\Exception\FiscalBuildException;
@@ -46,6 +48,10 @@ beforeEach(function (): void {
     $this->config = Mockery::mock(Configuration::class);
     $this->registrarFactory = Mockery::mock(SaleRegistrarFactory::class);
     $this->itemBuilder = Mockery::mock(ItemBuilder::class);
+    // Confirming what the register now holds is a write the job makes only on
+    // success; `allows` here, asserted where it matters.
+    $this->offers = Mockery::mock(OfferBinding::class);
+    $this->offers->allows('confirm');
     $this->paymentMapper = Mockery::mock(PaymentMapper::class);
     $this->commentBuilder = Mockery::mock(CommentBuilder::class);
     $this->meta = Mockery::mock(FiscalStatusMeta::class);
@@ -63,6 +69,7 @@ beforeEach(function (): void {
         configuration: $this->config,
         registrarFactory: $this->registrarFactory,
         itemBuilder: $this->itemBuilder,
+        offers: $this->offers,
         paymentMapper: $this->paymentMapper,
         commentBuilder: $this->commentBuilder,
         meta: $this->meta,
@@ -149,8 +156,7 @@ function primeBuildable(?string $comment = null): void
     $config->allows('apiKey')->andReturn('test-key');
     $config->allows('defaultCashierId')->andReturn(5);
     $config->allows('defaultDepartmentId')->andReturn(7);
-    $config->allows('shippingSku')->andReturn(null);
-    $config->allows('feeSku')->andReturn(null);
+    $config->allows('catalogPolicy')->andReturn(new CatalogPolicy());
     $config->allows('commentSource')->andReturn(Configuration::COMMENT_SOURCE_ORDER_NUMBER);
 
     /** @var \Mockery\MockInterface $itemBuilder */
@@ -246,14 +252,13 @@ it('flips to ManualRequired when ItemBuilder rejects the order', function (): vo
     $this->config->allows('apiKey')->andReturn('k');
     $this->config->allows('defaultCashierId')->andReturn(5);
     $this->config->allows('defaultDepartmentId')->andReturn(7);
-    $this->config->allows('shippingSku')->andReturn(null);
-    $this->config->allows('feeSku')->andReturn(null);
+    $this->config->allows('catalogPolicy')->andReturn(new CatalogPolicy());
 
     $this->itemBuilder->expects('build')
-        ->with($order, Mockery::type(Department::class), null, null)
-        ->andThrow(new FiscalBuildException('No SKU on product Foo'));
+        ->with($order, Mockery::type(Department::class), Mockery::type(CatalogPolicy::class))
+        ->andThrow(new FiscalBuildException('Product "Foo" is not in the register\'s catalog'));
 
-    $this->meta->expects('markManualRequired')->with($order, Mockery::pattern('/No SKU/'));
+    $this->meta->expects('markManualRequired')->with($order, Mockery::pattern('/not in the register/'));
     $this->registrarFactory->expects('create')->never();
 
     $outcome = $this->job->run(123);

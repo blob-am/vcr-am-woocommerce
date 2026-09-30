@@ -6,6 +6,7 @@ namespace BlobSolutions\WooCommerceVcrAm\Settings;
 
 use BlobSolutions\WooCommerceVcrAm\Admin\ReadinessPanel;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
+use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 
 if (! defined('ABSPATH')) {
@@ -27,9 +28,13 @@ if (! defined('ABSPATH')) {
  */
 final class GeneralFields
 {
+    /** Where a merchant finds a classifier code without asking us. */
+    private const CLASSIFIER_SEARCH_URL = 'https://vcr.am/classifier';
+
     public function __construct(
         private readonly KeyStore $keyStore,
         private readonly CashierCatalog $cashierCatalog,
+        private readonly DepartmentCatalog $departmentCatalog,
         private readonly ReadinessPanel $panel,
         private readonly CatalogSelect $select = new CatalogSelect(),
         private readonly IntroDescription $intro = new IntroDescription(),
@@ -82,20 +87,48 @@ final class GeneralFields
                 'id' => 'vcr_section',
             ],
             [
-                'name' => __('Order line synthesis', 'vcr-am-fiscal-receipts'),
+                'name' => __('Catalog', 'vcr-am-fiscal-receipts'),
                 'type' => 'title',
                 'desc' => __(
-                    'WooCommerce ships shipping and fees as separate order items. The fiscal receipt needs every line to reference a catalog offer with its own classifier code, so the plugin synthesises a SaleItem against an SKU you onboard once in the VCR dashboard. Without these SKUs configured, any order with shipping or fees is blocked from fiscalisation.',
+                    'Every receipt line names a catalog item, and a fiscal receipt has to say what kind of thing was sold and under which tax regime. Fill these two in and the plugin creates the catalog item for any product your register has not seen yet, as it files that receipt — nothing to prepare, and nothing to keep in step by hand. Leave them empty and it only references items you onboarded in VCR yourself, refusing orders for anything else. Either way it never rewrites an item that already exists, so a code you refine in VCR stays yours.',
                     'vcr-am-fiscal-receipts',
                 ),
-                'id' => 'vcr_synthesis_section',
+                'id' => 'vcr_catalog_section',
             ],
+            [
+                'name' => __('Classifier code for new catalog items', 'vcr-am-fiscal-receipts'),
+                'type' => 'text',
+                'id' => Configuration::OPT_CATALOG_CLASSIFIER_CODE,
+                'desc' => sprintf(
+                    /* translators: %s: link to the classifier search page, already wrapped in an anchor. */
+                    __('One code for everything this store sells. %s', 'vcr-am-fiscal-receipts'),
+                    sprintf(
+                        '<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
+                        esc_url(self::CLASSIFIER_SEARCH_URL),
+                        esc_html__('Look one up', 'vcr-am-fiscal-receipts'),
+                    ),
+                ),
+                'desc_tip' => __(
+                    'A goods code (ТН ВЭД, digits) or an activity code (КВЭД, like 56.10) — the tax service accepts either on a receipt line. Refine it per item in VCR afterwards if you need to; the plugin will not overwrite what you set there.',
+                    'vcr-am-fiscal-receipts',
+                ),
+                'default' => '',
+                'placeholder' => '56.10',
+            ],
+            $this->select->build(
+                name: __('Department for new catalog items', 'vcr-am-fiscal-receipts'),
+                optionId: Configuration::OPT_CATALOG_DEPARTMENT_ID,
+                listing: $this->departmentCatalog->list(),
+                placeholder: __('— select a department —', 'vcr-am-fiscal-receipts'),
+                desc: __('Which tax regime a newly created catalog item is filed under. A register with only one department needs no answer here.', 'vcr-am-fiscal-receipts'),
+                descTip: __('This is the item\'s own department, not an override: existing items keep theirs, and each line is still sold from the department its item carries.', 'vcr-am-fiscal-receipts'),
+            ),
             [
                 'name' => __('Shipping SKU', 'vcr-am-fiscal-receipts'),
                 'type' => 'text',
                 'id' => Configuration::OPT_SHIPPING_SKU,
                 'desc_tip' => __(
-                    'External id (SKU) of a pre-onboarded "Shipping" offer in your VCR catalog. The plugin references this offer for every shipping line item; you control its classifier code, unit, and tax treatment in VCR proper.',
+                    'Optional. External id of a "Shipping" offer you onboarded in VCR, to use instead of the one the plugin would create. Leave empty unless you already have one.',
                     'vcr-am-fiscal-receipts',
                 ),
                 'default' => '',
@@ -106,7 +139,7 @@ final class GeneralFields
                 'type' => 'text',
                 'id' => Configuration::OPT_FEE_SKU,
                 'desc_tip' => __(
-                    'External id (SKU) of a pre-onboarded "Fee" offer in your VCR catalog. Used for every WooCommerce fee line (handling charges, surcharges, etc.).',
+                    'Optional. Same thing for WooCommerce fee lines (handling charges, surcharges).',
                     'vcr-am-fiscal-receipts',
                 ),
                 'default' => '',
@@ -114,7 +147,7 @@ final class GeneralFields
             ],
             [
                 'type' => 'sectionend',
-                'id' => 'vcr_synthesis_section',
+                'id' => 'vcr_catalog_section',
             ],
             [
                 'name' => __('Cash on delivery', 'vcr-am-fiscal-receipts'),

@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
 
+use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogPolicy;
+use BlobSolutions\WooCommerceVcrAm\Catalog\OfferBinding;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\Exception\FiscalBuildException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Department;
-use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Offer;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\SaleItem;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Unit;
 use WC_Order;
@@ -25,16 +26,13 @@ if (! defined('ABSPATH')) {
  * Convert a {@see WC_Order}'s line items into the SDK's {@see SaleItem}
  * shape.
  *
- * Phase 3b first cut intentionally narrows the surface:
+ * What each line points at in the catalog is {@see OfferBinding}'s decision,
+ * not this class's: a product the register has never seen is described on the
+ * sale itself and filed as it is fiscalised. This builder only turns an order
+ * into money, quantities and units.
  *
- *   - **SKU is mandatory.** Each line item's product must carry a non-empty
- *     SKU; we reference offers by `Offer::existing(externalId=sku)` and
- *     leave catalog onboarding (uploading offers with classifierCode +
- *     defaultMeasureUnit + type) to the admin's regular VCR catalog flow,
- *     not to the WC plugin. Lines without a SKU raise {@see FiscalBuildException}
- *     so the order goes to {@see FiscalStatus::ManualRequired} — the admin
- *     fixes the product, then re-triggers fiscalisation from the order
- *     meta box (Phase 3c).
+ * The rest of the surface is still deliberately narrow:
+ *
  *   - **Default Unit is `Piece`.** Per-product unit overrides come in a
  *     later phase via product meta.
  *   - **No item-level discounts.** Coupons and per-line discounts are
@@ -67,6 +65,11 @@ if (! defined('ABSPATH')) {
  */
 class ItemBuilder
 {
+    public function __construct(
+        private readonly OfferBinding $offers,
+    ) {
+    }
+
     /**
      * Largest precision the SDK's decimal-string regex tolerates while
      * staying well within typical Armenian retail accuracy (AMD has no
@@ -85,29 +88,19 @@ class ItemBuilder
     /**
      * Build the SDK SaleItem list for an order.
      *
-     * Shipping and fees are synthesised as `Offer::existing(externalId)`
-     * lines when the corresponding admin-configured SKU is provided.
-     * Without the SKU, the order is rejected loudly: silently dropping
-     * either category would produce a fiscal receipt whose items don't
-     * sum to the payment amount, which is both a customer-visible bug
-     * and a compliance risk.
+     * Shipping and fees each become their own line, because silently dropping
+     * either would produce a fiscal receipt whose items do not sum to what the
+     * buyer paid -- a customer-visible bug and a filed document nobody can
+     * reconcile. Which catalog offer they point at is {@see OfferBinding}'s
+     * call, like every other line.
      *
-     * Why SKUs and not classifier codes here: the catalog onboarding
-     * (classifier code, unit, type, multilingual title) lives in VCR
-     * proper, not in this plugin. Admins create one "Shipping" offer
-     * and one "Service fee" offer in the VCR dashboard, then drop their
-     * SKUs into Settings → VCR. The plugin then references those offers
-     * by SKU on every receipt — no compliance call inside plugin code.
-     *
-     * @param  ?Department $department Override for the department every line
-     *                                 is booked under. `null` — the normal
-     *                                 case — leaves it off the payload so
-     *                                 each offer keeps the department it was
-     *                                 onboarded with in VCR.
-     * @param  ?string     $shippingSku The configured shipping offer SKU,
-     *                                  or null to fail loudly when the
-     *                                  order has shipping charges.
-     * @param  ?string     $feeSku      Same contract for fee items.
+     * @param  ?Department   $department Override for the department every line
+     *                                   is booked under. `null` — the normal
+     *                                   case — leaves it off the payload so
+     *                                   each offer keeps the department it was
+     *                                   onboarded with in VCR.
+     * @param  CatalogPolicy $policy     What the plugin may put on a catalog
+     *                                   entry it has to create.
      * @return list<SaleItem>
      *
      * @throws FiscalBuildException
@@ -115,27 +108,10 @@ class ItemBuilder
     public function build(
         WC_Order $order,
         ?Department $department,
-        ?string $shippingSku = null,
-        ?string $feeSku = null,
+        CatalogPolicy $policy,
     ): array {
-        // Fast-fail on missing SKU configuration BEFORE iterating
-        // products. Catches the misconfiguration at the cheapest
-        // possible point and saves the admin a confusing two-line
-        // error trace.
         $shippingTotal = (float) $order->get_shipping_total() + (float) $order->get_shipping_tax();
         $feeItems = $this->chargeableFeeItems($order);
-
-        if ($shippingTotal > 0.0 && $shippingSku === null) {
-            throw new FiscalBuildException(
-                'Order has shipping charges but no shipping SKU is configured. Open WooCommerce → Settings → VCR and set "Shipping SKU" to a pre-onboarded offer in your VCR catalog.',
-            );
-        }
-
-        if ($feeItems !== [] && $feeSku === null) {
-            throw new FiscalBuildException(
-                'Order has fee lines (handling, surcharge, etc.) but no fee SKU is configured. Open WooCommerce → Settings → VCR and set "Fee SKU" to a pre-onboarded offer in your VCR catalog.',
-            );
-        }
 
         // Store currency, tagged on every line so the sale stays a single
         // currency (the SDK / server reject a mix). `null` for an AMD store —
@@ -152,13 +128,12 @@ class ItemBuilder
                 continue;
             }
 
-            $built[] = $this->buildOne($item, $department, $currency);
+            $built[] = $this->buildOne($item, $department, $currency, $policy);
         }
 
         if ($shippingTotal > 0.0) {
-            assert($shippingSku !== null);
             $built[] = new SaleItem(
-                offer: Offer::existing($shippingSku),
+                offer: $this->offers->forShipping($policy),
                 department: $department,
                 quantity: '1',
                 price: $this->formatDecimal($shippingTotal),
@@ -171,9 +146,8 @@ class ItemBuilder
         }
 
         foreach ($feeItems as $fee) {
-            assert($feeSku !== null);
             $built[] = new SaleItem(
-                offer: Offer::existing($feeSku),
+                offer: $this->offers->forFee($policy),
                 department: $department,
                 quantity: '1',
                 price: $this->formatDecimal($this->feeAmount($fee)),
@@ -298,8 +272,12 @@ class ItemBuilder
         return $currency;
     }
 
-    private function buildOne(WC_Order_Item_Product $item, ?Department $department, ?string $currency): SaleItem
-    {
+    private function buildOne(
+        WC_Order_Item_Product $item,
+        ?Department $department,
+        ?string $currency,
+        CatalogPolicy $policy,
+    ): SaleItem {
         $product = $item->get_product();
 
         // WC_Order_Item_Product::get_product() returns the product on
@@ -310,15 +288,6 @@ class ItemBuilder
             throw new FiscalBuildException(sprintf(
                 'Order item "%s" references a product that no longer exists. Restore the product or remove the line before fiscalising.',
                 $item->get_name(),
-            ));
-        }
-
-        $sku = trim($product->get_sku());
-
-        if ($sku === '') {
-            throw new FiscalBuildException(sprintf(
-                'Product "%s" has no SKU. The VCR plugin uses the SKU as the catalog reference; assign one (and onboard the offer in VCR) before fiscalising.',
-                $product->get_name(),
             ));
         }
 
@@ -334,7 +303,7 @@ class ItemBuilder
         $price = $this->unitPriceInclusive($item, $quantity);
 
         return new SaleItem(
-            offer: Offer::existing($sku),
+            offer: $this->offers->forProduct($product, $policy),
             department: $department,
             quantity: $quantity,
             price: $price,

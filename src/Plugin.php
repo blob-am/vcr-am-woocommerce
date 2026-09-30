@@ -26,6 +26,7 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\Checker;
 use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\StoreSkuReader;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\OfferBinding;
 use BlobSolutions\WooCommerceVcrAm\Catalog\OfferListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
 use BlobSolutions\WooCommerceVcrAm\Currency\CurrencyConverter;
@@ -201,7 +202,7 @@ final class Plugin
             $cashierCatalog,
             $departmentCatalog,
             $probe,
-            new GeneralFields($keyStore, $cashierCatalog, $panel),
+            new GeneralFields($keyStore, $cashierCatalog, $departmentCatalog, $panel),
             new AdvancedFields($departmentCatalog),
         ))->register();
         (new ConnectionTester(
@@ -250,10 +251,18 @@ final class Plugin
 
         $meta = new FiscalStatusMeta();
         $registrarFactory = new SaleRegistrarFactory($config, $clientFactory);
+        // One binding for the request: the item builder describes offers
+        // through it and the job confirms them through the same instance.
+        $offerBinding = new OfferBinding(
+            $config,
+            new OfferListerFactory($config, $clientFactory),
+            $departmentCatalog,
+        );
         $job = new FiscalJob(
             configuration: $config,
             registrarFactory: $registrarFactory,
-            itemBuilder: new ItemBuilder(),
+            itemBuilder: new ItemBuilder($offerBinding),
+            offers: $offerBinding,
             paymentMapper: new PaymentMapper(),
             commentBuilder: new CommentBuilder(),
             meta: $meta,

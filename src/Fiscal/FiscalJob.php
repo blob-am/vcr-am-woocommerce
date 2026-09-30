@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
 
+use BlobSolutions\WooCommerceVcrAm\Catalog\OfferBinding;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\Exception\FiscalBuildException;
 use BlobSolutions\WooCommerceVcrAm\Logging\Logger;
@@ -96,6 +97,7 @@ class FiscalJob
         private readonly Configuration $configuration,
         private readonly SaleRegistrarFactory $registrarFactory,
         private readonly ItemBuilder $itemBuilder,
+        private readonly OfferBinding $offers,
         private readonly PaymentMapper $paymentMapper,
         private readonly CommentBuilder $commentBuilder,
         private readonly FiscalStatusMeta $meta,
@@ -169,6 +171,12 @@ class FiscalJob
 
         $this->meta->markSuccess($order, $response);
 
+        // The register now holds whatever this sale described, so the products
+        // on it stop being described and start being referenced. Deliberately
+        // after the call, not before: a description that never reached the API
+        // has to be sent again.
+        $this->offers->confirm();
+
         $order->add_order_note(sprintf(
             /* translators: 1: SRC fiscal serial number, 2: customer-facing receipt URL slug. */
             __('VCR fiscal receipt registered. Fiscal: %1$s. Receipt id: %2$s.', 'vcr-am-fiscal-receipts'),
@@ -203,8 +211,7 @@ class FiscalJob
         $items = $this->itemBuilder->build(
             $order,
             $department,
-            shippingSku: $this->configuration->shippingSku(),
-            feeSku: $this->configuration->feeSku(),
+            $this->configuration->catalogPolicy(),
         );
 
         // Auto-settle: the VCR derives the whole AMD cart total (converting any

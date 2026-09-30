@@ -46,7 +46,7 @@ it('hooks into woocommerce_get_settings_pages on register', function (): void {
         $catalog,
         $departments,
         $probe,
-        new GeneralFields($keyStore, $catalog, new ReadinessPanel($probe, $catalog, $departments, $config)),
+        new GeneralFields($keyStore, $catalog, $departments, new ReadinessPanel($probe, $catalog, $departments, $config)),
         new AdvancedFields($departments),
     ))->register();
 });

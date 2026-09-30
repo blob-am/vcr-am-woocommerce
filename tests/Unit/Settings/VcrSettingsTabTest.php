@@ -117,6 +117,7 @@ function makeSettingsTab(
         new GeneralFields(
             $keyStore,
             $cashiers,
+            $departments,
             new ReadinessPanel($probe, $cashiers, $departments, $config),
         ),
         new AdvancedFields($departments),

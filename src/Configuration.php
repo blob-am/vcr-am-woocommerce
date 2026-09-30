@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm;
 
+use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogPolicy;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
 
@@ -36,6 +37,15 @@ class Configuration
     public const OPT_DEFAULT_CASHIER_ID = 'vcr_default_cashier_id';
 
     public const OPT_DEFAULT_DEPARTMENT_ID = 'vcr_default_department_id';
+
+    /**
+     * Classifier code the plugin stamps on catalogue entries it creates. Unset
+     * means it creates none -- see {@see Catalog\CatalogPolicy}.
+     */
+    public const OPT_CATALOG_CLASSIFIER_CODE = 'vcr_catalog_classifier_code';
+
+    /** Department those entries are filed under. */
+    public const OPT_CATALOG_DEPARTMENT_ID = 'vcr_catalog_department_id';
 
     public const OPT_SHIPPING_SKU = 'vcr_shipping_sku';
 
@@ -133,14 +143,7 @@ class Configuration
      */
     public function defaultCashierId(): ?int
     {
-        $stored = get_option(self::OPT_DEFAULT_CASHIER_ID, '');
-        if (! is_string($stored) && ! is_numeric($stored)) {
-            return null;
-        }
-
-        $value = (int) $stored;
-
-        return $value > 0 ? $value : null;
+        return $this->positiveIntOption(self::OPT_DEFAULT_CASHIER_ID);
     }
 
     /**
@@ -154,14 +157,7 @@ class Configuration
      */
     public function defaultDepartmentId(): ?int
     {
-        $stored = get_option(self::OPT_DEFAULT_DEPARTMENT_ID, '');
-        if (! is_string($stored) && ! is_numeric($stored)) {
-            return null;
-        }
-
-        $value = (int) $stored;
-
-        return $value > 0 ? $value : null;
+        return $this->positiveIntOption(self::OPT_DEFAULT_DEPARTMENT_ID);
     }
 
     /**
@@ -179,6 +175,22 @@ class Configuration
     public function shippingSku(): ?string
     {
         return $this->nonEmptyStringOption(self::OPT_SHIPPING_SKU);
+    }
+
+    /**
+     * What the plugin may put on a catalogue entry it creates for a product the
+     * register has never seen. Assembled here because all four values are
+     * stored settings; what they mean is documented on
+     * {@see Catalog\CatalogPolicy}.
+     */
+    public function catalogPolicy(): CatalogPolicy
+    {
+        return new CatalogPolicy(
+            classifierCode: $this->nonEmptyStringOption(self::OPT_CATALOG_CLASSIFIER_CODE),
+            departmentInternalId: $this->positiveIntOption(self::OPT_CATALOG_DEPARTMENT_ID),
+            shippingSku: $this->shippingSku(),
+            feeSku: $this->feeSku(),
+        );
     }
 
     /**
@@ -231,6 +243,23 @@ class Configuration
     public function hasCredentials(): bool
     {
         return $this->apiKey() !== null;
+    }
+
+    /**
+     * A stored internal id, or null for "not set". Anything that is not a
+     * positive integer is not set: WooCommerce writes `''` for a cleared select,
+     * and a stray value is not a department or a cashier either.
+     */
+    private function positiveIntOption(string $key): ?int
+    {
+        $stored = get_option($key, '');
+        if (! is_string($stored) && ! is_numeric($stored)) {
+            return null;
+        }
+
+        $value = (int) $stored;
+
+        return $value > 0 ? $value : null;
     }
 
     private function nonEmptyStringOption(string $key): ?string

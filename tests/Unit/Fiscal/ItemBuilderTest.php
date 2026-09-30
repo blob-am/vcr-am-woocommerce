@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Tests\Unit\Fiscal;
 
+use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogPolicy;
+use BlobSolutions\WooCommerceVcrAm\Catalog\OfferBinding;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\Exception\FiscalBuildException;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\ItemBuilder;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Department;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Offer;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Unit;
 use Mockery;
 use WC_Order;
@@ -16,8 +19,20 @@ use WC_Order_Item_Product;
 use WC_Product;
 
 beforeEach(function (): void {
-    $this->builder = new ItemBuilder();
+    // Which offer a line points at is OfferBinding's decision and has its own
+    // tests; here it stands in as "the product's SKU", so these cases stay
+    // about money, quantities and line composition.
+    $this->offers = Mockery::mock(OfferBinding::class);
+    $this->offers->allows('forProduct')
+        ->andReturnUsing(fn (WC_Product $product): Offer => Offer::existing($product->get_sku()));
+    $this->offers->allows('forShipping')
+        ->andReturnUsing(fn (CatalogPolicy $policy): Offer => Offer::existing($policy->shippingSku ?? 'wc-shipping'));
+    $this->offers->allows('forFee')
+        ->andReturnUsing(fn (CatalogPolicy $policy): Offer => Offer::existing($policy->feeSku ?? 'wc-fee'));
+
+    $this->builder = new ItemBuilder($this->offers);
     $this->department = new Department(7);
+    $this->policy = new CatalogPolicy();
 });
 
 /**
@@ -49,7 +64,7 @@ it('converts a single product line into a SaleItem with VAT-inclusive unit price
     $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine(qty: 2.0, total: '200', totalTax: '40')]);
 
-    $items = $this->builder->build($order, $this->department);
+    $items = $this->builder->build($order, $this->department, $this->policy);
 
     expect($items)->toHaveCount(1)
         ->and($items[0]->offer->externalId)->toBe('SKU-1')
@@ -72,7 +87,7 @@ it('skips non-product line items inside the items list', function (): void {
     $product = mockProductLine();
     $order->allows('get_items')->andReturn([$genericItem, $product]);
 
-    $items = $this->builder->build($order, $this->department);
+    $items = $this->builder->build($order, $this->department, $this->policy);
 
     expect($items)->toHaveCount(1);
 });
@@ -87,66 +102,62 @@ it('throws when an order has no fiscalisable lines', function (): void {
     $genericItem = Mockery::mock(WC_Order_Item::class);
     $order->allows('get_items')->andReturn([$genericItem]);
 
-    $this->builder->build($order, $this->department);
+    $this->builder->build($order, $this->department, $this->policy);
 })->throws(FiscalBuildException::class, 'no fiscalisable line items');
 
-it('rejects orders with shipping charges when no shipping SKU is configured', function (): void {
+it('bills shipping tax even when shipping_total is zero', function (): void {
+    // Some gateways report 0 shipping with a non-zero shipping tax (free
+    // shipping with a separate tax line). The money is still charged, so the
+    // receipt still owes a line for it.
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0.50');
+    $order->allows('get_total')->andReturn('0.50');
+    $order->allows('get_items')->with('fee')->andReturn([]);
+    $order->allows('get_items')->andReturn([]);
+
+    $items = $this->builder->build($order, $this->department, $this->policy);
+
+    expect($items)->toHaveCount(1)
+        ->and($items[0]->offer->externalId)->toBe('wc-shipping')
+        ->and($items[0]->price)->toBe('0.5');
+});
+
+it('stops the whole order when the binding refuses a product line', function (): void {
+    // A product the register has no offer for and the plugin may not create.
+    // The refusal belongs to OfferBinding; what matters here is that it is not
+    // swallowed into a receipt that omits the line.
+    $offers = Mockery::mock(OfferBinding::class);
+    $offers->allows('forProduct')->andThrow(new FiscalBuildException('Product "Some Product" is not in the register\'s catalog'));
+    $builder = new ItemBuilder($offers);
+
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_currency')->andReturn('AMD');
+    $order->allows('get_shipping_total')->andReturn('0');
+    $order->allows('get_shipping_tax')->andReturn('0');
+    $order->allows('get_items')->with('fee')->andReturn([]);
+    $order->allows('get_items')->andReturn([mockProductLine()]);
+
+    $builder->build($order, $this->department, $this->policy);
+})->throws(FiscalBuildException::class, 'is not in the register');
+
+it('stops the whole order when the binding refuses the shipping line', function (): void {
+    $offers = Mockery::mock(OfferBinding::class);
+    $offers->allows('forProduct')
+        ->andReturnUsing(fn (WC_Product $product): Offer => Offer::existing($product->get_sku()));
+    $offers->allows('forShipping')->andThrow(new FiscalBuildException('no classifier code to create a shipping line with'));
+    $builder = new ItemBuilder($offers);
+
     $order = Mockery::mock(WC_Order::class);
     $order->allows('get_currency')->andReturn('AMD');
     $order->allows('get_shipping_total')->andReturn('5.00');
     $order->allows('get_shipping_tax')->andReturn('1.00');
     $order->allows('get_items')->with('fee')->andReturn([]);
+    $order->allows('get_items')->andReturn([mockProductLine()]);
 
-    $this->builder->build($order, $this->department);
-})->throws(FiscalBuildException::class, 'no shipping SKU is configured');
-
-it('rejects orders with shipping tax even when shipping_total is zero', function (): void {
-    // Defensive: some gateways report 0 shipping but non-zero shipping
-    // tax (e.g., free shipping with separate tax line).
-    $order = Mockery::mock(WC_Order::class);
-    $order->allows('get_currency')->andReturn('AMD');
-    $order->allows('get_shipping_total')->andReturn('0');
-    $order->allows('get_shipping_tax')->andReturn('0.50');
-    $order->allows('get_items')->with('fee')->andReturn([]);
-
-    $this->builder->build($order, $this->department);
-})->throws(FiscalBuildException::class, 'no shipping SKU is configured');
-
-it('rejects orders with fee lines when no fee SKU is configured', function (): void {
-    $order = Mockery::mock(WC_Order::class);
-    $order->allows('get_currency')->andReturn('AMD');
-    $order->allows('get_shipping_total')->andReturn('0');
-    $order->allows('get_shipping_tax')->andReturn('0');
-
-    $fee = Mockery::mock(WC_Order_Item_Fee::class);
-    $fee->allows('get_total')->andReturn('5');
-    $fee->allows('get_total_tax')->andReturn('1');
-    $order->allows('get_items')->with('fee')->andReturn([$fee]);
-
-    $this->builder->build($order, $this->department);
-})->throws(FiscalBuildException::class, 'no fee SKU is configured');
-
-it('throws when a product has no SKU', function (): void {
-    $order = Mockery::mock(WC_Order::class);
-    $order->allows('get_currency')->andReturn('AMD');
-    $order->allows('get_shipping_total')->andReturn('0');
-    $order->allows('get_shipping_tax')->andReturn('0');
-    $order->allows('get_items')->with('fee')->andReturn([]);
-    $order->allows('get_items')->andReturn([mockProductLine(sku: '')]);
-
-    $this->builder->build($order, $this->department);
-})->throws(FiscalBuildException::class, 'has no SKU');
-
-it('throws when SKU is just whitespace', function (): void {
-    $order = Mockery::mock(WC_Order::class);
-    $order->allows('get_currency')->andReturn('AMD');
-    $order->allows('get_shipping_total')->andReturn('0');
-    $order->allows('get_shipping_tax')->andReturn('0');
-    $order->allows('get_items')->with('fee')->andReturn([]);
-    $order->allows('get_items')->andReturn([mockProductLine(sku: '   ')]);
-
-    $this->builder->build($order, $this->department);
-})->throws(FiscalBuildException::class, 'has no SKU');
+    $builder->build($order, $this->department, $this->policy);
+})->throws(FiscalBuildException::class, 'shipping line');
 
 it('throws when the underlying product is gone', function (): void {
     $item = Mockery::mock(WC_Order_Item_Product::class);
@@ -160,7 +171,7 @@ it('throws when the underlying product is gone', function (): void {
     $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([$item]);
 
-    $this->builder->build($order, $this->department);
+    $this->builder->build($order, $this->department, $this->policy);
 })->throws(FiscalBuildException::class, 'no longer exists');
 
 it('throws on a zero-quantity line', function (): void {
@@ -171,7 +182,7 @@ it('throws on a zero-quantity line', function (): void {
     $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine(qty: 0.0)]);
 
-    $this->builder->build($order, $this->department);
+    $this->builder->build($order, $this->department, $this->policy);
 })->throws(FiscalBuildException::class, 'zero quantity');
 
 it('throws on a negative quantity', function (): void {
@@ -182,7 +193,7 @@ it('throws on a negative quantity', function (): void {
     $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine(qty: -1.0)]);
 
-    $this->builder->build($order, $this->department);
+    $this->builder->build($order, $this->department, $this->policy);
 })->throws(FiscalBuildException::class, 'Negative line quantity');
 
 it('formats fractional quantities without trailing zeros', function (): void {
@@ -196,7 +207,7 @@ it('formats fractional quantities without trailing zeros', function (): void {
         mockProductLine(qty: 1.5, total: '150', totalTax: '30'),
     ]);
 
-    $items = $this->builder->build($order, $this->department);
+    $items = $this->builder->build($order, $this->department, $this->policy);
 
     expect($items[0]->quantity)->toBe('1.5')
         // (150 + 30) / 1.5 = 120
@@ -215,7 +226,7 @@ it('builds multiple lines when the order has several products', function (): voi
         mockProductLine(sku: 'SKU-B', qty: 3.0, total: '300', totalTax: '60'),
     ]);
 
-    $items = $this->builder->build($order, $this->department);
+    $items = $this->builder->build($order, $this->department, $this->policy);
 
     expect($items)->toHaveCount(2)
         ->and($items[0]->offer->externalId)->toBe('SKU-A')
@@ -233,7 +244,7 @@ it('synthesises a shipping SaleItem when shippingSku is configured', function ()
     $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine()]);
 
-    $items = $this->builder->build($order, $this->department, shippingSku: 'ship-001');
+    $items = $this->builder->build($order, $this->department, new CatalogPolicy(shippingSku: 'ship-001'));
 
     expect($items)->toHaveCount(2)
         ->and($items[0]->offer->externalId)->toBe('SKU-1')
@@ -253,7 +264,7 @@ it('skips the shipping line when shipping_total + shipping_tax is zero', functio
     $order->allows('get_items')->andReturn([mockProductLine()]);
 
     // Configured but unused — must not produce a phantom shipping line.
-    $items = $this->builder->build($order, $this->department, shippingSku: 'ship-001');
+    $items = $this->builder->build($order, $this->department, new CatalogPolicy(shippingSku: 'ship-001'));
 
     expect($items)->toHaveCount(1)
         ->and($items[0]->offer->externalId)->toBe('SKU-1');
@@ -276,7 +287,7 @@ it('synthesises one fee SaleItem per WC fee item when feeSku is configured', fun
     $order->allows('get_items')->with('fee')->andReturn([$fee1, $fee2]);
     $order->allows('get_items')->andReturn([mockProductLine()]);
 
-    $items = $this->builder->build($order, $this->department, feeSku: 'svc-fee');
+    $items = $this->builder->build($order, $this->department, new CatalogPolicy(feeSku: 'svc-fee'));
 
     expect($items)->toHaveCount(3)
         ->and($items[0]->offer->externalId)->toBe('SKU-1')
@@ -301,7 +312,7 @@ it('drops a zero fee line without disturbing the receipt', function (): void {
     $order->allows('get_items')->with('fee')->andReturn([$zero]);
     $order->allows('get_items')->andReturn([mockProductLine()]);
 
-    $items = $this->builder->build($order, $this->department, feeSku: 'svc-fee');
+    $items = $this->builder->build($order, $this->department, new CatalogPolicy(feeSku: 'svc-fee'));
 
     expect($items)->toHaveCount(1)
         ->and($items[0]->offer->externalId)->toBe('SKU-1');
@@ -324,7 +335,7 @@ it('refuses to build a receipt when a negative fee has reduced the order total',
     $order->allows('get_items')->with('fee')->andReturn([$negative]);
     $order->allows('get_items')->andReturn([mockProductLine()]);
 
-    $this->builder->build($order, $this->department, feeSku: 'svc-fee');
+    $this->builder->build($order, $this->department, new CatalogPolicy(feeSku: 'svc-fee'));
 })->throws(FiscalBuildException::class, 'the order was charged');
 
 it('accepts a rounding difference of up to half the smallest currency unit', function (): void {
@@ -338,7 +349,7 @@ it('accepts a rounding difference of up to half the smallest currency unit', fun
     $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine()]);
 
-    $items = $this->builder->build($order, $this->department);
+    $items = $this->builder->build($order, $this->department, $this->policy);
 
     expect($items)->toHaveCount(1);
 });
@@ -352,7 +363,7 @@ it('leaves currency null for an AMD store (native line)', function (): void {
     $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine()]);
 
-    $items = $this->builder->build($order, $this->department);
+    $items = $this->builder->build($order, $this->department, $this->policy);
 
     expect($items[0]->currency)->toBeNull();
 });
@@ -371,7 +382,7 @@ it('tags every line with the store currency for a non-AMD order — product, shi
     // Price stays in the store currency, untouched — the VCR converts to AMD.
     $order->allows('get_items')->andReturn([mockProductLine(qty: 1.0, total: '10', totalTax: '0')]);
 
-    $items = $this->builder->build($order, $this->department, shippingSku: 'ship-001', feeSku: 'svc-fee');
+    $items = $this->builder->build($order, $this->department, new CatalogPolicy(shippingSku: 'ship-001', feeSku: 'svc-fee'));
 
     expect($items)->toHaveCount(3)
         ->and($items[0]->currency)->toBe('USD')
@@ -389,7 +400,7 @@ it('normalises a lowercase currency code to uppercase', function (): void {
     $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine()]);
 
-    $items = $this->builder->build($order, $this->department);
+    $items = $this->builder->build($order, $this->department, $this->policy);
 
     expect($items[0]->currency)->toBe('EUR');
 });
@@ -408,7 +419,7 @@ it('omits the department entirely when no override is configured', function (): 
     $order->allows('get_items')->with('fee')->andReturn([]);
     $order->allows('get_items')->andReturn([mockProductLine()]);
 
-    $items = $this->builder->build($order, null, shippingSku: 'ship-001');
+    $items = $this->builder->build($order, null, new CatalogPolicy(shippingSku: 'ship-001'));
 
     expect($items)->toHaveCount(2);
 
@@ -434,7 +445,7 @@ it('stamps the override on synthesised shipping and fee lines too', function ():
     $order->allows('get_items')->with('fee')->andReturn([$fee]);
     $order->allows('get_items')->andReturn([mockProductLine()]);
 
-    $items = $this->builder->build($order, $this->department, shippingSku: 'ship-001', feeSku: 'svc-fee');
+    $items = $this->builder->build($order, $this->department, new CatalogPolicy(shippingSku: 'ship-001', feeSku: 'svc-fee'));
 
     expect($items)->toHaveCount(3);
 
