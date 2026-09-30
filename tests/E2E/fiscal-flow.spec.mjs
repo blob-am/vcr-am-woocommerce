@@ -118,8 +118,13 @@ test.describe('VCR fiscal flow (happy path)', () => {
     test('a product the register has never seen is filed as its receipt is filed', async () => {
         // The wall this feature removes: before it, this order was held for
         // manual review because nobody had onboarded the product in VCR.
-        await wpCli(['option', 'update', 'vcr_catalog_classifier_code', '56.10']);
-        await wpCli(['option', 'update', 'vcr_catalog_department_id', '1']);
+        // Set through PHP, not `wp option update`: wp-env parses its arguments
+        // as JSON-ish values, so a numeric-looking code loses a trailing zero
+        // (`56.10` arrives as `56.1`) before wp-cli ever sees it. A merchant
+        // saving the settings form stores the string, so the test has to too --
+        // and a trailing zero is worth carrying here for exactly that reason.
+        await wpCli(['eval', "update_option('vcr_catalog_classifier_code', '56.10');"]);
+        await wpCli(['eval', "update_option('vcr_catalog_department_id', '1');"]);
 
         try {
             const sku = `E2E-NEW-${Date.now()}`;
@@ -159,8 +164,8 @@ test.describe('VCR fiscal flow (happy path)', () => {
             expect(referenced).toHaveLength(1);
             expect(referenced[0].body.items[0].offer).toEqual({ externalId: `wc-${productId}` });
         } finally {
-            await wpCli(['option', 'delete', 'vcr_catalog_classifier_code']);
-            await wpCli(['option', 'delete', 'vcr_catalog_department_id']);
+            await wpCli(['eval', "delete_option('vcr_catalog_classifier_code');"]);
+            await wpCli(['eval', "delete_option('vcr_catalog_department_id');"]);
         }
     });
 });
