@@ -1,0 +1,143 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BlobSolutions\WooCommerceVcrAm\Catalog;
+
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+
+/**
+ * The "name on the receipt" box on a product, and on each of its variations.
+ *
+ * It exists for one reason: a receipt line holds
+ * {@see ReceiptName::MAX_LENGTH} characters and a product title written for a
+ * category page often does not fit. The plugin will not shorten a title itself,
+ * so this is where a merchant says what the buyer should see instead -- once,
+ * on the product, rather than per order.
+ *
+ * Variations carry their own box because a variation's name is the parent's
+ * plus its attributes, which is exactly the case most likely to overflow.
+ */
+final class ReceiptNameField
+{
+    public function register(): void
+    {
+        add_action('woocommerce_product_options_general_product_data', [$this, 'renderForProduct']);
+        add_action('woocommerce_process_product_meta', [$this, 'saveForProduct']);
+        add_action('woocommerce_variation_options_pricing', [$this, 'renderForVariation'], 10, 3);
+        add_action('woocommerce_save_product_variation', [$this, 'saveForVariation'], 10, 2);
+    }
+
+    public function renderForProduct(): void
+    {
+        $postId = get_the_ID();
+        if (! is_int($postId)) {
+            return;
+        }
+
+        woocommerce_wp_text_input([
+            'id' => ReceiptName::META_KEY,
+            'value' => $this->stored($postId),
+            'label' => __('Name on the fiscal receipt', 'vcr-am-fiscal-receipts'),
+            'description' => $this->description(),
+            'desc_tip' => true,
+            'custom_attributes' => ['maxlength' => (string) ReceiptName::MAX_LENGTH],
+        ]);
+    }
+
+    /**
+     * WooCommerce hands hook callbacks whatever the caller passed, so the id
+     * arrives as `mixed` however well documented it is. See
+     * project_wc_hook_typed_params.
+     */
+    public function saveForProduct(mixed $postId): void
+    {
+        if (! is_int($postId) && ! is_string($postId)) {
+            return;
+        }
+
+        // Nonce: WooCommerce verifies its own product-save nonce before this
+        // hook fires, and re-checking it here would be checking a nonce we did
+        // not issue.
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        $this->store((int) $postId, $_POST[ReceiptName::META_KEY] ?? null);
+    }
+
+    public function renderForVariation(mixed $loop, mixed $variationData, mixed $variation): void
+    {
+        if (! is_object($variation) || ! property_exists($variation, 'ID')) {
+            return;
+        }
+
+        $variationId = $variation->ID;
+        if (! is_int($variationId)) {
+            return;
+        }
+
+        woocommerce_wp_text_input([
+            'id' => ReceiptName::META_KEY . '[' . (string) $variationId . ']',
+            'value' => $this->stored($variationId),
+            'label' => __('Name on the fiscal receipt', 'vcr-am-fiscal-receipts'),
+            'description' => $this->description(),
+            'desc_tip' => true,
+            'wrapper_class' => 'form-row form-row-full',
+            'custom_attributes' => ['maxlength' => (string) ReceiptName::MAX_LENGTH],
+        ]);
+    }
+
+    public function saveForVariation(mixed $variationId, mixed $loop): void
+    {
+        if (! is_int($variationId) && ! is_string($variationId)) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        $submitted = $_POST[ReceiptName::META_KEY] ?? null;
+        if (! is_array($submitted)) {
+            return;
+        }
+
+        $this->store((int) $variationId, $submitted[$variationId] ?? null);
+    }
+
+    private function description(): string
+    {
+        return sprintf(
+            /* translators: %d: maximum characters a receipt line holds. */
+            __('Leave empty to print the product name. Set it when that name is longer than %d characters, which is all a receipt line holds -- the plugin will not shorten it for you, because this is the line the buyer reads to recognise what they bought.', 'vcr-am-fiscal-receipts'),
+            ReceiptName::MAX_LENGTH,
+        );
+    }
+
+    private function stored(int $postId): string
+    {
+        $value = get_post_meta($postId, ReceiptName::META_KEY, true);
+
+        return is_string($value) ? $value : '';
+    }
+
+    /**
+     * An empty box removes the override rather than storing a blank name, so
+     * "no override" has one representation and the product falls back to its
+     * own title.
+     */
+    private function store(int $postId, mixed $submitted): void
+    {
+        if (! is_string($submitted)) {
+            return;
+        }
+
+        $value = trim(sanitize_text_field(wp_unslash($submitted)));
+
+        if ($value === '') {
+            delete_post_meta($postId, ReceiptName::META_KEY);
+
+            return;
+        }
+
+        update_post_meta($postId, ReceiptName::META_KEY, $value);
+    }
+}

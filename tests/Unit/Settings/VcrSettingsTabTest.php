@@ -5,6 +5,7 @@ declare(strict_types=1);
 use BlobSolutions\WooCommerceVcrAm\Admin\ReadinessPanel;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogListing;
+use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogPolicy;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
@@ -92,6 +93,9 @@ function stubTabConfig(?int $cashierId = null, ?int $departmentId = null): Confi
     $config->allows('defaultCashierId')->andReturn($cashierId);
     $config->allows('defaultDepartmentId')->andReturn($departmentId);
     $config->allows('shippingSku')->andReturn('shipping');
+    $config->allows('catalogPolicy')->andReturn(
+        new CatalogPolicy(classifierCode: '56.10', departmentInternalId: 1),
+    );
 
     return $config;
 }

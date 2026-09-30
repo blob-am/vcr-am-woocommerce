@@ -5,6 +5,7 @@ declare(strict_types=1);
 use BlobSolutions\WooCommerceVcrAm\Admin\ReadinessPanel;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogListing;
+use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogPolicy;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionFailure;
@@ -57,6 +58,7 @@ function makePanel(
     ?int $selectedCashier = null,
     ?int $departmentOverride = null,
     ?string $shippingSku = 'shipping',
+    ?CatalogPolicy $policy = null,
 ): ReadinessPanel {
     $probe = Mockery::mock(ConnectionProbe::class);
     $probe->allows('state')->andReturn($state);
@@ -71,6 +73,9 @@ function makePanel(
     $config->allows('defaultCashierId')->andReturn($selectedCashier);
     $config->allows('defaultDepartmentId')->andReturn($departmentOverride);
     $config->allows('shippingSku')->andReturn($shippingSku);
+    $config->allows('catalogPolicy')->andReturn(
+        $policy ?? new CatalogPolicy(classifierCode: '56.10', departmentInternalId: 1),
+    );
 
     return new ReadinessPanel($probe, $cashierCatalog, $departmentCatalog, $config);
 }
@@ -235,11 +240,61 @@ it('warns a shipping store with no shipping SKU before its first delivery', func
         ConnectionState::connected(panelIdentity()),
         selectedCashier: 1,
         shippingSku: null,
+        policy: new CatalogPolicy(),
     )->render();
 
     expect($html)->toContain('notice-warning')
         ->toContain('Shipping is enabled')
         ->toContain('held for manual review');
+});
+
+it('stops warning about the shipping SKU once the plugin may create the line itself', function (): void {
+    Functions\when('wc_shipping_enabled')->justReturn(true);
+
+    $html = makePanel(
+        ConnectionState::connected(panelIdentity()),
+        selectedCashier: 1,
+        shippingSku: null,
+    )->render();
+
+    expect($html)->not->toContain('Shipping is enabled');
+});
+
+it('says a newly added product would hold its own order while no code is set', function (): void {
+    $html = makePanel(
+        ConnectionState::connected(panelIdentity()),
+        selectedCashier: 1,
+        policy: new CatalogPolicy(),
+    )->render();
+
+    expect($html)->toContain('notice-warning')
+        ->toContain('Catalog')
+        ->toContain('held for manual review')
+        ->toContain('creates the item itself');
+});
+
+it('names the code new catalog items are filed under', function (): void {
+    $html = makePanel(
+        ConnectionState::connected(panelIdentity()),
+        selectedCashier: 1,
+        policy: new CatalogPolicy(classifierCode: '01.11', departmentInternalId: 2),
+    )->render();
+
+    expect($html)->toContain('notice-success')
+        ->toContain('<code>01.11</code>');
+});
+
+it('asks which department new items belong to when the register has several', function (): void {
+    $html = makePanel(
+        ConnectionState::connected(panelIdentity()),
+        departments: CatalogListing::of([1 => 'VAT (#1)', 2 => 'Turnover (#2)']),
+        selectedCashier: 1,
+        policy: new CatalogPolicy(classifierCode: '56.10'),
+    )->render();
+
+    expect($html)->toContain('notice-warning')
+        ->toContain('more than one department')
+        ->toContain('Department for new catalog items');
 });
 
 it('says nothing about shipping when the store does not ship', function (): void {

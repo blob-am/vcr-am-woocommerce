@@ -28,6 +28,7 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Catalog\OfferBinding;
 use BlobSolutions\WooCommerceVcrAm\Catalog\OfferListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\ReceiptNameField;
 use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
 use BlobSolutions\WooCommerceVcrAm\Currency\CurrencyConverter;
 use BlobSolutions\WooCommerceVcrAm\Currency\VcrExchangeRateProvider;
@@ -295,6 +296,7 @@ final class Plugin
         (new OrderMetaBox($meta, $refundMeta))->register();
 
         // Orders list table — fiscal status column visible at WC → Orders.
+        (new ReceiptNameField())->register();
         (new OrdersListColumn($meta))->register();
         (new OrdersListFilter())->register();
         (new OrdersBulkAction($meta, $queue))->register();

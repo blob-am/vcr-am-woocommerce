@@ -86,10 +86,14 @@ final class ReadinessPanel
 
         $steps[] = $this->cashierStep($this->cashierCatalog->list());
 
-        $departmentStep = $this->departmentStep($this->departmentCatalog->list());
+        $departments = $this->departmentCatalog->list();
+
+        $departmentStep = $this->departmentStep($departments);
         if ($departmentStep !== null) {
             $steps[] = $departmentStep;
         }
+
+        $steps[] = $this->catalogStep($departments);
 
         $shippingStep = $this->shippingStep();
         if ($shippingStep !== null) {
@@ -344,6 +348,52 @@ final class ReadinessPanel
     }
 
     /**
+     * Whether a product the register has never seen can be fiscalised at all.
+     *
+     * This is the step that decides whether the merchant maintains a second
+     * catalogue by hand. Unarmed is not broken -- a store whose catalogue is
+     * fully onboarded works -- but it is the state where a newly added product
+     * holds its own order, and nothing else on this screen would say so.
+     */
+    private function catalogStep(CatalogListing $departments): ReadinessStep
+    {
+        $label = __('Catalog', 'vcr-am-fiscal-receipts');
+        $policy = $this->configuration->catalogPolicy();
+
+        if (! $policy->armed()) {
+            return new ReadinessStep(
+                $label,
+                __(
+                    'A product your register has no catalog item for cannot be fiscalised: that order is held for manual review until you add the item in VCR. Set a classifier code below and the plugin creates the item itself, as it issues the receipt.',
+                    'vcr-am-fiscal-receipts',
+                ),
+                ReadinessLevel::Attention,
+            );
+        }
+
+        if ($policy->departmentInternalId === null && count($departments->entries) !== 1) {
+            return new ReadinessStep(
+                $label,
+                __(
+                    'This register has more than one department, so the plugin cannot tell which tax regime a new catalog item belongs to. Pick one under "Department for new catalog items" below; until then a product not already in the catalog holds its order.',
+                    'vcr-am-fiscal-receipts',
+                ),
+                ReadinessLevel::Attention,
+            );
+        }
+
+        return new ReadinessStep(
+            $label,
+            sprintf(
+                /* translators: %s: the configured classifier code. */
+                __('New products are added to the register\'s catalog under code %s as their first receipt is issued. Change a code per item in VCR any time — the plugin never overwrites one.', 'vcr-am-fiscal-receipts'),
+                '<code>' . esc_html($policy->classifierCode ?? '') . '</code>',
+            ),
+            ReadinessLevel::Ready,
+        );
+    }
+
+    /**
      * A store that charges shipping and has no shipping SKU cannot file the
      * shipping line, and the whole order is held. Worth saying here because
      * the merchant finds out otherwise on their first delivered order.
@@ -351,6 +401,12 @@ final class ReadinessPanel
     private function shippingStep(): ?ReadinessStep
     {
         if ($this->configuration->shippingSku() !== null) {
+            return null;
+        }
+
+        // An armed catalog policy files the shipping line itself, so there is
+        // nothing to warn about.
+        if ($this->configuration->catalogPolicy()->armed()) {
             return null;
         }
 
