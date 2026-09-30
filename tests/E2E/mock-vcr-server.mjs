@@ -83,6 +83,21 @@ const DEFAULT_PLAN = {
                 archivedAt: null,
                 createdAt: '2026-09-01T00:00:00Z',
             },
+            {
+                // The SKU the fiscal-flow fixture sells. It is here because the
+                // plugin now asks whether the register has an offer for a
+                // product before describing one, and a register that has it is
+                // the case those tests are about -- adoption, not creation.
+                id: 2,
+                externalId: 'E2E-SKU-1',
+                type: 'product',
+                classifierCode: '47.91',
+                defaultMeasureUnit: 'pc',
+                defaultDepartment: { internalId: 1 },
+                title: [],
+                archivedAt: null,
+                createdAt: '2026-09-01T00:00:00Z',
+            },
         ],
     },
     // POST /connect/requests — step one of pairing. Unauthenticated, like the

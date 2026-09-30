@@ -114,4 +114,53 @@ test.describe('VCR fiscal flow (happy path)', () => {
             /^vcr-am-sdk-php\/[\d.]+ \(\+\S+\) vcr-am-woocommerce\/[\d.]+ \(WordPress\/[^;]+; WooCommerce\/[^;]+; PHP\/[^)]+\)$/,
         );
     });
+
+    test('a product the register has never seen is filed as its receipt is filed', async () => {
+        // The wall this feature removes: before it, this order was held for
+        // manual review because nobody had onboarded the product in VCR.
+        await wpCli(['option', 'update', 'vcr_catalog_classifier_code', '56.10']);
+        await wpCli(['option', 'update', 'vcr_catalog_department_id', '1']);
+
+        try {
+            const sku = `E2E-NEW-${Date.now()}`;
+            const [orderId, productId] = (await evalFile('create-order-with-sku.php', [sku])).split(' ');
+
+            expect(orderId).toMatch(/^\d+$/);
+            expect(productId).toMatch(/^\d+$/);
+
+            await wpCli(['action-scheduler', 'run', '--hooks=vcr_fiscalize_order', '--force']);
+            expect(await readVcrMeta(orderId, '_vcr_fiscal_status')).toBe('success');
+
+            const described = (await getMockLog())
+                .filter((entry) => entry.url === '/api/v1/sales' && entry.method === 'POST');
+            expect(described).toHaveLength(1);
+
+            // The whole offer, inline: the API creates it while filing the
+            // receipt. The id is minted from the product id, not the SKU.
+            expect(described[0].body.items[0].offer).toEqual({
+                externalId: `wc-${productId}`,
+                title: { type: 'universal', content: `E2E product ${sku}` },
+                type: 'product',
+                classifierCode: '56.10',
+                defaultMeasureUnit: 'pc',
+                defaultDepartment: { id: 1 },
+            });
+
+            // Second order, same product: now that the register holds the
+            // offer, the plugin references it and never re-declares its code —
+            // which is what leaves a merchant free to refine that code in VCR.
+            await resetMockLog();
+            const [secondOrderId] = (await evalFile('create-order-with-sku.php', [sku])).split(' ');
+            await wpCli(['action-scheduler', 'run', '--hooks=vcr_fiscalize_order', '--force']);
+            expect(await readVcrMeta(secondOrderId, '_vcr_fiscal_status')).toBe('success');
+
+            const referenced = (await getMockLog())
+                .filter((entry) => entry.url === '/api/v1/sales' && entry.method === 'POST');
+            expect(referenced).toHaveLength(1);
+            expect(referenced[0].body.items[0].offer).toEqual({ externalId: `wc-${productId}` });
+        } finally {
+            await wpCli(['option', 'delete', 'vcr_catalog_classifier_code']);
+            await wpCli(['option', 'delete', 'vcr_catalog_department_id']);
+        }
+    });
 });
