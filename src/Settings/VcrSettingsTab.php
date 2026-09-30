@@ -31,6 +31,14 @@ if (! defined('ABSPATH')) {
  */
 final class VcrSettingsTab extends WC_Settings_Page
 {
+    /**
+     * The tab's own id, as WooCommerce knows it. Public because three other
+     * places have to recognise this screen — the settings link, the script
+     * enqueue and the pairing redirect — and each of them used to spell it out
+     * again.
+     */
+    public const ID = 'vcr';
+
     public const SECTION_ADVANCED = 'advanced';
 
     public function __construct(
@@ -42,7 +50,7 @@ final class VcrSettingsTab extends WC_Settings_Page
         private readonly AdvancedFields $advanced,
         private readonly SafeUrlValidator $urlValidator = new SafeUrlValidator(),
     ) {
-        $this->id = 'vcr';
+        $this->id = self::ID;
         $this->label = __('VCR', 'vcr-am-fiscal-receipts');
 
         parent::__construct();

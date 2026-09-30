@@ -10,6 +10,7 @@ use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
 use BlobSolutions\WooCommerceVcrAm\Logging\Logger;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
 use Throwable;
 
 if (! defined('ABSPATH')) {
@@ -37,6 +38,7 @@ class ReturnHandler
         private readonly ConnectionProbe $probe,
         private readonly CashierCatalog $cashierCatalog,
         private readonly DepartmentCatalog $departmentCatalog,
+        private readonly FailureDetail $failureDetail = new FailureDetail(),
         private readonly Logger $logger = new Logger(),
     ) {
     }
@@ -103,6 +105,10 @@ class ReturnHandler
         } catch (Throwable $e) {
             $this->logger->error('Could not exchange the pairing code', ['error' => $e->getMessage()]);
 
+            if ($e instanceof VcrApiException && $e->apiErrorMessage !== null) {
+                $this->failureDetail->remember($userId, $e->apiErrorMessage);
+            }
+
             $this->finish(SettingsUrl::NOTICE_FAILED);
         }
 
@@ -138,7 +144,7 @@ class ReturnHandler
      */
     private function isOurReturn(): bool
     {
-        if ($this->queryValue('page') !== 'wc-settings' || $this->queryValue('tab') !== 'vcr') {
+        if (! SettingsUrl::isCurrentScreen()) {
             return false;
         }
 

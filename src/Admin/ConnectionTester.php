@@ -8,6 +8,7 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\IdentityReaderFactory;
 use BlobSolutions\WooCommerceVcrAm\Net\SafeUrlValidator;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
+use BlobSolutions\WooCommerceVcrAm\Settings\VcrSettingsTab;
 use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrException;
 use Throwable;
@@ -86,7 +87,7 @@ class ConnectionTester
             ? sanitize_text_field(wp_unslash($_GET['tab']))
             : '';
 
-        if ($tab !== 'vcr') {
+        if ($tab !== VcrSettingsTab::ID) {
             return;
         }
 

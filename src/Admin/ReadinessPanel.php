@@ -308,6 +308,27 @@ final class ReadinessPanel
 
         $overrideLabel = $listing->entries[$override] ?? null;
 
+        if ($overrideLabel === null && $listing->isAvailable()) {
+            // The cashier step says this for its own stale selection; the
+            // override has the same failure and is the more expensive one,
+            // because the department decides the tax regime. Reachable in one
+            // click now: "Reconnect to VCR.AM" is offered as the way to move a
+            // store to a different register, and the override does not move
+            // with it.
+            return new ReadinessStep(
+                __('Department override', 'vcr-am-fiscal-receipts'),
+                sprintf(
+                    /* translators: %d is the stored department number. */
+                    __(
+                        'The saved department override (#%d) is not on this register any more, so every receipt is being refused. Choose another one below, or clear the field to file each offer under its own department.',
+                        'vcr-am-fiscal-receipts',
+                    ),
+                    $override,
+                ),
+                ReadinessLevel::Blocked,
+            );
+        }
+
         return new ReadinessStep(
             __('Department override', 'vcr-am-fiscal-receipts'),
             sprintf(

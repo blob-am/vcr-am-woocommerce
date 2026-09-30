@@ -42,6 +42,7 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\OrderListener;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\PaymentMapper;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrarFactory;
 use BlobSolutions\WooCommerceVcrAm\Migration\Migrator;
+use BlobSolutions\WooCommerceVcrAm\Pairing\FailureDetail;
 use BlobSolutions\WooCommerceVcrAm\Pairing\PairingClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Pairing\PairingNotices;
 use BlobSolutions\WooCommerceVcrAm\Pairing\PairingSession;
@@ -218,8 +219,11 @@ final class Plugin
         // key so they do not have to.
         $pairingSession = new PairingSession();
         $pairingClientFactory = new PairingClientFactory(IntegrationToken::forPlugin($this->version));
+        // One instance across all three: whichever half of the handshake fails
+        // writes the reason, and the notice is what reads it back.
+        $pairingFailure = new FailureDetail();
 
-        (new StartHandler($config, $pairingSession, $pairingClientFactory))->register();
+        (new StartHandler($config, $pairingSession, $pairingClientFactory, $pairingFailure))->register();
         (new ReturnHandler(
             $config,
             $keyStore,
@@ -228,8 +232,9 @@ final class Plugin
             $probe,
             $cashierCatalog,
             $departmentCatalog,
+            $pairingFailure,
         ))->register();
-        (new PairingNotices())->register();
+        (new PairingNotices($pairingFailure))->register();
 
         // Currency converter wired once per request for the REFUND path only.
         // The sale path never converts here: foreign-currency sales send

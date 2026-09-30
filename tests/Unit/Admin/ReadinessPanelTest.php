@@ -185,6 +185,38 @@ it('spells out what a department override does, because nothing else shows it', 
         ->toContain('only be refunded');
 });
 
+it('blocks when the saved department override is not on this register', function (): void {
+    // Reachable in one click: "Reconnect to VCR.AM" is offered as the way to
+    // move a store to a different register, and the override does not move with
+    // it. The cashier step has said this for its own stale selection all along;
+    // the override is the more expensive one, because the department decides the
+    // tax regime printed on the receipt.
+    $html = makePanel(
+        ConnectionState::connected(panelIdentity()),
+        departments: CatalogListing::of([9 => 'VAT (#9)']),
+        selectedCashier: 1,
+        departmentOverride: 4,
+    )->render();
+
+    expect($html)->toContain('notice-error')
+        ->toContain('#4')
+        ->toContain('not on this register any more');
+});
+
+it('does not call an override stale when the department list could not be fetched', function (): void {
+    // An unreachable API is not evidence that the saved department is gone, and
+    // telling a merchant their receipts are refused when they are not would send
+    // them changing settings that were correct.
+    $html = makePanel(
+        ConnectionState::connected(panelIdentity()),
+        departments: CatalogListing::unavailable(new ConnectionFailure(ConnectionProblem::Unreachable)),
+        selectedCashier: 1,
+        departmentOverride: 4,
+    )->render();
+
+    expect($html)->not->toContain('not on this register any more');
+});
+
 it('blocks when the register has no departments at all', function (): void {
     $html = makePanel(
         ConnectionState::connected(panelIdentity()),

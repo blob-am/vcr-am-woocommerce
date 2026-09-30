@@ -3,14 +3,18 @@
 declare(strict_types=1);
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Pairing\FailureDetail;
 use BlobSolutions\WooCommerceVcrAm\Pairing\PairingClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Pairing\PairingGateway;
 use BlobSolutions\WooCommerceVcrAm\Pairing\PairingSession;
 use BlobSolutions\WooCommerceVcrAm\Pairing\SettingsUrl;
 use BlobSolutions\WooCommerceVcrAm\Pairing\StartHandler;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterPairingRequestInput;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\PairingRequest;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Pairing\CodeVerifier;
+use BlobSolutions\WooCommerceVcrAm\Vendor\Nyholm\Psr7\Factory\Psr17Factory;
+use BlobSolutions\WooCommerceVcrAm\Vendor\Nyholm\Psr7\Response;
 use Brain\Monkey\Functions;
 
 /** Where the handler tried to send the browser, since a test cannot follow it. */
@@ -88,6 +92,7 @@ function makeStartHandler(
     PairingGateway $client,
     ?PairingSession $session = null,
     string $baseUrl = 'https://vcr.am/api/v1',
+    ?FailureDetail $failureDetail = null,
 ): StartHandler {
     $config = Mockery::mock(Configuration::class);
     $config->allows('baseUrl')->andReturn($baseUrl);
@@ -101,7 +106,7 @@ function makeStartHandler(
         $session->allows('forget');
     }
 
-    return new StartHandler($config, $session, $factory);
+    return new StartHandler($config, $session, $factory, $failureDetail ?? new FailureDetail());
 }
 
 function registeredAt(string $connectUrl): PairingRequest
@@ -293,4 +298,39 @@ it('refuses a user who may not manage WooCommerce', function (): void {
     $client->shouldNotReceive('registerRequest');
 
     expect(fn () => makeStartHandler($client)->handle())->toThrow(RuntimeException::class, 'wp_die');
+});
+
+it('keeps the reason VCR.AM refused, so the notice can say it', function (): void {
+    // The likeliest refusal by far: the API will not accept an http
+    // `redirectUri`, so a shop whose wp-admin is not on https can never pair.
+    // That sentence has to reach the merchant, not just the error log.
+    $refusal = new VcrApiException(
+        statusCode: 400,
+        apiErrorMessage: 'redirectUri rejected (insecure_scheme): it must be an absolute https URL.',
+        rawBody: '{}',
+        request: (new Psr17Factory())->createRequest('POST', 'https://vcr.am/api/v1/connect/requests'),
+        response: new Response(400),
+    );
+
+    $client = Mockery::mock(PairingGateway::class);
+    $client->allows('registerRequest')->andThrow($refusal);
+
+    $failureDetail = Mockery::mock(FailureDetail::class);
+    $failureDetail->expects('remember')->with(7, $refusal->apiErrorMessage);
+
+    expect(fn () => makeStartHandler($client, null, 'https://vcr.am/api/v1', $failureDetail)->handle())
+        ->toThrow(SentTo::class);
+});
+
+it('keeps no reason when the failure was not the API refusing', function (): void {
+    // A socket failure has nothing a merchant can act on, and "Could not
+    // connect to VCR.AM" already says it.
+    $client = Mockery::mock(PairingGateway::class);
+    $client->allows('registerRequest')->andThrow(new RuntimeException('network down'));
+
+    $failureDetail = Mockery::mock(FailureDetail::class);
+    $failureDetail->expects('remember')->never();
+
+    expect(fn () => makeStartHandler($client, null, 'https://vcr.am/api/v1', $failureDetail)->handle())
+        ->toThrow(SentTo::class);
 });

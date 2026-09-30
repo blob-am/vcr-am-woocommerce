@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.1.9
+Stable tag: 0.1.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,12 @@ For a multi-currency store the plugin also asks this same gateway for the AMD ra
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.10 =
+* Fixed: if connecting fails, the notice now says why. VCR.AM will not accept a shop whose WordPress admin is served over plain http, and that was the most likely way for the Connect button to fail — but all you were told was "check the error log", which sent you looking for a network problem you did not have. The reason VCR.AM gives is now printed with the error.
+* Fixed: the settings screen now warns when the saved department override belongs to a register this store is no longer connected to. It already warned about a stale cashier; the department is the more expensive one to get wrong, because it decides the tax regime printed on the receipt. Connecting to a different register is exactly how this happens.
+* Fixed: a "Connected" message could be made to appear on any admin screen by handing an administrator a crafted link, on a store that had never been connected. The message is now only shown where the connection actually finishes.
+* Security: secrets no longer travel inside error reports. When a request to VCR.AM failed, the request it carried into your error log or monitoring tool still held the body — which for a connection attempt meant the one-time code and its verifier, and for creating a cashier meant the PIN.
 
 = 0.1.9 =
 * New: a **Connect to VCR.AM** button on the settings screen. Press it, sign in, choose which cash register this store files to, and you are connected — there is no key to find, copy or paste. Pasting a key still works for anyone who prefers it or already has one.

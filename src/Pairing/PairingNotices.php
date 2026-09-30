@@ -18,6 +18,11 @@ if (! defined('ABSPATH')) {
  */
 final class PairingNotices
 {
+    public function __construct(
+        private readonly FailureDetail $failureDetail = new FailureDetail(),
+    ) {
+    }
+
     public function register(): void
     {
         add_action('admin_notices', [$this, 'render']);
@@ -33,6 +38,16 @@ final class PairingNotices
 
         [$class, $message] = $notice;
 
+        // Only the failure branch has anything more to say, and only when
+        // VCR.AM said it. Read on any pairing outcome, not just the failing
+        // one, so a detail cannot outlive the attempt it belongs to and turn up
+        // beside a later one.
+        $detail = $this->failureDetail->take(get_current_user_id());
+
+        if ($detail !== null && $class === 'notice-error') {
+            $message .= ' ' . $detail;
+        }
+
         printf(
             '<div class="notice %1$s is-dismissible"><p>%2$s</p></div>',
             esc_attr($class),
@@ -45,6 +60,13 @@ final class PairingNotices
      */
     private function notice(): ?array
     {
+        // Scoped to the settings screen because that is the only place our own
+        // redirect puts the marker. Without it, any admin URL somebody hands an
+        // administrator can print "Connected" on a store that never paired.
+        if (! SettingsUrl::isCurrentScreen()) {
+            return null;
+        }
+
         // No nonce to verify: this marker is put here by our own redirect and
         // decides nothing — it selects which sentence to print. Every value
         // that is not one of the four below prints nothing at all.

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Admin;
 
+use BlobSolutions\WooCommerceVcrAm\Pairing\SettingsUrl;
+
 /**
  * Adds the "Settings" shortcut to our plugin row on `/wp-admin/plugins.php`,
  * plus a "Docs" link to the upstream readme/repo.
@@ -70,7 +72,7 @@ class PluginActionLinks
         // Settings link — pre-pend so it shows leftmost (the position
         // shop admins look at first; matches WC's own convention for
         // its bundled extensions).
-        $settingsUrl = admin_url('admin.php?page=wc-settings&tab=vcr');
+        $settingsUrl = SettingsUrl::plain();
         $settingsLink = sprintf(
             '<a href="%s">%s</a>',
             esc_url($settingsUrl),

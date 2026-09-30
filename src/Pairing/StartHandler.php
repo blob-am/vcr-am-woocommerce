@@ -6,6 +6,7 @@ namespace BlobSolutions\WooCommerceVcrAm\Pairing;
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Logging\Logger;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterPairingRequestInput;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Pairing\CodeVerifier;
 use Throwable;
@@ -44,6 +45,7 @@ class StartHandler
         private readonly Configuration $config,
         private readonly PairingSession $session,
         private readonly PairingClientFactory $clientFactory,
+        private readonly FailureDetail $failureDetail = new FailureDetail(),
         private readonly Logger $logger = new Logger(),
     ) {
     }
@@ -85,6 +87,14 @@ class StartHandler
         } catch (Throwable $e) {
             $this->session->forget(get_current_user_id());
             $this->logger->error('Could not start pairing with VCR.AM', ['error' => $e->getMessage()]);
+
+            // A refusal from VCR.AM names the field that was wrong, and the
+            // likeliest one by far is a shop on plain http: the API will not
+            // accept an http `redirectUri`. Carry that sentence to the notice
+            // instead of leaving the merchant with "check the error log".
+            if ($e instanceof VcrApiException && $e->apiErrorMessage !== null) {
+                $this->failureDetail->remember(get_current_user_id(), $e->apiErrorMessage);
+            }
 
             $this->backToSettings(SettingsUrl::NOTICE_FAILED);
         }
