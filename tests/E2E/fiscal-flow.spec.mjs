@@ -129,7 +129,7 @@ test.describe('VCR fiscal flow (happy path)', () => {
             expect(productId).toMatch(/^\d+$/);
 
             await wpCli(['action-scheduler', 'run', '--hooks=vcr_fiscalize_order', '--force']);
-            expect(await readVcrMeta(orderId, '_vcr_fiscal_status')).toBe('success');
+            expect((await readVcrMeta(orderId))._vcr_fiscal_status).toBe('success');
 
             const described = (await getMockLog())
                 .filter((entry) => entry.url === '/api/v1/sales' && entry.method === 'POST');
@@ -152,7 +152,7 @@ test.describe('VCR fiscal flow (happy path)', () => {
             await resetMockLog();
             const [secondOrderId] = (await evalFile('create-order-with-sku.php', [sku])).split(' ');
             await wpCli(['action-scheduler', 'run', '--hooks=vcr_fiscalize_order', '--force']);
-            expect(await readVcrMeta(secondOrderId, '_vcr_fiscal_status')).toBe('success');
+            expect((await readVcrMeta(secondOrderId))._vcr_fiscal_status).toBe('success');
 
             const referenced = (await getMockLog())
                 .filter((entry) => entry.url === '/api/v1/sales' && entry.method === 'POST');
