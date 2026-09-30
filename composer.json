@@ -38,7 +38,7 @@
         "ext-json": "*",
         "ext-mbstring": "*",
         "ext-sodium": "*",
-        "blob-solutions/vcr-am-sdk": "^0.10.0",
+        "blob-solutions/vcr-am-sdk": "^0.11.0",
         "guzzlehttp/guzzle": "^7.8"
     },
     "require-dev": {

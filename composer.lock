@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5676bf9060c78aab83936438f382fa08",
+    "content-hash": "9888663fb2828d64200baeb9e2dcbe83",
     "packages": [
         {
             "name": "blob-solutions/vcr-am-sdk",
-            "version": "v0.10.0",
+            "version": "v0.11.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/blob-am/vcr-am-sdk-php.git",
-                "reference": "a4687e12f2232faf8e1c1cd17d8f1dddb8396084"
+                "reference": "7c74a90d90c4df12505b5e9631219cd9c3875ceb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/blob-am/vcr-am-sdk-php/zipball/a4687e12f2232faf8e1c1cd17d8f1dddb8396084",
-                "reference": "a4687e12f2232faf8e1c1cd17d8f1dddb8396084",
+                "url": "https://api.github.com/repos/blob-am/vcr-am-sdk-php/zipball/7c74a90d90c4df12505b5e9631219cd9c3875ceb",
+                "reference": "7c74a90d90c4df12505b5e9631219cd9c3875ceb",
                 "shasum": ""
             },
             "require": {
@@ -88,7 +88,7 @@
                 "issues": "https://github.com/blob-am/vcr-am-php/issues",
                 "source": "https://github.com/blob-am/vcr-am-sdk-php"
             },
-            "time": "2026-09-29T15:47:12+00:00"
+            "time": "2026-09-30T07:14:52+00:00"
         },
         {
             "name": "cuyz/valinor",
