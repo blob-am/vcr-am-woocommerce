@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.1.10
+Stable tag: 0.1.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -38,8 +38,9 @@ The official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Re
 3. Go to **WooCommerce → Settings → VCR** and press **Connect to VCR.AM**. You sign in, choose which cash register this store should file its receipts to, and you are returned here connected — there is no key to find or copy. If you would rather use a key you already have, paste it into the **API Key** field instead and press **Save changes**.
 4. The screen then opens with a checklist of what is ready and what is not. It names the register the key belongs to — the business, the TIN, the register number — says whether its receipts are real or test, and lists anything still missing with the one next step that applies and who can take it. Work down the list.
 5. Pick the **default cashier**. The dropdown loads from your VCR account once the key is stored. If it is empty, the register has no cashier yet: add one in the VCR dashboard — owner, accountant and developer accounts can all do it — and for a one-person shop, opening the register's desk once is enough.
-6. If you take cash on delivery, choose under **Cash on delivery** when its receipt is issued: when the order is placed (the default) or when you mark the order Completed. Orders paid online are always fiscalized the moment the payment clears.
-7. Leave the **Advanced** tab alone unless you know you need it. It holds the Base URL, for stores pointed at a staging VCR endpoint, and an **override department**, which books every line of every order under one department regardless of the department its offer was registered with. The department determines the tax regime (VAT, VAT-exempt, turnover tax, micro-enterprise) printed on the receipt, and a fiscal receipt can only be refunded and reissued, never corrected.
+6. Set a **classifier code for new catalog items**, under **Catalog**. It says what kind of thing your store sells, and it is the one answer the plugin cannot work out for you; there is a link next to the field for looking a code up. With it set, any product your register does not already have is added to its catalog as its first receipt is filed. Leave it empty and the plugin only sells what you have entered in VCR yourself, holding any other order for manual review. If your register has more than one department, pick the one new items belong to as well — that is the tax regime they will be filed under.
+7. If you take cash on delivery, choose under **Cash on delivery** when its receipt is issued: when the order is placed (the default) or when you mark the order Completed. Orders paid online are always fiscalized the moment the payment clears.
+8. Leave the **Advanced** tab alone unless you know you need it. It holds the Base URL, for stores pointed at a staging VCR endpoint, and an **override department**, which books every line of every order under one department regardless of the department its offer was registered with. The department determines the tax regime (VAT, VAT-exempt, turnover tax, micro-enterprise) printed on the receipt, and a fiscal receipt can only be refunded and reissued, never corrected.
 
 == Frequently Asked Questions ==
 
@@ -50,6 +51,18 @@ Yes. The plugin issues receipts through the VCR.AM gateway, which talks to the S
 = The cashier dropdown is empty. What do I enter? =
 
 Nothing — read the checklist at the top of the settings screen, which says which of four things happened: the server could not be reached, the key was rejected, the register never finished activation with the tax service, or the register simply has no cashier yet. The last one is not a settings problem: add a cashier in the VCR dashboard — owner, accountant and developer accounts can all do it, and for a one-person shop, opening the register's desk once is enough. Reload the settings screen afterwards and the cashier appears.
+
+= Do I have to add every product to VCR by hand? =
+
+No. Set a classifier code under **WooCommerce → Settings → VCR** and each product is added to your register's catalog the first time it is sold, with its own name on the receipt. If you have already built that catalog yourself and your products carry the same SKUs, those offers are used as they are — including the classifier code you chose for each one, which the plugin never overwrites. You can refine any code in VCR afterwards and it stays refined.
+
+= I renamed a product. Will its receipts use the new name? =
+
+No, and this is deliberate. A catalog item keeps the name it was created with, so a receipt filed last month and one filed tomorrow describe the same goods the same way. To change what receipts print, rename the item in VCR — renaming there is an explicit action with its own confirmation, and receipts already filed are never altered by it.
+
+= A product name is too long for the receipt. What do I do? =
+
+Fill in **Name on the fiscal receipt** on that product (or on the variation), under Product data → General. A receipt line holds 50 characters. The plugin does not shorten names on its own, because that line is the one the buyer reads to recognise what they bought and the one the tax service files.
 
 = Does it support multi-currency stores? =
 
@@ -92,6 +105,15 @@ For a multi-currency store the plugin also asks this same gateway for the AMD ra
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.11 =
+* New: a product your register has never seen is added to its catalog automatically, as its first receipt is filed. Set one classifier code under **WooCommerce → Settings → VCR** and that is the whole of it. Until now every product had to be entered in VCR by hand first, and an order for anything else was held for manual review after the customer had already paid.
+* New: a product no longer needs a SKU. Each one is identified by its WordPress id, which is never reused — so a SKU you rename, or free up by deleting a product, cannot end up naming the wrong goods on a receipt. A SKU you already use in VCR still wins: if your register has an offer under it, that offer is used, with whatever classifier code you gave it.
+* New: **Name on the fiscal receipt**, on each product and each variation. A receipt line holds 50 characters and a product name written for a category page often does not fit. The plugin will not shorten one for you — that line is what the buyer reads to recognise what they bought — so this is where you say what it should read instead.
+* The settings checklist has a **Catalog** line now, so "a product I add tomorrow would hold its own order" is something you read on the screen rather than discover on an order.
+* Shipping and service-fee lines are created the same way, which makes the Shipping SKU and Fee SKU fields optional. A SKU you already set keeps being used.
+* `wp vcr check-catalog` no longer reports a failure over products the plugin will create itself. It still lists them, and says that is what will happen.
+* Changed: a product whose only catalog item you archived in VCR is no longer filed under it. Archiving an item means you stopped selling it, and until now the receipt went out under it anyway. With a classifier code set, such a product simply gets a new catalog item; without one, the order is held and the checklist says which item to restore.
 
 = 0.1.10 =
 * Fixed: if connecting fails, the notice now says why. VCR.AM will not accept a shop whose WordPress admin is served over plain http, and that was the most likely way for the Connect button to fail — but all you were told was "check the error log", which sent you looking for a network problem you did not have. The reason VCR.AM gives is now printed with the error.

@@ -62,7 +62,7 @@ vcr-am-woocommerce/
 │   ├── Plugin.php                ← bootstrap + wiring (HPOS / Blocks declarations, WC active guard)
 │   ├── Configuration.php         ← every stored option, read through one class
 │   ├── Admin/                    ← setup checklist, order meta box, orders-list column, bulk action, system status
-│   ├── Catalog/                  ← cashier and department lookups against the VCR account
+│   ├── Catalog/                  ← what a line points at in the register's catalog: cashier and department lookups, the offer binding that files a product the register has never seen, and the receipt name a line prints under
 │   ├── Cli/                      ← WP-CLI commands
 │   ├── Currency/                 ← AMD rate for non-AMD orders, resolved by the VCR
 │   ├── Diagnostics/              ← what the API key points at, and why a call failed
