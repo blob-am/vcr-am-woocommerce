@@ -83,13 +83,50 @@ const DEFAULT_PLAN = {
                 archivedAt: null,
                 createdAt: '2026-09-01T00:00:00Z',
             },
+            // Every SKU the fixtures sell, because the plugin now asks whether
+            // the register has an offer for a product before describing one.
+            // A register that already holds them is the state those specs are
+            // about -- they are testing money, exports and retries, not
+            // catalogue onboarding -- and it is also what the real API would
+            // have needed all along: referencing an offer that does not exist
+            // was always going to be refused, and the mock accepting it was
+            // the reason nothing here noticed.
             {
-                // The SKU the fiscal-flow fixture sells. It is here because the
-                // plugin now asks whether the register has an offer for a
-                // product before describing one, and a register that has it is
-                // the case those tests are about -- adoption, not creation.
                 id: 2,
                 externalId: 'E2E-SKU-1',
+                type: 'product',
+                classifierCode: '47.91',
+                defaultMeasureUnit: 'pc',
+                defaultDepartment: { internalId: 1 },
+                title: [],
+                archivedAt: null,
+                createdAt: '2026-09-01T00:00:00Z',
+            },
+            {
+                id: 3,
+                externalId: 'E2E-SHAPE-A',
+                type: 'product',
+                classifierCode: '47.91',
+                defaultMeasureUnit: 'pc',
+                defaultDepartment: { internalId: 1 },
+                title: [],
+                archivedAt: null,
+                createdAt: '2026-09-01T00:00:00Z',
+            },
+            {
+                id: 4,
+                externalId: 'E2E-SHAPE-B',
+                type: 'product',
+                classifierCode: '47.91',
+                defaultMeasureUnit: 'pc',
+                defaultDepartment: { internalId: 1 },
+                title: [],
+                archivedAt: null,
+                createdAt: '2026-09-01T00:00:00Z',
+            },
+            {
+                id: 5,
+                externalId: 'E2E-SKU-GDPR',
                 type: 'product',
                 classifierCode: '47.91',
                 defaultMeasureUnit: 'pc',
