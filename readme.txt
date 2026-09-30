@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.1.8
+Stable tag: 0.1.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,7 +35,7 @@ The official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Re
 
 1. Upload the plugin folder to `/wp-content/plugins/`, or install via the WordPress plugin directory.
 2. Activate the plugin through the **Plugins** menu in WordPress.
-3. Go to **WooCommerce → Settings → VCR**, paste your VCR.AM API key and press **Save changes**.
+3. Go to **WooCommerce → Settings → VCR** and press **Connect to VCR.AM**. You sign in, choose which cash register this store should file its receipts to, and you are returned here connected — there is no key to find or copy. If you would rather use a key you already have, paste it into the **API Key** field instead and press **Save changes**.
 4. The screen then opens with a checklist of what is ready and what is not. It names the register the key belongs to — the business, the TIN, the register number — says whether its receipts are real or test, and lists anything still missing with the one next step that applies and who can take it. Work down the list.
 5. Pick the **default cashier**. The dropdown loads from your VCR account once the key is stored. If it is empty, the register has no cashier yet: add one in the VCR dashboard — owner, accountant and developer accounts can all do it — and for a one-person shop, opening the register's desk once is enough.
 6. If you take cash on delivery, choose under **Cash on delivery** when its receipt is issued: when the order is placed (the default) or when you mark the order Completed. Orders paid online are always fiscalized the moment the payment clears.
@@ -92,6 +92,11 @@ For a multi-currency store the plugin also asks this same gateway for the AMD ra
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.9 =
+* New: a **Connect to VCR.AM** button on the settings screen. Press it, sign in, choose which cash register this store files to, and you are connected — there is no key to find, copy or paste. Pasting a key still works for anyone who prefers it or already has one.
+* Connecting again replaces the stored key, which is how you move a store to a different register or recover from a key that stopped working. The button says so before you press it.
+* If the connection is not approved, or anything fails along the way, the key you already had is left exactly as it was — a store that is filing receipts keeps filing them.
 
 = 0.1.8 =
 * New: `wp vcr check-catalog` lists the products this store cannot put on a receipt yet, before an order arrives instead of after one is stuck. It separates a product with no SKU, a SKU with no offer in your VCR catalog, and a SKU whose offer has been archived, because each needs a different fix. It exits with an error code when it finds something, so a host can run it on a schedule.

@@ -154,12 +154,10 @@ class ReturnHandler
      */
     private function queryValue(string $key): ?string
     {
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         if (! isset($_GET[$key]) || ! is_string($_GET[$key])) {
             return null;
         }
 
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         $value = trim(sanitize_text_field(wp_unslash($_GET[$key])));
 
         return $value === '' ? null : $value;

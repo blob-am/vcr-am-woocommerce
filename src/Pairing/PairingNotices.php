@@ -45,14 +45,16 @@ final class PairingNotices
      */
     private function notice(): ?array
     {
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        $raw = $_GET[SettingsUrl::NOTICE_QUERY_PARAM] ?? null;
-
-        if (! is_string($raw)) {
+        // No nonce to verify: this marker is put here by our own redirect and
+        // decides nothing — it selects which sentence to print. Every value
+        // that is not one of the four below prints nothing at all.
+        if (! isset($_GET[SettingsUrl::NOTICE_QUERY_PARAM])
+            || ! is_string($_GET[SettingsUrl::NOTICE_QUERY_PARAM])
+        ) {
             return null;
         }
 
-        $marker = sanitize_text_field(wp_unslash($raw));
+        $marker = sanitize_text_field(wp_unslash($_GET[SettingsUrl::NOTICE_QUERY_PARAM]));
 
         return match ($marker) {
             SettingsUrl::NOTICE_CONNECTED => [

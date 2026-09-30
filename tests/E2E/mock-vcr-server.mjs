@@ -269,9 +269,18 @@ async function handleRequest(req, res) {
         const requestId = `req_e2e_${pairingRequests.size + 1}`;
         pairingRequests.set(requestId, registered);
 
+        // Built from the Host header the plugin reached us by, not from a
+        // hardcoded localhost. The plugin refuses a consent URL on a host it
+        // was not configured to talk to — an open-redirect guard that only
+        // means anything if the test exercises it, and here the configured
+        // host is `host.docker.internal`, not `localhost`. Real vcr.am serves
+        // both the API and the consent screen from one host, which is the
+        // shape this reproduces.
+        const host = req.headers.host ?? `localhost:${PORT}`;
+
         return jsonResponse(res, plan.status, {
             requestId,
-            connectUrl: `http://localhost:${PORT}/__test/approve?request=${requestId}`,
+            connectUrl: `http://${host}/__test/approve?request=${requestId}`,
             expiresAt: '2030-01-01T00:00:00.000Z',
         });
     }

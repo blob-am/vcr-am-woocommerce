@@ -37,6 +37,9 @@ class StartHandler
      */
     private const STATE_BYTES = 16;
 
+    /** Set for the duration of one redirect; see {@see allowApprovalHost()}. */
+    private ?string $approvalHost = null;
+
     public function __construct(
         private readonly Configuration $config,
         private readonly PairingSession $session,
@@ -109,17 +112,24 @@ class StartHandler
     }
 
     /**
-     * `wp_redirect`, not `wp_safe_redirect`: the destination is vcr.am, and
-     * the safe variant allows only this host.
+     * Sends the merchant to vcr.am's consent screen.
      *
-     * The URL is not taken on trust for that reason. It has to sit on the
-     * host the plugin is already configured to talk to, so neither a
-     * misconfigured base URL nor a compromised API can use the connect button
-     * to bounce a logged-in administrator somewhere else.
+     * The destination is another host, which `wp_safe_redirect` refuses by
+     * default — so the host is allowed explicitly, for this one redirect, and
+     * only after checking it is the host the plugin is already configured to
+     * talk to. That is the point: neither a misconfigured base URL nor a
+     * compromised API response can use the connect button to bounce a
+     * logged-in administrator somewhere else.
+     *
+     * Allowing the host through the filter rather than reaching for
+     * `wp_redirect` keeps WordPress's own check in the path instead of
+     * stepping around it.
      */
     private function sendToApprovalScreen(string $connectUrl): never
     {
-        if (! $this->isConfiguredHost($connectUrl)) {
+        $host = wp_parse_url($connectUrl, PHP_URL_HOST);
+
+        if (! is_string($host) || ! $this->isConfiguredHost($connectUrl)) {
             $this->logger->error(
                 'Refused a pairing redirect to an unexpected host',
                 ['url' => $connectUrl],
@@ -128,8 +138,33 @@ class StartHandler
             $this->backToSettings(SettingsUrl::NOTICE_FAILED);
         }
 
-        wp_redirect($connectUrl);
+        $this->approvalHost = $host;
+
+        add_filter('allowed_redirect_hosts', [$this, 'allowApprovalHost']);
+        wp_safe_redirect($connectUrl);
+        remove_filter('allowed_redirect_hosts', [$this, 'allowApprovalHost']);
         exit;
+    }
+
+    /**
+     * Adds the consent screen's host to the redirect allow-list, for the one
+     * redirect that needs it.
+     *
+     * Public only because WordPress needs a callable; it adds nothing until
+     * {@see sendToApprovalScreen()} has set the host, and that only happens
+     * after the host has been checked against the configured one.
+     *
+     * @param list<string> $hosts
+     *
+     * @return list<string>
+     */
+    public function allowApprovalHost(array $hosts): array
+    {
+        if ($this->approvalHost !== null) {
+            $hosts[] = $this->approvalHost;
+        }
+
+        return $hosts;
     }
 
     private function backToSettings(string $notice): never

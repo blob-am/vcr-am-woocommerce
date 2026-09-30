@@ -16,13 +16,51 @@ use Brain\Monkey\Functions;
 /** Where the handler tried to send the browser, since a test cannot follow it. */
 final class SentTo extends RuntimeException
 {
-    public function __construct(public readonly string $url, public readonly bool $safe)
+    /** @param list<string> $allowedHosts */
+    public function __construct(public readonly string $url, public readonly array $allowedHosts)
     {
         parent::__construct('sent to ' . $url);
     }
 }
 
+/**
+ * Callbacks the handler added to `allowed_redirect_hosts`, captured from
+ * add_filter and invoked to see which hosts they would let through. Asserting
+ * on the resulting list rather than on "a filter was added" is what makes the
+ * open-redirect test mean something.
+ *
+ * @var list<callable> $allowedRedirectHostFilters
+ */
+$allowedRedirectHostFilters = [];
+
+function allowedRedirectHosts(): array
+{
+    global $allowedRedirectHostFilters;
+
+    $hosts = [];
+
+    foreach ($allowedRedirectHostFilters as $filter) {
+        $hosts = $filter($hosts);
+    }
+
+    return $hosts;
+}
+
 beforeEach(function (): void {
+    global $allowedRedirectHostFilters;
+    $allowedRedirectHostFilters = [];
+
+    Functions\when('add_filter')->alias(function (string $hook, callable $callback): bool {
+        global $allowedRedirectHostFilters;
+
+        if ($hook === 'allowed_redirect_hosts') {
+            $allowedRedirectHostFilters[] = $callback;
+        }
+
+        return true;
+    });
+    Functions\when('remove_filter')->justReturn(true);
+
     Functions\when('admin_url')->alias(
         static fn (string $path = ''): string => 'https://shop.example/wp-admin/' . $path,
     );
@@ -38,11 +76,11 @@ beforeEach(function (): void {
     Functions\when('wp_parse_url')->alias(
         static fn (string $url, int $component): mixed => parse_url($url, $component),
     );
-    Functions\when('wp_redirect')->alias(static function (string $url): never {
-        throw new SentTo($url, safe: false);
-    });
-    Functions\when('wp_safe_redirect')->alias(static function (string $url): never {
-        throw new SentTo($url, safe: true);
+    // Every redirect goes through wp_safe_redirect, so what distinguishes a
+    // redirect off-site is which host the handler allowed through the filter
+    // to make it possible. Capturing that is the only way to see the guard.
+    Functions\when('wp_safe_redirect')->alias(function (string $url): never {
+        throw new SentTo($url, allowedHosts: allowedRedirectHosts());
     });
 });
 
@@ -75,8 +113,15 @@ it('sends the merchant to the approval screen it was given', function (): void {
     $client = Mockery::mock(PairingGateway::class);
     $client->allows('registerRequest')->andReturn(registeredAt('https://vcr.am/connect?request=req_1'));
 
-    expect(fn () => makeStartHandler($client)->handle())
-        ->toThrow(SentTo::class, 'https://vcr.am/connect?request=req_1');
+    try {
+        makeStartHandler($client)->handle();
+        expect(false)->toBeTrue('expected a redirect');
+    } catch (SentTo $sent) {
+        // Allowed for exactly this redirect, and only after the host was
+        // checked against the one the plugin is configured to talk to.
+        expect($sent->url)->toBe('https://vcr.am/connect?request=req_1')
+            ->and($sent->allowedHosts)->toContain('vcr.am');
+    }
 });
 
 it('registers the settings screen as the redirect, not admin-post', function (): void {
@@ -193,7 +238,7 @@ it('refuses to bounce the merchant to a host it was not configured to talk to', 
         expect(false)->toBeTrue('expected a redirect');
     } catch (SentTo $sent) {
         expect($sent->url)->toContain(SettingsUrl::NOTICE_FAILED)
-            ->and($sent->safe)->toBeTrue();
+            ->and($sent->allowedHosts)->not->toContain('evil.example');
     }
 });
 

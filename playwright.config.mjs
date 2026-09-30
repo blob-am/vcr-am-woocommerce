@@ -42,7 +42,19 @@ export default defineConfig({
     projects: [
         {
             name: 'chromium',
-            use: { ...devices['Desktop Chrome'] },
+            use: {
+                ...devices['Desktop Chrome'],
+                launchOptions: {
+                    // `host.docker.internal` is how the plugin, inside the
+                    // wp-env container, reaches the mock on this machine — so
+                    // it is also the host the consent URL comes back on, and
+                    // the plugin refuses one on any other host. The name does
+                    // not resolve outside the container, so the test browser
+                    // is told what it actually is. Scoped to this browser:
+                    // nothing is written to /etc/hosts.
+                    args: ['--host-resolver-rules=MAP host.docker.internal 127.0.0.1'],
+                },
+            },
         },
     ],
 
