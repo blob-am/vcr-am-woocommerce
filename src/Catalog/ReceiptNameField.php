@@ -63,7 +63,9 @@ final class ReceiptNameField
         // hook fires, and re-checking it here would be checking a nonce we did
         // not issue.
         // phpcs:ignore WordPress.Security.NonceVerification.Missing
-        $this->store((int) $postId, $_POST[ReceiptName::META_KEY] ?? null);
+        $raw = $_POST[ReceiptName::META_KEY] ?? null;
+
+        $this->store((int) $postId, $this->clean($raw));
     }
 
     public function renderForVariation(mixed $loop, mixed $variationData, mixed $variation): void
@@ -100,7 +102,7 @@ final class ReceiptNameField
             return;
         }
 
-        $this->store((int) $variationId, $submitted[$variationId] ?? null);
+        $this->store((int) $variationId, $this->clean($submitted[$variationId] ?? null));
     }
 
     private function description(): string
@@ -120,17 +122,30 @@ final class ReceiptNameField
     }
 
     /**
+     * Unslashed and sanitized where the request is read, which is both what
+     * WordPress's own sniffs look for and where a reader expects it -- a
+     * sanitize call a method deeper reads like the raw value is being passed
+     * around.
+     */
+    private function clean(mixed $submitted): ?string
+    {
+        if (! is_string($submitted)) {
+            return null;
+        }
+
+        return trim(sanitize_text_field(wp_unslash($submitted)));
+    }
+
+    /**
      * An empty box removes the override rather than storing a blank name, so
      * "no override" has one representation and the product falls back to its
      * own title.
      */
-    private function store(int $postId, mixed $submitted): void
+    private function store(int $postId, ?string $value): void
     {
-        if (! is_string($submitted)) {
+        if ($value === null) {
             return;
         }
-
-        $value = trim(sanitize_text_field(wp_unslash($submitted)));
 
         if ($value === '') {
             delete_post_meta($postId, ReceiptName::META_KEY);
