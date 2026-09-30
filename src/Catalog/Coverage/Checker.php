@@ -168,6 +168,7 @@ class Checker
             checkedCount: count($distinct),
             coveredCount: $covered,
             catalogTruncated: $truncated,
+            catalogArmed: $this->configuration->catalogPolicy()->armed(),
         );
     }
 

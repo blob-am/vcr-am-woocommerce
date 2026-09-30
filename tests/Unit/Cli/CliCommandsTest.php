@@ -225,8 +225,12 @@ it('status emits the configured fields in the chosen format', function (): void 
  * @param list<StoreSku> $missing
  * @param list<StoreSku> $unverified
  */
-function cleanReport(array $missing = [], array $unverified = [], bool $truncated = false): Report
-{
+function cleanReport(
+    array $missing = [],
+    array $unverified = [],
+    bool $truncated = false,
+    bool $armed = false,
+): Report {
     return Report::of(
         withoutSku: [],
         missing: $missing,
@@ -236,6 +240,7 @@ function cleanReport(array $missing = [], array $unverified = [], bool $truncate
         checkedCount: 3,
         coveredCount: 3 - count($missing),
         catalogTruncated: $truncated,
+        catalogArmed: $armed,
     );
 }
 
@@ -275,6 +280,23 @@ it('exits non-zero and counts the blockers, so a scheduled run is heard', functi
     } finally {
         ob_end_clean();
     }
+});
+
+it('lists what the plugin will create instead of failing, once a classifier code is set', function (): void {
+    // The same store as the test above. With a code set these products are not
+    // blockers, and a scheduled check that failed here would be in permanent
+    // alarm over a store that works.
+    [$cli, , , , , , $coverage] = makeCli();
+    $coverage->expects('check')->andReturn(cleanReport(missing: [
+        new StoreSku('tea', 'Tea', 11),
+        new StoreSku('cocoa', 'Cocoa', 13),
+    ], armed: true));
+
+    $output = captureCliOutput(fn () => $cli->checkCatalog([], []));
+
+    expect($output)->toContain('2 of the products above are not in the register')
+        ->toContain('as its first receipt is issued')
+        ->not->toContain('would stop a receipt');
 });
 
 it('does not claim a clean store when the row cap left SKUs undecided', function (): void {

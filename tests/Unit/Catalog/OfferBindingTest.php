@@ -9,6 +9,8 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\OfferBinding;
 use BlobSolutions\WooCommerceVcrAm\Catalog\OfferLister;
 use BlobSolutions\WooCommerceVcrAm\Catalog\OfferListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionFailure;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProblem;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\Exception\FiscalBuildException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\OfferDefaultDepartment;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\OfferListItem;
@@ -233,6 +235,20 @@ it('refuses to pick between several departments', function (): void {
 
     expect(fn () => $binding->forProduct(bindingProduct(), new CatalogPolicy(classifierCode: '56.10')))
         ->toThrow(FiscalBuildException::class, 'more than one department');
+});
+
+it('tells an unreachable department list apart from a register with several', function (): void {
+    // "Pick one of your departments" is the wrong instruction for someone whose
+    // register we could not reach, and it points at a screen that cannot help.
+    $this->lister->allows('listOffers')->andReturns([]);
+    $departments = Mockery::mock(DepartmentCatalog::class);
+    $departments->allows('list')->andReturns(
+        CatalogListing::unavailable(new ConnectionFailure(ConnectionProblem::Unreachable)),
+    );
+    $binding = new OfferBinding($this->config, $this->listerFactory, $departments);
+
+    expect(fn () => $binding->forProduct(bindingProduct(), new CatalogPolicy(classifierCode: '56.10')))
+        ->toThrow(FiscalBuildException::class, 'Could not read this register\'s departments');
 });
 
 it('prefers a configured shipping SKU over creating its own line', function (): void {

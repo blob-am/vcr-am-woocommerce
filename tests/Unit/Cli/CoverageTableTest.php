@@ -21,6 +21,7 @@ it('names each finding with a stable, untranslated slug', function (): void {
         checkedCount: 4,
         coveredCount: 0,
         catalogTruncated: true,
+        catalogArmed: false,
     );
 
     $rows = (new CoverageTable())->rows($report);
@@ -39,6 +40,7 @@ it('puts every row in the declared column order and nothing else', function (): 
         checkedCount: 1,
         coveredCount: 0,
         catalogTruncated: false,
+        catalogArmed: false,
     );
 
     $rows = (new CoverageTable())->rows($report);
@@ -62,6 +64,7 @@ it('leaves the product columns empty for a setting-derived SKU, which has no pro
         checkedCount: 1,
         coveredCount: 0,
         catalogTruncated: false,
+        catalogArmed: false,
     );
 
     $rows = (new CoverageTable())->rows($report);
@@ -80,6 +83,7 @@ it('describes an orphan by its external id, because there is no local row to nam
         checkedCount: 0,
         coveredCount: 0,
         catalogTruncated: false,
+        catalogArmed: false,
     );
 
     $rows = (new CoverageTable())->rows($report);
@@ -102,6 +106,7 @@ it('returns no rows for a clean store', function (): void {
         checkedCount: 12,
         coveredCount: 12,
         catalogTruncated: false,
+        catalogArmed: false,
     );
 
     expect((new CoverageTable())->rows($report))->toBe([]);

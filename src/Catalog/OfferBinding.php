@@ -253,6 +253,17 @@ class OfferBinding
         }
 
         $listing = $this->departments->list();
+
+        // An unreadable list is not a list of several: saying "pick one of your
+        // departments" to someone whose register we could not reach sends them
+        // to the wrong screen. This one is transient and the order can be
+        // retried; the other one needs a decision.
+        if (! $listing->isAvailable()) {
+            throw new FiscalBuildException(
+                'Could not read this register\'s departments, so the plugin cannot file a new catalog item yet. The order stays unfiscalised; retry it once VCR is reachable, or pick a department for new catalog items in WooCommerce -> Settings -> VCR.',
+            );
+        }
+
         if (count($listing->entries) === 1) {
             $only = array_key_first($listing->entries);
             assert(is_int($only));

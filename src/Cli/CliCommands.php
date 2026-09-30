@@ -317,6 +317,24 @@ class CliCommands
             ));
         }
 
+        $pending = count($report->withoutSku) + count($report->missing) + count($report->archived);
+
+        if ($report->catalogArmed && $pending > 0) {
+            // Listed, not failed: with a classifier code set these are things
+            // the plugin will file itself as each product's first receipt is
+            // issued. Exiting non-zero here would put a scheduled check into
+            // permanent alarm over a store that works.
+            if ($narrate) {
+                WP_CLI::success(sprintf(
+                    '%d of the products above are not in the register\'s catalog yet. '
+                    . 'The plugin adds each one as its first receipt is issued; nothing to do.',
+                    $pending,
+                ));
+            }
+
+            return;
+        }
+
         if ($narrate) {
             WP_CLI::success($report->unverified === []
                 ? 'Every SKU this store sells has a live offer.'

@@ -32,6 +32,10 @@ final readonly class Report
      * @param list<StoreSku> $archived    SKUs whose only offer is archived.
      * @param list<StoreSku> $unverified  SKUs the row cap left undecided.
      * @param list<string>   $orphanOffers External ids no product claims.
+     * @param bool           $catalogArmed Whether the plugin may create a
+     *                                     catalog item it does not find, which
+     *                                     is what decides whether any of this
+     *                                     stops a receipt.
      */
     private function __construct(
         public array $withoutSku,
@@ -42,6 +46,7 @@ final readonly class Report
         public int $checkedCount,
         public int $coveredCount,
         public bool $catalogTruncated,
+        public bool $catalogArmed,
         public ?ConnectionFailure $failure,
     ) {
     }
@@ -62,6 +67,7 @@ final readonly class Report
         int $checkedCount,
         int $coveredCount,
         bool $catalogTruncated,
+        bool $catalogArmed,
     ): self {
         return new self(
             withoutSku: $withoutSku,
@@ -72,6 +78,7 @@ final readonly class Report
             checkedCount: $checkedCount,
             coveredCount: $coveredCount,
             catalogTruncated: $catalogTruncated,
+            catalogArmed: $catalogArmed,
             failure: null,
         );
     }
@@ -87,6 +94,7 @@ final readonly class Report
             checkedCount: 0,
             coveredCount: 0,
             catalogTruncated: false,
+            catalogArmed: false,
             failure: $failure,
         );
     }
@@ -98,12 +106,21 @@ final readonly class Report
     }
 
     /**
-     * True when something would stop a receipt today. `unverified` is not a
-     * finding -- it is the absence of one -- and `orphanOffers` is
-     * informational, so neither counts here.
+     * True when something would stop a receipt today.
+     *
+     * With the catalog policy armed, none of these three do: a product with no
+     * SKU gets a minted id, and one the register has never seen is described on
+     * the sale that needs it. They stay in the report because a merchant may
+     * well want to see what is about to be created, but calling them blockers
+     * then would be the tool lying. `unverified` is not a finding -- it is the
+     * absence of one -- and `orphanOffers` is informational.
      */
     public function hasBlockers(): bool
     {
+        if ($this->catalogArmed) {
+            return false;
+        }
+
         return $this->withoutSku !== [] || $this->missing !== [] || $this->archived !== [];
     }
 }

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogPolicy;
 use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\Checker;
 use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\StoreSku;
 use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\StoreSkuReader;
@@ -44,6 +45,7 @@ function makeChecker(array $storeSkus, array $offers, ?string $apiKey = 'key-1')
 {
     $config = Mockery::mock(Configuration::class);
     $config->allows('apiKey')->andReturn($apiKey);
+    $config->allows('catalogPolicy')->andReturn(new CatalogPolicy());
 
     $lister = Mockery::mock(OfferLister::class);
     $lister->allows('listOffers')->withNoArgs()->andReturn($offers);
@@ -70,6 +72,30 @@ function cappedOffers(): array
 }
 
 // ---------- the plain answers ----------
+
+it('reports whether the plugin may create what it did not find', function (): void {
+    // The report carries the answer so nothing downstream has to re-derive it:
+    // the same findings mean "go and do this" or "this is about to happen by
+    // itself" depending only on this flag.
+    $config = Mockery::mock(Configuration::class);
+    $config->allows('apiKey')->andReturn('key-1');
+    $config->allows('catalogPolicy')->andReturn(new CatalogPolicy(classifierCode: '56.10'));
+
+    $lister = Mockery::mock(OfferLister::class);
+    $lister->allows('listOffers')->withNoArgs()->andReturn([]);
+    $lister->allows('listOffers')->andReturn([]);
+    $factory = Mockery::mock(OfferListerFactory::class);
+    $factory->allows('create')->andReturn($lister);
+
+    $reader = Mockery::mock(StoreSkuReader::class);
+    $reader->allows('read')->andReturn([new StoreSku('tea', 'Tea', 11)]);
+
+    $report = (new Checker($config, $factory, $reader))->check();
+
+    expect($report->catalogArmed)->toBeTrue()
+        ->and($report->missing)->toHaveCount(1)
+        ->and($report->hasBlockers())->toBeFalse();
+});
 
 it('reports nothing to do when every SKU has a live offer', function (): void {
     [$checker] = makeChecker(
@@ -199,6 +225,7 @@ it('asks for an API key before it asks the store anything', function (): void {
 it('reports a classified failure instead of an empty catalog', function (): void {
     $config = Mockery::mock(Configuration::class);
     $config->allows('apiKey')->andReturn('key-1');
+    $config->allows('catalogPolicy')->andReturn(new CatalogPolicy());
 
     $lister = Mockery::mock(OfferLister::class);
     $lister->allows('listOffers')->andThrow(new VcrNetworkException(
@@ -224,6 +251,7 @@ it('reports a classified failure instead of an empty catalog', function (): void
 it('does not call a SKU missing when the catalog came back capped', function (): void {
     $config = Mockery::mock(Configuration::class);
     $config->allows('apiKey')->andReturn('key-1');
+    $config->allows('catalogPolicy')->andReturn(new CatalogPolicy());
 
     $lister = Mockery::mock(OfferLister::class);
     $lister->expects('listOffers')->withNoArgs()->andReturn(cappedOffers());
@@ -247,6 +275,7 @@ it('does not call a SKU missing when the catalog came back capped', function ():
 it('confirms a SKU really is missing when the exact lookup finds nothing', function (): void {
     $config = Mockery::mock(Configuration::class);
     $config->allows('apiKey')->andReturn('key-1');
+    $config->allows('catalogPolicy')->andReturn(new CatalogPolicy());
 
     $lister = Mockery::mock(OfferLister::class);
     $lister->expects('listOffers')->withNoArgs()->andReturn(cappedOffers());
@@ -268,6 +297,7 @@ it('confirms a SKU really is missing when the exact lookup finds nothing', funct
 it('stops spending lookups at the budget and says which SKUs it never decided', function (): void {
     $config = Mockery::mock(Configuration::class);
     $config->allows('apiKey')->andReturn('key-1');
+    $config->allows('catalogPolicy')->andReturn(new CatalogPolicy());
 
     $overBudget = Checker::MAX_EXACT_LOOKUPS + 5;
     $storeSkus = [];
@@ -310,6 +340,7 @@ it('says nothing about offers no product claims unless asked', function (): void
 it('withholds the orphan list when the catalog was capped, since it cannot be complete', function (): void {
     $config = Mockery::mock(Configuration::class);
     $config->allows('apiKey')->andReturn('key-1');
+    $config->allows('catalogPolicy')->andReturn(new CatalogPolicy());
 
     $lister = Mockery::mock(OfferLister::class);
     $lister->allows('listOffers')->withNoArgs()->andReturn(cappedOffers());
