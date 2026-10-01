@@ -223,3 +223,14 @@ it('uses the parent receipt name for a variation that inherits one', function ()
 
     sync()->run(1424);
 });
+
+it('does not read past the end of an offer carrying no title at all', function (): void {
+    // Should not happen -- every offer is created with a title -- but the count
+    // check is what stands between a malformed response and reading title[0].
+    syncedProduct('Chemex 6 cup', [OfferBinding::META_KEY => 'wc-1423']);
+    $this->lister->allows('listOffers')->andReturns([catalogOffer([])]);
+
+    $this->renamer->expects('rename')->never();
+
+    expect(sync()->run(1423))->toBeFalse();
+});

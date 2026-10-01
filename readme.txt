@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.1.11
+Stable tag: 0.1.12
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -58,11 +58,15 @@ No. Set a classifier code under **WooCommerce → Settings → VCR** and each pr
 
 = I renamed a product. Will its receipts use the new name? =
 
-No, and this is deliberate. A catalog item keeps the name it was created with, so a receipt filed last month and one filed tomorrow describe the same goods the same way. To change what receipts print, rename the item in VCR — renaming there is an explicit action with its own confirmation, and receipts already filed are never altered by it.
+No. A product title is as often rewritten for a category page or for search as it is to say what the buyer bought, so the plugin does not treat one as the other. What does carry through is **Name on the fiscal receipt**, under Product data → General: edit that and the catalog item is renamed to match, usually within a minute. Emptying it counts as an edit too, and puts the product name back.
+
+Receipts already issued never change, either way. Each one froze the name it printed at the moment it was filed, so last month's receipt and tomorrow's stay exactly as the tax service received them.
+
+One case the plugin leaves alone: if you translated an item's title in VCR into Armenian, Russian and English, editing the box here will not overwrite those. Rename it in VCR instead.
 
 = A product name is too long for the receipt. What do I do? =
 
-Fill in **Name on the fiscal receipt** on that product (or on the variation), under Product data → General. A receipt line holds 50 characters. The plugin does not shorten names on its own, because that line is the one the buyer reads to recognise what they bought and the one the tax service files.
+Fill in **Name on the fiscal receipt** on that product, under Product data → General; its variations use that name too unless you give one its own. A receipt line holds 50 characters. The plugin does not shorten names on its own, because that line is the one the buyer reads to recognise what they bought and the one the tax service files.
 
 = Does it support multi-currency stores? =
 
@@ -105,6 +109,11 @@ For a multi-currency store the plugin also asks this same gateway for the AMD ra
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.12 =
+* Fixed: a variation whose own **Name on the fiscal receipt** box is empty now uses the one set on the parent product. A variation's name is the product name plus its attributes, so it is the longest name in a catalog and the likeliest to pass 50 characters — and shortening the parent, which is the obvious thing to try, used to change nothing. Its box now shows the inherited name as a placeholder.
+* New: editing **Name on the fiscal receipt** renames the catalog item it was filed under, so the next receipt prints the new name. Previously the name a product was first fiscalised with was the name it kept, and the only way to change it was to rename the item in VCR. Receipts already issued are untouched. A title you have translated in VCR is left alone.
+* Fixed: when a name is too long or carries a character a receipt line cannot hold, the message now names the screen the box is actually on. It used to say "the product's VCR panel", which does not exist.
 
 = 0.1.11 =
 * New: a product your register has never seen is added to its catalog automatically, as its first receipt is filed. Set one classifier code under **WooCommerce → Settings → VCR** and that is the whole of it. Until now every product had to be entered in VCR by hand first, and an order for anything else was held for manual review after the customer had already paid.
