@@ -283,6 +283,34 @@ async function handleRequest(req, res) {
         return jsonResponse(res, plan.status, plan.body);
     }
 
+    // PATCH /offers/{id} — the rename the plugin issues when a merchant edits
+    // "Name on the fiscal receipt" on a product already in the catalogue. The
+    // planned row is mutated in place, so a second sync reads the new title and
+    // writes nothing: that the plugin compares before writing is the part worth
+    // exercising, and it is only observable if the mock actually remembers.
+    const renamed = req.method === 'PATCH'
+        ? /^\/api\/v1\/offers\/(\d+)$/.exec(new URL(req.url, 'http://mock').pathname)
+        : null;
+
+    if (renamed !== null) {
+        const id = Number(renamed[1]);
+        const sent = safeJsonParse(body);
+        const offer = Array.isArray(responsePlan.listOffers.body)
+            ? responsePlan.listOffers.body.find((row) => row.id === id)
+            : undefined;
+
+        if (offer === undefined) {
+            return jsonResponse(res, 404, { error: 'Offer not found' });
+        }
+
+        // The real endpoint replaces every title row. A universal title becomes
+        // exactly one `multi` row — see buildOfferTitleRows server-side — which
+        // is the shape the plugin's "has a human taken this over?" check reads.
+        offer.title = [{ id: 1, language: 'multi', content: sent?.title?.content ?? '' }];
+
+        return jsonResponse(res, 200, offer);
+    }
+
     if (req.url.startsWith('/api/v1/offers') && req.method === 'GET') {
         const plan = responsePlan.listOffers;
 
