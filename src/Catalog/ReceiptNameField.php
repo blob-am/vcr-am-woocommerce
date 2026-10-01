@@ -23,6 +23,17 @@ if (! defined('ABSPATH')) {
  */
 final class ReceiptNameField
 {
+    /**
+     * Fired with a post id when the receipt-name box on that product or
+     * variation actually changed value -- set, edited, or emptied. Emptying it
+     * counts: "print the product name instead" is an answer about the receipt,
+     * not the absence of one.
+     *
+     * {@see OfferTitleListener} is what listens, so that a store with no API
+     * key configured still gets a working text box.
+     */
+    public const CHANGED_ACTION = 'vcr_receipt_name_changed';
+
     public function __construct(
         private readonly ReceiptName $receiptName = new ReceiptName(),
     ) {
@@ -188,6 +199,11 @@ final class ReceiptNameField
      * An empty box removes the override rather than storing a blank name, so
      * "no override" has one representation and the product falls back to its
      * own title.
+     *
+     * Writes only on an actual change, and announces the ones it makes. A
+     * product save fires this hook whether or not the box was touched, so
+     * comparing first is what keeps "the merchant edited the receipt name" from
+     * meaning "the merchant pressed Update".
      */
     private function store(int $postId, ?string $value): void
     {
@@ -195,12 +211,24 @@ final class ReceiptNameField
             return;
         }
 
+        $previous = $this->receiptName->storedOverride($postId);
+
         if ($value === '') {
+            if ($previous === null) {
+                return;
+            }
+
             delete_post_meta($postId, ReceiptName::META_KEY);
+            do_action(self::CHANGED_ACTION, $postId);
 
             return;
         }
 
+        if ($previous === $value) {
+            return;
+        }
+
         update_post_meta($postId, ReceiptName::META_KEY, $value);
+        do_action(self::CHANGED_ACTION, $postId);
     }
 }

@@ -10,6 +10,8 @@ use Brain\Monkey\Functions;
 beforeEach(function (): void {
     Functions\when('sanitize_text_field')->returnArg();
     Functions\when('wp_unslash')->returnArg();
+    // Nothing stored unless a test seeds it; a save compares before writing.
+    Functions\when('get_post_meta')->justReturn('');
     $_POST = [];
 });
 
@@ -68,6 +70,7 @@ it('stores a trimmed override for a product', function (): void {
 });
 
 it('removes the override when the box is emptied, so the product name takes over again', function (): void {
+    Functions\when('get_post_meta')->justReturn('Chemex 6 cup');
     $written = recordReceiptNameWrites();
     $_POST[ReceiptName::META_KEY] = '   ';
 
@@ -75,6 +78,58 @@ it('removes the override when the box is emptied, so the product name takes over
 
     expect($written->deletes)->toBe([[7, ReceiptName::META_KEY]])
         ->and($written->updates)->toBe([]);
+});
+
+it('writes nothing when the box comes back with the name already stored', function (): void {
+    Functions\when('get_post_meta')->justReturn('Chemex 6 cup');
+    $written = recordReceiptNameWrites();
+    $_POST[ReceiptName::META_KEY] = 'Chemex 6 cup';
+
+    (new ReceiptNameField())->saveForProduct(7);
+
+    expect($written->updates)->toBe([])
+        ->and($written->deletes)->toBe([]);
+});
+
+it('does not delete an override that was never there', function (): void {
+    $written = recordReceiptNameWrites();
+    $_POST[ReceiptName::META_KEY] = '';
+
+    (new ReceiptNameField())->saveForProduct(7);
+
+    expect($written->deletes)->toBe([])
+        ->and($written->updates)->toBe([]);
+});
+
+it('announces a change so the catalog can be brought in line', function (): void {
+    $written = recordReceiptNameWrites();
+    $_POST[ReceiptName::META_KEY] = 'Chemex 6 cup';
+
+    Actions\expectDone(ReceiptNameField::CHANGED_ACTION)->once()->with(7);
+
+    (new ReceiptNameField())->saveForProduct(7);
+
+    expect($written->updates)->toHaveCount(1);
+});
+
+it('announces an emptied box too, because that is also an answer', function (): void {
+    Functions\when('get_post_meta')->justReturn('Chemex 6 cup');
+    recordReceiptNameWrites();
+    $_POST[ReceiptName::META_KEY] = '';
+
+    Actions\expectDone(ReceiptNameField::CHANGED_ACTION)->once()->with(7);
+
+    (new ReceiptNameField())->saveForProduct(7);
+});
+
+it('stays quiet when a product is saved without the name changing', function (): void {
+    Functions\when('get_post_meta')->justReturn('Chemex 6 cup');
+    recordReceiptNameWrites();
+    $_POST[ReceiptName::META_KEY] = 'Chemex 6 cup';
+
+    Actions\expectDone(ReceiptNameField::CHANGED_ACTION)->never();
+
+    (new ReceiptNameField())->saveForProduct(7);
 });
 
 it('ignores a save that carries no field at all', function (): void {

@@ -28,6 +28,10 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Catalog\OfferBinding;
 use BlobSolutions\WooCommerceVcrAm\Catalog\OfferListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\OfferRenamerFactory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\OfferTitleListener;
+use BlobSolutions\WooCommerceVcrAm\Catalog\OfferTitleQueue;
+use BlobSolutions\WooCommerceVcrAm\Catalog\OfferTitleSync;
 use BlobSolutions\WooCommerceVcrAm\Catalog\ReceiptNameField;
 use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
 use BlobSolutions\WooCommerceVcrAm\Currency\CurrencyConverter;
@@ -295,8 +299,21 @@ final class Plugin
         // after refund meta is constructed so the per-refund block has data.
         (new OrderMetaBox($meta, $refundMeta))->register();
 
-        // Orders list table — fiscal status column visible at WC → Orders.
+        // The receipt-name box on a product and on each of its variations,
+        // plus the sync that carries an edit to it through to the catalog item
+        // the product was filed under. Queued rather than inline: it costs two
+        // round-trips to VCR and nothing should wait on them while a merchant
+        // saves a product, least of all during a bulk edit.
         (new ReceiptNameField())->register();
+        $titleQueue = new OfferTitleQueue(new OfferTitleSync(
+            configuration: $config,
+            listerFactory: new OfferListerFactory($config, $clientFactory),
+            renamerFactory: new OfferRenamerFactory($config, $clientFactory),
+        ));
+        $titleQueue->register();
+        (new OfferTitleListener($titleQueue))->register();
+
+        // Orders list table — fiscal status column visible at WC → Orders.
         (new OrdersListColumn($meta))->register();
         (new OrdersListFilter())->register();
         (new OrdersBulkAction($meta, $queue))->register();
