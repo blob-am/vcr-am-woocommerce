@@ -42,6 +42,7 @@ function bindingProduct(int $id = 1423, string $sku = 'SHIRT-1', string $name = 
     $product->allows('get_id')->andReturns($id);
     $product->allows('get_sku')->andReturns($sku);
     $product->allows('get_name')->andReturns($name);
+    $product->allows('get_parent_id')->andReturns(0);
     $product->allows('is_virtual')->andReturns(false);
     $product->allows('is_downloadable')->andReturns(false);
 
@@ -173,6 +174,7 @@ it('calls a downloadable product a service', function (): void {
     $product->allows('get_id')->andReturns(55);
     $product->allows('get_sku')->andReturns('');
     $product->allows('get_name')->andReturns('Gift card PDF');
+    $product->allows('get_parent_id')->andReturns(0);
     $product->allows('is_virtual')->andReturns(true);
     $product->allows('is_downloadable')->andReturns(true);
 

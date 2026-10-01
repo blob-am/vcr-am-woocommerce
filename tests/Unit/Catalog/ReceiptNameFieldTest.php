@@ -114,3 +114,78 @@ it('leaves other variations alone when one is saved', function (): void {
 
     expect($written->updates)->toBe([[43, ReceiptName::META_KEY, 'White']]);
 });
+
+/**
+ * Captures what the field hands WooCommerce to render, which is the only place
+ * the inherited value becomes visible to a merchant.
+ *
+ * @return object{fields: list<array<string, mixed>>}
+ */
+function recordRenderedFields(): object
+{
+    $recorder = new class () {
+        /** @var list<array<string, mixed>> */
+        public array $fields = [];
+    };
+
+    Functions\when('woocommerce_wp_text_input')->alias(
+        function (array $field) use ($recorder): void {
+            $recorder->fields[] = $field;
+        },
+    );
+
+    return $recorder;
+}
+
+/** The post object WooCommerce passes to `woocommerce_variation_options_pricing`. */
+function variationPost(int $id, int $parentId): object
+{
+    return (object) ['ID' => $id, 'post_parent' => $parentId];
+}
+
+it('offers the parent product\'s receipt name as the variation placeholder', function (): void {
+    Functions\when('get_post_meta')->alias(
+        static fn (int $postId, string $key, bool $single = false): string => $postId === 7 ? 'Chemex 6 cup' : '',
+    );
+    $rendered = recordRenderedFields();
+
+    (new ReceiptNameField())->renderForVariation(0, [], variationPost(8, 7));
+
+    expect($rendered->fields)->toHaveCount(1)
+        ->and($rendered->fields[0]['placeholder'])->toBe('Chemex 6 cup')
+        ->and($rendered->fields[0]['value'])->toBe('')
+        ->and($rendered->fields[0]['description'])->toContain('parent product')
+        ->and($rendered->fields[0]['description'])->toContain('Chemex 6 cup');
+});
+
+it('tells a variation with no inherited name what would be printed instead', function (): void {
+    Functions\when('get_post_meta')->justReturn('');
+    $rendered = recordRenderedFields();
+
+    (new ReceiptNameField())->renderForVariation(0, [], variationPost(8, 7));
+
+    expect($rendered->fields[0]['placeholder'])->toBe('')
+        ->and($rendered->fields[0]['description'])->toContain('plus its attributes');
+});
+
+it('shows a variation its own name rather than the inherited one once it has one', function (): void {
+    Functions\when('get_post_meta')->alias(
+        static fn (int $postId, string $key, bool $single = false): string => $postId === 8 ? 'Chemex black' : 'Chemex 6 cup',
+    );
+    $rendered = recordRenderedFields();
+
+    (new ReceiptNameField())->renderForVariation(0, [], variationPost(8, 7));
+
+    expect($rendered->fields[0]['value'])->toBe('Chemex black')
+        ->and($rendered->fields[0]['placeholder'])->toBe('Chemex 6 cup');
+});
+
+it('says on the product that its variations inherit the name', function (): void {
+    Functions\when('get_the_ID')->justReturn(7);
+    Functions\when('get_post_meta')->justReturn('');
+    $rendered = recordRenderedFields();
+
+    (new ReceiptNameField())->renderForProduct();
+
+    expect($rendered->fields[0]['description'])->toContain('Variations whose own box is empty');
+});

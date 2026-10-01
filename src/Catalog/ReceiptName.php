@@ -35,7 +35,7 @@ if (! defined('ABSPATH')) {
  */
 class ReceiptName
 {
-    /** Per-product override, set in the product's VCR panel. */
+    /** Per-product override, set in the "Name on the fiscal receipt" box. */
     public const META_KEY = '_vcr_receipt_name';
 
     /**
@@ -64,41 +64,70 @@ class ReceiptName
      */
     public function forProduct(WC_Product $product): string
     {
-        $override = $this->override($product);
+        $override = $this->overrideFor($product);
         $name = $this->normalise($override ?? $product->get_name());
 
         if ($name === '') {
             throw new FiscalBuildException(sprintf(
-                'Product #%d has no name to print on a receipt. Give it a title, or set a receipt name in its VCR panel.',
+                'Product #%d has no name to print on a receipt. Give it a title, or set "Name on the fiscal receipt" %s.',
                 $product->get_id(),
+                $this->whereToSetIt($product),
             ));
         }
 
         $length = mb_strlen($name, 'UTF-8');
         if ($length > self::MAX_LENGTH) {
             throw new FiscalBuildException(sprintf(
-                'The name "%s" is %d characters; a receipt line holds %d. Set a shorter receipt name in the product\'s VCR panel -- the plugin will not shorten it, because that line is what the buyer reads and what the tax service files.',
+                'The name "%s" is %d characters; a receipt line holds %d. Set a shorter "Name on the fiscal receipt" %s -- the plugin will not shorten it, because that line is what the buyer reads and what the tax service files.',
                 $name,
                 $length,
                 self::MAX_LENGTH,
+                $this->whereToSetIt($product),
             ));
         }
 
         if (preg_match(self::ALLOWED_REGEX, $name) !== 1) {
             throw new FiscalBuildException(sprintf(
-                'The name "%s" contains a character a receipt line cannot carry (%s). Set a receipt name without it in the product\'s VCR panel.',
+                'The name "%s" contains a character a receipt line cannot carry (%s). Set a "Name on the fiscal receipt" without it %s.',
                 $name,
                 $this->firstDisallowedCharacter($name),
+                $this->whereToSetIt($product),
             ));
         }
 
         return $name;
     }
 
-    /** The stored override, or null when the product has none. */
-    public function override(WC_Product $product): ?string
+    /**
+     * The override that applies to this product: its own, or -- for a variation
+     * whose box is empty -- the parent product's.
+     *
+     * A variation's name is the parent's plus its attributes, so it is the
+     * longest name in the catalogue and the one most likely to overflow the
+     * line. A merchant who shortens the parent product and leaves the variation
+     * boxes empty has already said what the receipt should read; until 0.1.12
+     * that answer was ignored and every variation was refused for being too
+     * long -- the exact case this field exists for.
+     *
+     * Inheritance is one level because that is how deep WooCommerce goes: a
+     * variation's parent is always a top-level product.
+     */
+    public function overrideFor(WC_Product $product): ?string
     {
-        $stored = get_post_meta($product->get_id(), self::META_KEY, true);
+        $own = $this->storedOverride($product->get_id());
+        if ($own !== null) {
+            return $own;
+        }
+
+        $parentId = $product->get_parent_id();
+
+        return $parentId === 0 ? null : $this->storedOverride($parentId);
+    }
+
+    /** The override stored on one post, with no inheritance. */
+    public function storedOverride(int $postId): ?string
+    {
+        $stored = get_post_meta($postId, self::META_KEY, true);
 
         if (! is_string($stored)) {
             return null;
@@ -107,6 +136,21 @@ class ReceiptName
         $trimmed = trim($stored);
 
         return $trimmed === '' ? null : $trimmed;
+    }
+
+    /**
+     * Where the merchant actually finds the box, named the way the screen names
+     * it. Until 0.1.12 all three refusals above said "the product's VCR panel",
+     * which does not exist: the field is a WooCommerce product field, sitting
+     * in the General tab next to Regular price.
+     */
+    private function whereToSetIt(WC_Product $product): string
+    {
+        if ($product->get_parent_id() === 0) {
+            return 'under Product data -> General';
+        }
+
+        return 'on this variation under Product data -> Variations, or on the parent product under Product data -> General, which a variation with an empty box inherits';
     }
 
     /**

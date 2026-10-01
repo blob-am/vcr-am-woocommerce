@@ -23,6 +23,11 @@ if (! defined('ABSPATH')) {
  */
 final class ReceiptNameField
 {
+    public function __construct(
+        private readonly ReceiptName $receiptName = new ReceiptName(),
+    ) {
+    }
+
     public function register(): void
     {
         add_action('woocommerce_product_options_general_product_data', [$this, 'renderForProduct']);
@@ -79,12 +84,15 @@ final class ReceiptNameField
             return;
         }
 
+        $inherited = $this->inheritedName($variation);
+
         woocommerce_wp_text_input([
             'id' => ReceiptName::META_KEY . '[' . (string) $variationId . ']',
             'value' => $this->stored($variationId),
             'label' => __('Name on the fiscal receipt', 'vcr-am-fiscal-receipts'),
-            'description' => $this->description(),
+            'description' => $this->variationDescription($inherited),
             'desc_tip' => true,
+            'placeholder' => $inherited ?? '',
             'wrapper_class' => 'form-row form-row-full',
             'custom_attributes' => ['maxlength' => (string) ReceiptName::MAX_LENGTH],
         ]);
@@ -109,16 +117,56 @@ final class ReceiptNameField
     {
         return sprintf(
             /* translators: %d: maximum characters a receipt line holds. */
-            __('Leave empty to print the product name. Set it when that name is longer than %d characters, which is all a receipt line holds -- the plugin will not shorten it for you, because this is the line the buyer reads to recognise what they bought.', 'vcr-am-fiscal-receipts'),
+            __('Leave empty to print the product name. Set it when that name is longer than %d characters, which is all a receipt line holds -- the plugin will not shorten it for you, because this is the line the buyer reads to recognise what they bought. Variations whose own box is empty print this name too.', 'vcr-am-fiscal-receipts'),
             ReceiptName::MAX_LENGTH,
         );
     }
 
+    /**
+     * A variation's own name is the parent's plus its attributes, so it is the
+     * longest name in the catalogue. Which fallback applies decides which
+     * sentence is useful here, so the two cases get their own wording rather
+     * than one that hedges between them.
+     */
+    private function variationDescription(?string $inherited): string
+    {
+        if ($inherited !== null) {
+            return sprintf(
+                /* translators: 1: receipt name inherited from the parent product, 2: maximum characters a receipt line holds. */
+                __('Leave empty to use the parent product\'s receipt name, "%1$s". A receipt line holds %2$d characters.', 'vcr-am-fiscal-receipts'),
+                $inherited,
+                ReceiptName::MAX_LENGTH,
+            );
+        }
+
+        return sprintf(
+            /* translators: %d: maximum characters a receipt line holds. */
+            __('Leave empty to print the variation name -- the product name plus its attributes, which is the longest name in your catalog. A receipt line holds %d characters, so this is the box most likely to need filling in.', 'vcr-am-fiscal-receipts'),
+            ReceiptName::MAX_LENGTH,
+        );
+    }
+
+    /**
+     * The parent product's override, which an empty variation box falls back
+     * to. Shown as the placeholder so the box says what will actually be
+     * printed instead of looking unset.
+     */
+    private function inheritedName(object $variation): ?string
+    {
+        if (! property_exists($variation, 'post_parent')) {
+            return null;
+        }
+
+        $parentId = $variation->post_parent;
+
+        return is_int($parentId) && $parentId > 0
+            ? $this->receiptName->storedOverride($parentId)
+            : null;
+    }
+
     private function stored(int $postId): string
     {
-        $value = get_post_meta($postId, ReceiptName::META_KEY, true);
-
-        return is_string($value) ? $value : '';
+        return $this->receiptName->storedOverride($postId) ?? '';
     }
 
     /**
