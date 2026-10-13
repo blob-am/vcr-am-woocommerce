@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.1.12
+Stable tag: 0.1.13
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -109,6 +109,10 @@ For a multi-currency store the plugin also asks this same gateway for the AMD ra
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.13 =
+* New: WordPress tells you when a newer version of this plugin is out, the way it does for every other plugin — a notice on the Plugins screen, the changelog behind a link, and an Update button. The plugin is installed from a file rather than from the WordPress directory, so until now nothing told a store a release had happened: the store that prompted this was six versions behind and had no way to know.
+* Automatic installation stays off unless you turn it on, under **Automatic updates** on the plugin's row. A plugin that files receipts to the tax service should not replace itself on a store without being asked.
 
 = 0.1.12 =
 * Fixed: a variation whose own **Name on the fiscal receipt** box is empty now uses the one set on the parent product. A variation's name is the product name plus its attributes, so it is the longest name in a catalog and the likeliest to pass 50 characters — and shortening the parent, which is the obvious thing to try, used to change nothing. Its box now shows the inherited name as a placeholder.

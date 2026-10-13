@@ -37,6 +37,8 @@ Download `vcr-am-fiscal-receipts.zip` from the [latest release](https://github.c
 
 After activating, configure it under **WooCommerce -> Settings -> VCR**: paste the API key, save, and work down the checklist the screen then shows. The Installation section of `readme.txt` spells the steps out.
 
+Later releases announce themselves. From 0.1.13 the plugin carries an `Update URI`, so WordPress checks `https://vcr.am/api/plugins/woocommerce/latest` on its own schedule and puts the usual update notice, changelog link and Update button on the Plugins screen. Installing it is still a decision: automatic updates stay off until the merchant turns them on. Anything installed before 0.1.13 has no such header and has to be updated by hand once.
+
 ## Installation (development)
 
 ```bash
@@ -74,6 +76,7 @@ vcr-am-woocommerce/
 │   ├── Receipt/                  ← customer-facing receipt link
 │   ├── Refund/                   ← the refund pipeline, parallel to Fiscal/
 │   ├── Settings/                 ← the WooCommerce settings tab (General + Advanced)
+│   ├── Update/                   ← where a newer release is announced from, and what the changelog modal shows
 │   └── VcrClientFactory.php      ← builds the vendored SDK client from settings
 └── tests/
     ├── Pest.php
