@@ -273,6 +273,33 @@ async function handleRequest(req, res) {
         return jsonResponse(res, 400, { error: 'invalid plan payload' });
     }
 
+    // The plugin update feed vcr.am serves. Not part of the register API, but
+    // the plugin asks for it from the same place in these tests: the mu-plugin
+    // redirects the vcr.am URL here, because the one thing a unit test cannot
+    // show is WordPress deciding, from this document, to put an update row on
+    // the plugins screen.
+    //
+    // The version is deliberately far ahead of anything this repository will
+    // ship, so the row appears whatever the build under test is numbered. The
+    // package URL is a real https github.com one because the plugin refuses
+    // any other host; nothing downloads it here.
+    if (req.url === '/api/plugins/woocommerce/latest' && req.method === 'GET') {
+        return jsonResponse(res, 200, {
+            name: 'VCR — Fiscal Receipts for Armenia (eHDM)',
+            slug: 'vcr-am-fiscal-receipts',
+            version: '9.9.9',
+            url: 'https://github.com/blob-am/vcr-am-woocommerce/releases/tag/v9.9.9',
+            package: 'https://github.com/blob-am/vcr-am-woocommerce/releases/download/v9.9.9/vcr-am-fiscal-receipts.zip',
+            requires: '6.7',
+            requires_php: '8.3',
+            tested: '7.1',
+            last_updated: '2026-10-13 12:00:00',
+            sections: {
+                changelog: '<h4>9.9.9</h4><ul><li>A line only the feed could have put on this screen.</li></ul>',
+            },
+        });
+    }
+
     if (req.url.startsWith('/api/v1/whoami') && req.method === 'GET') {
         const plan = responsePlan.whoami;
         return jsonResponse(res, plan.status, plan.body);

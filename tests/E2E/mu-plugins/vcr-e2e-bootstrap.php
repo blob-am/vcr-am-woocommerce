@@ -66,3 +66,33 @@ add_action('init', static function (): void {
         $keyStore->put('e2e-test-api-key');
     }
 }, 99);
+
+/**
+ * Sends the plugin's update check to the mock server instead of vcr.am.
+ *
+ * The feed URL is fixed in the plugin on purpose — it is pinned by the
+ * `Update URI` header every installed copy carries, and making it settable
+ * would hand any code on the site a way to choose where the next version of
+ * this plugin comes from. So the test container redirects the request at the
+ * HTTP layer, which is WordPress's own seam for exactly this and leaves the
+ * plugin with no knowledge that it is being tested.
+ *
+ * `$depth` stops the rewritten request from coming straight back in here.
+ */
+add_filter('pre_http_request', static function ($preempt, $args, $url) {
+    static $depth = 0;
+
+    $feedUrl = 'https://vcr.am/api/plugins/woocommerce/latest';
+    if ($depth > 0 || $url !== $feedUrl) {
+        return $preempt;
+    }
+
+    $mock = getenv('VCR_E2E_UPDATE_FEED_URL')
+        ?: 'http://host.docker.internal:9876/api/plugins/woocommerce/latest';
+
+    $depth++;
+    $response = wp_remote_get($mock, $args);
+    $depth--;
+
+    return $response;
+}, 10, 3);

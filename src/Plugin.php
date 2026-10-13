@@ -71,6 +71,7 @@ use BlobSolutions\WooCommerceVcrAm\Settings\AdvancedFields;
 use BlobSolutions\WooCommerceVcrAm\Settings\GeneralFields;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\SettingsPage;
+use BlobSolutions\WooCommerceVcrAm\Update\UpdateChecker;
 
 /**
  * Top-level plugin bootstrap.
@@ -112,6 +113,13 @@ final class Plugin
             return;
         }
         $this->booted = true;
+
+        // Outside the WooCommerce gate below on purpose. A store whose
+        // WooCommerce is deactivated, or whose PHP has no libsodium, is
+        // exactly the store that most needs to be told a newer plugin exists
+        // — both of those paths go inert with a notice, and an update is one
+        // of the ways out of them.
+        (new UpdateChecker($this->pluginFile))->register();
 
         add_action('before_woocommerce_init', [$this, 'declareWooCommerceCompatibility']);
         add_action('plugins_loaded', [$this, 'onPluginsLoaded']);
