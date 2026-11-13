@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { logIn } from './helpers/admin.mjs';
 import { wpCli } from './helpers/wp-cli.mjs';
 
 /**
@@ -28,21 +29,6 @@ import { wpCli } from './helpers/wp-cli.mjs';
 
 const PLUGIN_BASENAME = 'vcr-am-fiscal-receipts/vcr-am-fiscal-receipts.php';
 const PLUGIN_SLUG = 'vcr-am-fiscal-receipts';
-
-async function logIn(page) {
-    await page.goto('/wp-login.php');
-
-    // See pairing-connect.spec.mjs: WP focuses and selects #user_login from a
-    // setTimeout, which eats a fill that lands first.
-    await page
-        .waitForFunction(() => document.activeElement?.id === 'user_login', null, { timeout: 5000 })
-        .catch(() => {});
-
-    await page.fill('#user_login', 'admin');
-    await page.fill('#user_pass', 'password');
-    await page.click('#wp-submit');
-    await page.waitForURL(/wp-admin/);
-}
 
 test.describe('being told a newer plugin exists', () => {
     let context;
