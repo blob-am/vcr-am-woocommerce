@@ -1,0 +1,877 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: VCR — Fiscal Receipts for Armenia (eHDM)\n"
+"Report-Msgid-Bugs-To: https://github.com/blob-am/vcr-am-woocommerce/issues\n"
+"Last-Translator: Blob Solutions <support@blob.am>\n"
+"Language-Team: Armenian\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-11-13T00:00:00+00:00\n"
+"PO-Revision-Date: 2026-11-13T11:46:10+00:00\n"
+"Language: hy\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: vcr-am-fiscal-receipts\n"
+
+#. Plugin Name of the plugin
+msgid "VCR — Fiscal Receipts for Armenia (eHDM)"
+msgstr "VCR — ֆիսկալ կտրոններ Հայաստանի համար (eHDM)"
+
+#. Plugin URI of the plugin
+msgid "https://vcr.am"
+msgstr "https://vcr.am"
+
+#. Description of the plugin
+msgid "Issue Armenian fiscal receipts (eHDM) to the State Revenue Committee directly from WooCommerce orders. Multi-currency + refunds."
+msgstr "Թողարկեք հայկական ֆիսկալ կտրոններ (eHDM)՝ ՊԵԿ-ում գրանցմամբ, անմիջապես WooCommerce-ի պատվերներից։ Բազմարժույթ վճարումներ և վերադարձներ։"
+
+#. Author of the plugin
+msgid "Blob Solutions"
+msgstr "Blob Solutions"
+
+#. Author URI of the plugin
+msgid "https://blob.am"
+msgstr "https://blob.am"
+
+msgid "Test connection"
+msgstr "Ստուգել կապը"
+
+msgid "Testing…"
+msgstr "Ստուգվում է…"
+
+msgid "Enter an API key first."
+msgstr "Նախ մուտքագրեք API բանալին։"
+
+msgid "Connection failed."
+msgstr "Կապը չհաջողվեց։"
+
+msgid "Network error — could not reach the server."
+msgstr "Ցանցի սխալ — սերվերը հասանելի չէ։"
+
+msgid "Timed out — VCR did not respond in time."
+msgstr "Սպասման ժամանակը սպառվեց — VCR-ը ժամանակին չպատասխանեց։"
+
+msgid "You do not have permission to test the VCR connection."
+msgstr "Դուք VCR-ի կապը ստուգելու թույլտվություն չունեք։"
+
+msgid "No API key provided and no saved key found."
+msgstr "API բանալի չի մուտքագրվել, և պահպանված բանալի չկա։"
+
+#. translators: %s is the SafeUrlValidator rejection reason.
+#, php-format
+msgid "Refusing to send your API key to that URL: %s"
+msgstr "API բանալին այդ հասցեին չի ուղարկվի՝ %s"
+
+#. translators: 1: business name, 2: TIN, 3: register id, 4: "sandbox" or "production".
+#, php-format
+msgid "Connected to %1$s (TIN %2$s), register #%3$d — %4$s."
+msgstr "Միացված է՝ %1$s (ՀՎՀՀ %2$s), դրամարկղ №%3$d — %4$s։"
+
+msgid "sandbox, receipts are test-only"
+msgstr "sandbox, կտրոնները միայն փորձնական են"
+
+msgid "production"
+msgstr "production"
+
+msgid "This register has no cashiers yet, so no receipt can be issued. Add the first one in the VCR dashboard — owner, accountant and developer accounts can all do it."
+msgstr "Այս դրամարկղում դեռ գանձապահ չկա, ուստի կտրոն թողարկել հնարավոր չէ։ Ավելացրեք առաջինին VCR-ի կառավարման վահանակում — դա կարող են անել սեփականատերը, հաշվապահը և ծրագրավորողը։"
+
+#. translators: %d is the number of cashiers on the register.
+#, php-format
+msgid "%d cashier available."
+msgid_plural "%d cashiers available."
+msgstr[0] "Հասանելի է %d գանձապահ։"
+msgstr[1] "Հասանելի է %d գանձապահ։"
+
+#. translators: %s is the technical error message.
+#, php-format
+msgid "Unexpected error: %s"
+msgstr "Չնախատեսված սխալ՝ %s"
+
+msgid "You do not have permission to retry fiscalisation for this order."
+msgstr "Դուք այս պատվերի ֆիսկալացումը կրկնելու թույլտվություն չունեք։"
+
+msgid "VCR Fiscal Receipt"
+msgstr "VCR ֆիսկալ կտրոն"
+
+msgid "Order not available."
+msgstr "Պատվերը հասանելի չէ։"
+
+msgid "Not yet fiscalised. The plugin will queue this order automatically once payment completes."
+msgstr "Դեռ ֆիսկալացված չէ։ Խրվակը պատվերն ինքնաշխատ կհերթագրի, հենց որ վճարումն ավարտվի։"
+
+msgid "Status:"
+msgstr "Կարգավիճակ՝"
+
+msgid "Queued for fiscalisation"
+msgstr "Հերթագրված է ֆիսկալացման"
+
+msgid "Attempts so far:"
+msgstr "Փորձերի քանակը՝"
+
+msgid "Registered with SRC"
+msgstr "Գրանցված է ՊԵԿ-ում"
+
+msgid "Fiscal serial"
+msgstr "Ֆիսկալ համար"
+
+msgid "CRN"
+msgstr "ՀԴՄ ԳՀ"
+
+msgid "Receipt id"
+msgstr "Կտրոնի ID"
+
+msgid "Failed (retries exhausted)"
+msgstr "Չհաջողվեց (փորձերը սպառվել են)"
+
+msgid "Needs your attention"
+msgstr "Պահանջում է ձեր ուշադրությունը"
+
+msgid "Fiscalize now"
+msgstr "Ֆիսկալացնել հիմա"
+
+msgid "Last error:"
+msgstr "Վերջին սխալը՝"
+
+msgid "Fiscalisation re-queued. The next attempt will run shortly."
+msgstr "Ֆիսկալացումը կրկին հերթագրվեց։ Հաջորդ փորձը շուտով կկատարվի։"
+
+msgid "Order is already fiscalised — nothing to retry."
+msgstr "Պատվերն արդեն ֆիսկալացված է — կրկնելու բան չկա։"
+
+msgid "Order is not in a state that can be retried."
+msgstr "Պատվերի ներկա վիճակում կրկնել հնարավոր չէ։"
+
+msgid "The selected order could not be found."
+msgstr "Ընտրված պատվերը չի գտնվել։"
+
+msgid "Refund registration re-queued. The next attempt will run shortly."
+msgstr "Վերադարձի գրանցումը կրկին հերթագրվեց։ Հաջորդ փորձը շուտով կկատարվի։"
+
+msgid "Refund is already registered with SRC — nothing to retry."
+msgstr "Վերադարձն արդեն գրանցված է ՊԵԿ-ում — կրկնելու բան չկա։"
+
+msgid "Refund is not in a state that can be retried."
+msgstr "Վերադարձի ներկա վիճակում կրկնել հնարավոր չէ։"
+
+msgid "The selected refund could not be found."
+msgstr "Ընտրված վերադարձը չի գտնվել։"
+
+msgid "Refunds:"
+msgstr "Վերադարձներ՝"
+
+msgid "Refund"
+msgstr "Վերադարձ"
+
+msgid "Status: not yet enqueued."
+msgstr "Կարգավիճակ՝ դեռ հերթագրված չէ։"
+
+msgid "Fiscal:"
+msgstr "Ֆիսկալ համար՝"
+
+msgid "CRN:"
+msgstr "ՀԴՄ ԳՀ՝"
+
+msgid "Receipt id:"
+msgstr "Կտրոնի ID՝"
+
+msgid "Register refund now"
+msgstr "Գրանցել վերադարձը հիմա"
+
+msgid "Queued for SRC registration"
+msgstr "Հերթագրված է ՊԵԿ-ում գրանցման"
+
+#. translators: %d: number of orders re-queued for fiscalisation
+#, php-format
+msgid "%d order re-queued for VCR fiscalisation."
+msgid_plural "%d orders re-queued for VCR fiscalisation."
+msgstr[0] "%d պատվեր կրկին հերթագրվեց VCR-ում ֆիսկալացման։"
+msgstr[1] "%d պատվեր կրկին հերթագրվեց VCR-ում ֆիսկալացման։"
+
+#. translators: %d: number of orders skipped (not in a retriable state)
+#, php-format
+msgid "%d order skipped (not in a retriable state)."
+msgid_plural "%d orders skipped (not in a retriable state)."
+msgstr[0] "%d պատվեր բաց թողնվեց (ներկա վիճակում կրկնել հնարավոր չէ)։"
+msgstr[1] "%d պատվեր բաց թողնվեց (ներկա վիճակում կրկնել հնարավոր չէ)։"
+
+msgid "Retry VCR fiscalisation"
+msgstr "Կրկնել VCR ֆիսկալացումը"
+
+msgid "Fiscal"
+msgstr "Ֆիսկալացում"
+
+msgid "Queued"
+msgstr "Հերթում է"
+
+msgid "Registered"
+msgstr "Գրանցված է"
+
+msgid "Failed"
+msgstr "Չհաջողվեց"
+
+msgid "Manual"
+msgstr "Ձեռքով"
+
+msgid "All fiscal statuses"
+msgstr "Ֆիսկալացման բոլոր կարգավիճակները"
+
+msgid "Not enqueued"
+msgstr "Հերթագրված չէ"
+
+msgid "Needs attention"
+msgstr "Ուշադրություն է պահանջում"
+
+msgid "Settings"
+msgstr "Կարգավորումներ"
+
+msgid "Docs"
+msgstr "Փաստաթղթեր"
+
+#. translators: 1: business name, 2: TIN, 3: register id, 4: register name.
+#, php-format
+msgid "Connected to %1$s (TIN %2$s), register #%3$d %4$s."
+msgstr "Միացված է՝ %1$s (ՀՎՀՀ %2$s), դրամարկղ №%3$d %4$s։"
+
+msgid "Connection"
+msgstr "Կապ"
+
+msgid "This is a sandbox register: receipts issued from it are test receipts and have no legal force. Save the key of your production register when you have finished testing."
+msgstr "Սա sandbox դրամարկղ է. դրանից թողարկված կտրոնները փորձնական են և իրավաբանական ուժ չունեն։ Փորձարկումն ավարտելուց հետո պահպանեք ձեր production դրամարկղի բանալին։"
+
+msgid "The register has no registration number from the tax service yet, so receipts cannot be filed. Finish its activation in the VCR dashboard."
+msgstr "Դրամարկղը դեռ ՊԵԿ-ից գրանցման համար չունի, ուստի կտրոններ ներկայացնել հնարավոր չէ։ Ավարտեք դրա ակտիվացումը VCR-ի կառավարման վահանակում։"
+
+msgid "Receipts are filed with the tax service."
+msgstr "Կտրոնները գրանցվում են ՊԵԿ-ում։"
+
+msgid "No API key saved yet. Paste the key from your VCR dashboard into the field below and press Save changes."
+msgstr "API բանալին դեռ պահպանված չէ։ Տեղադրեք VCR-ի կառավարման վահանակից վերցված բանալին ստորև դաշտում և սեղմեք «Save changes»։"
+
+msgid "Open the VCR dashboard"
+msgstr "Բացել VCR-ի կառավարման վահանակը"
+
+msgid "This server could not reach vcr.am — the request failed before any answer came back. Outbound HTTPS is usually blocked by the hosting firewall; ask your host to allow it, then reload this page."
+msgstr "Այս սերվերը չկարողացավ կապվել vcr.am-ի հետ — հարցումն ընդհատվեց մինչև պատասխան ստանալը։ Սովորաբար ելքային HTTPS հարցումներն արգելափակում է հոսթինգի firewall-ը. խնդրեք ձեր հոսթինգ մատակարարին թույլատրել դրանք, ապա վերաբեռնեք էջը։"
+
+msgid "The status report shows whether PHP can make HTTP requests at all"
+msgstr "Կարգավիճակի հաշվետվությունը ցույց է տալիս՝ արդյոք PHP-ն ընդհանրապես կարող է HTTP հարցումներ ուղարկել"
+
+msgid "vcr.am does not recognise this API key. It may have been revoked, or it may belong to a register that no longer exists — create a new key in the dashboard and save it here."
+msgstr "vcr.am-ը չի ճանաչում այս API բանալին։ Հնարավոր է՝ այն չեղարկվել է կամ պատկանում է այլևս գոյություն չունեցող դրամարկղի — ստեղծեք նոր բանալի կառավարման վահանակում և պահպանեք այստեղ։"
+
+msgid "The key works, but its register has not finished activation with the tax service and cannot issue anything yet. Finish activation in the dashboard — or create a sandbox register and use its key to test the integration first."
+msgstr "Բանալին աշխատում է, բայց դրա դրամարկղը դեռ ակտիվացված չէ ՊԵԿ-ում և առայժմ ոչինչ թողարկել չի կարող։ Ավարտեք ակտիվացումը կառավարման վահանակում — կամ ստեղծեք sandbox դրամարկղ և նախ փորձարկեք ինտեգրումը դրա բանալիով։"
+
+msgid "vcr.am refused this API key. It belongs to a different register, or its access was withdrawn."
+msgstr "vcr.am-ը մերժեց այս API բանալին։ Այն պատկանում է այլ դրամարկղի, կամ դրա հասանելիությունը հետ է վերցվել։"
+
+msgid "vcr.am answered in a way this plugin could not read. If it keeps happening, update the plugin — and send support the message below."
+msgstr "vcr.am-ի պատասխանը խրվակը չկարողացավ կարդալ։ Եթե դա կրկնվում է, թարմացրեք խրվակը և ստորև բերված հաղորդագրությունն ուղարկեք աջակցման ծառայությանը։"
+
+msgid "vcr.am answered with an error of its own. Try again in a minute; if it keeps happening, write to support."
+msgstr "vcr.am-ը պատասխանեց սեփական սխալով։ Մեկ րոպեից կրկին փորձեք. եթե դա կրկնվում է, գրեք աջակցման ծառայությանը։"
+
+#. translators: %s is a request id to quote to support.
+#, php-format
+msgid "vcr.am answered with an error of its own. Try again in a minute; if it keeps happening, send support this request id: %s."
+msgstr "vcr.am-ը պատասխանեց սեփական սխալով։ Մեկ րոպեից կրկին փորձեք. եթե դա կրկնվում է, աջակցման ծառայությանն ուղարկեք հարցման այս նույնացուցիչը՝ %s։"
+
+msgid "Cashier"
+msgstr "Գանձապահ"
+
+msgid "The cashier list could not be loaded just now. Reload the page; the connection itself is fine."
+msgstr "Գանձապահների ցանկն այս պահին չհաջողվեց բեռնել։ Վերաբեռնեք էջը. կապն ինքնին կարգին է։"
+
+msgid "This register has no cashiers yet, and every receipt has to name one. Add one in the VCR dashboard — owner, accountant and developer accounts can all do it, and for a one-person shop opening the register's desk once is enough — after which this page will find it."
+msgstr "Այս դրամարկղում դեռ գանձապահ չկա, իսկ յուրաքանչյուր կտրոնում պետք է նշված լինի գանձապահը։ Ավելացրեք նրան VCR-ի կառավարման վահանակում — դա կարող են անել սեփականատերը, հաշվապահը և ծրագրավորողը, իսկ մեկ հոգանոց խանութի համար բավական է մեկ անգամ բացել դրամարկղը — որից հետո նա կհայտնվի այս էջում։"
+
+msgid "Choose the cashier receipts will be issued by, below, and press Save changes."
+msgstr "Ստորև ընտրեք գանձապահին, ում անունից կթողարկվեն կտրոնները, և սեղմեք «Save changes»։"
+
+#. translators: %d is the stored cashier number.
+#, php-format
+msgid "The saved cashier (#%d) is not on this register any more, so receipts are being refused. Choose another one below."
+msgstr "Պահպանված գանձապահը (№%d) այլևս այս դրամարկղում չէ, ուստի կտրոնները մերժվում են։ Ստորև ընտրեք մեկ ուրիշին։"
+
+#. translators: %s is the chosen cashier's label.
+#, php-format
+msgid "Receipts will be issued by %s."
+msgstr "Կտրոնները կթողարկվեն հետևյալ գանձապահի անունից՝ %s։"
+
+msgid "Departments"
+msgstr "Բաժիններ"
+
+msgid "This register has no departments, so nothing can be fiscalised. Add one in the VCR dashboard."
+msgstr "Այս դրամարկղում բաժիններ չկան, ուստի ոչինչ ֆիսկալացնել հնարավոր չէ։ Ավելացրեք բաժին VCR-ի կառավարման վահանակում։"
+
+msgid "Department override"
+msgstr "Բաժնի վերասահմանում"
+
+#. translators: %d is the stored department number.
+#, php-format
+msgid "The saved department override (#%d) is not on this register any more, so every receipt is being refused. Choose another one below, or clear the field to file each offer under its own department."
+msgstr "Վերասահմանման համար պահպանված բաժինը (№%d) այլևս այս դրամարկղում չէ, ուստի բոլոր կտրոնները մերժվում են։ Ստորև ընտրեք մեկ ուրիշը կամ մաքրեք դաշտը, որպեսզի յուրաքանչյուր ապրանք ձևակերպվի իր բաժնով։"
+
+#. translators: %s is the department label, or its number when the list is unavailable.
+#, php-format
+msgid "Every line of every receipt will be filed under %s, ignoring the department each offer was registered with. The department decides the tax regime printed on the receipt, and a receipt can only be refunded, never corrected."
+msgstr "Յուրաքանչյուր կտրոնի յուրաքանչյուր տող կձևակերպվի «%s» բաժնով՝ անկախ այն բաժնից, որով գրանցված է ապրանքը։ Բաժնից է կախված կտրոնում տպվող հարկային ռեժիմը, իսկ կտրոնը հնարավոր է միայն վերադարձնել, բայց ոչ ուղղել։"
+
+msgid "Catalog"
+msgstr "Կատալոգ"
+
+msgid "A product your register has no catalog item for cannot be fiscalised: that order is held for manual review until you add the item in VCR. Set a classifier code below and the plugin creates the item itself, as it issues the receipt."
+msgstr "Ապրանքը, որի համար դրամարկղի կատալոգում գրառում չկա, հնարավոր չէ ֆիսկալացնել. այդ պատվերը հետաձգվում է ձեռքով ստուգման, մինչև գրառումը չավելացնեք VCR-ում։ Ստորև նշեք դասակարգչի կոդը, և խրվակն ինքը կստեղծի գրառումը կտրոնը թողարկելիս։"
+
+msgid "This register has more than one department, so the plugin cannot tell which tax regime a new catalog item belongs to. Pick one under \"Department for new catalog items\" below; until then a product not already in the catalog holds its order."
+msgstr "Այս դրամարկղն ունի մեկից ավելի բաժին, ուստի խրվակը չի կարող որոշել, թե որ հարկային ռեժիմին է պատկանում կատալոգի նոր գրառումը։ Ընտրեք բաժինը ստորև՝ «Բաժին կատալոգի նոր գրառումների համար» դաշտում. մինչ այդ կատալոգում դեռ չգրանցված ապրանքով պատվերը կհետաձգվի։"
+
+#. translators: %s: the configured classifier code.
+#, php-format
+msgid "New products are added to the register's catalog under code %s as their first receipt is issued. Change a code per item in VCR any time — the plugin never overwrites one."
+msgstr "Նոր ապրանքներն ավելացվում են դրամարկղի կատալոգ %s կոդով՝ առաջին կտրոնը թողարկելիս։ Առանձին գրառման կոդը ցանկացած պահի կարող եք փոխել VCR-ում — խրվակն այն երբեք չի վերագրում։"
+
+msgid "Shipping line"
+msgstr "Առաքման տող"
+
+msgid "Shipping is enabled in this store and no Shipping SKU is set, so an order that charges for delivery will be held for manual review instead of getting a receipt. Onboard one \"shipping\" offer in the VCR catalog and name its SKU below."
+msgstr "Խանութում առաքումը միացված է, իսկ առաքման SKU-ն նշված չէ, ուստի վճարովի առաքմամբ պատվերը կտրոն ստանալու փոխարեն կհետաձգվի ձեռքով ստուգման։ VCR-ի կատալոգում ստեղծեք «առաքում» գրառում և ստորև նշեք դրա SKU-ն։"
+
+msgid "VCR — Fiscal Receipts (Armenia)"
+msgstr "VCR — ֆիսկալ կտրոններ (Հայաստան)"
+
+msgid "Plugin version"
+msgstr "Խրվակի տարբերակ"
+
+msgid "libsodium"
+msgstr "libsodium"
+
+msgid "Native extension"
+msgstr "Ներկառուցված ընդլայնում"
+
+msgid "WordPress polyfill (ext-sodium not installed)"
+msgstr "WordPress polyfill (ext-sodium-ը տեղադրված չէ)"
+
+msgid "HTTP transport"
+msgstr "HTTP տրանսպորտ"
+
+msgid "API key configured"
+msgstr "API բանալին կարգավորված է"
+
+msgid "Yes"
+msgstr "Այո"
+
+msgid "No"
+msgstr "Ոչ"
+
+msgid "Base URL"
+msgstr "Հիմնական URL"
+
+msgid "Register"
+msgstr "Դրամարկղ"
+
+msgid "Default cashier configured"
+msgstr "Լռելյայն գանձապահը կարգավորված է"
+
+msgid "Default department configured"
+msgstr "Լռելյայն բաժինը կարգավորված է"
+
+msgid "Shipping SKU configured"
+msgstr "Առաքման SKU-ն կարգավորված է"
+
+msgid "Fee SKU configured"
+msgstr "Հավելավճարի SKU-ն կարգավորված է"
+
+msgid "Fully configured"
+msgstr "Ամբողջությամբ կարգավորված է"
+
+msgid "Pending sale jobs"
+msgstr "Վաճառքի սպասող առաջադրանքներ"
+
+msgid "Pending refund jobs"
+msgstr "Վերադարձի սպասող առաջադրանքներ"
+
+msgid "Sale orders — Pending"
+msgstr "Վաճառքի պատվերներ — հերթում"
+
+msgid "Sale orders — Failed"
+msgstr "Վաճառքի պատվերներ — չհաջողված"
+
+msgid "Sale orders — Manual required"
+msgstr "Վաճառքի պատվերներ — պահանջվում է ձեռքով մշակում"
+
+msgid "Refunds — Pending"
+msgstr "Վերադարձներ — հերթում"
+
+msgid "Refunds — Failed"
+msgstr "Վերադարձներ — չհաջողված"
+
+msgid "Refunds — Manual required"
+msgstr "Վերադարձներ — պահանջվում է ձեռքով մշակում"
+
+msgid "cURL"
+msgstr "cURL"
+
+msgid "PHP streams (allow_url_fopen)"
+msgstr "PHP հոսքեր (allow_url_fopen)"
+
+msgid "None — no ext-curl and allow_url_fopen is off; VCR is unreachable from this server"
+msgstr "Չկա — ext-curl-ը բացակայում է, allow_url_fopen-ն անջատված է. VCR-ն այս սերվերից հասանելի չէ"
+
+msgid "Shipping line (from settings)"
+msgstr "Առաքման տող (կարգավորումներից)"
+
+msgid "Fee line (from settings)"
+msgstr "Հավելավճարի տող (կարգավորումներից)"
+
+#. translators: 1: tax regime name, 2: department internal id.
+#, php-format
+msgid "%1$s (#%2$d)"
+msgstr "%1$s (№%2$d)"
+
+#. translators: 1: tax regime name, 2: department title, 3: department internal id.
+#, php-format
+msgid "%1$s — %2$s (#%3$d)"
+msgstr "%1$s — %2$s (№%3$d)"
+
+msgid "VAT"
+msgstr "ԱԱՀ"
+
+msgid "VAT-exempt"
+msgstr "Առանց ԱԱՀ"
+
+msgid "Turnover tax"
+msgstr "Շրջանառության հարկ"
+
+msgid "Micro-enterprise"
+msgstr "Միկրոձեռնարկատիրություն"
+
+msgid "Shipping"
+msgstr "Առաքում"
+
+msgid "Order has shipping charges, and the plugin has no classifier code to create a shipping line with. Set \"Classifier code for new catalog items\" in WooCommerce -> Settings -> VCR, or set a Shipping SKU pointing at an offer you onboarded in VCR."
+msgstr "Պատվերում կա վճարովի առաքում, իսկ խրվակը չունի դասակարգչի կոդ՝ առաքման տող ստեղծելու համար։ Լրացրեք «Դասակարգչի կոդ կատալոգի նոր գրառումների համար» դաշտը WooCommerce → Settings → VCR բաժնում կամ նշեք առաքման SKU, որը հղվում է VCR-ում ձեր ստեղծած գրառմանը։"
+
+msgid "Service fee"
+msgstr "Սպասարկման վճար"
+
+msgid "Order has fee lines (handling, surcharge, etc.), and the plugin has no classifier code to create a fee line with. Set \"Classifier code for new catalog items\" in WooCommerce -> Settings -> VCR, or set a Fee SKU pointing at an offer you onboarded in VCR."
+msgstr "Պատվերում կան հավելավճարների տողեր (մշակման վճար, հավելավճար և այլն), իսկ խրվակը չունի դասակարգչի կոդ՝ հավելավճարի տող ստեղծելու համար։ Լրացրեք «Դասակարգչի կոդ կատալոգի նոր գրառումների համար» դաշտը WooCommerce → Settings → VCR բաժնում կամ նշեք հավելավճարի SKU, որը հղվում է VCR-ում ձեր ստեղծած գրառմանը։"
+
+msgid "Name on the fiscal receipt"
+msgstr "Անվանումը ֆիսկալ կտրոնում"
+
+#. translators: %d: maximum characters a receipt line holds.
+#, php-format
+msgid "Leave empty to print the product name. Set it when that name is longer than %d characters, which is all a receipt line holds -- the plugin will not shorten it for you, because this is the line the buyer reads to recognise what they bought. Variations whose own box is empty print this name too."
+msgstr "Թողեք դատարկ՝ ապրանքի անվանումը տպելու համար։ Լրացրեք, եթե անվանումը %d նիշից երկար է. կտրոնի տողում ավելին չի տեղավորվում, և խրվակն այն ձեր փոխարեն չի կրճատի, քանի որ հենց այս տողով է գնորդը ճանաչում իր գնածը։ Այն տարբերակները, որոնց սեփական դաշտը դատարկ է, նույնպես տպում են այս անվանումը։"
+
+#. translators: 1: receipt name inherited from the parent product, 2: maximum characters a receipt line holds.
+#, php-format
+msgid "Leave empty to use the parent product's receipt name, \"%1$s\". A receipt line holds %2$d characters."
+msgstr "Թողեք դատարկ՝ ծնող ապրանքի կտրոնային անվանումն օգտագործելու համար՝ «%1$s»։ Կտրոնի տողում տեղավորվում է %2$d նիշ։"
+
+#. translators: %d: maximum characters a receipt line holds.
+#, php-format
+msgid "Leave empty to print the variation name -- the product name plus its attributes, which is the longest name in your catalog. A receipt line holds %d characters, so this is the box most likely to need filling in."
+msgstr "Թողեք դատարկ՝ տարբերակի անվանումը տպելու համար — ապրանքի անվանումը՝ իր հատկանիշներով, այսինքն՝ ձեր կատալոգի ամենաերկար անվանումը։ Կտրոնի տողում տեղավորվում է %d նիշ, ուստի հենց այս դաշտն է, որ ամենայն հավանականությամբ պետք կլինի լրացնել։"
+
+#. translators: 1: register id, 2: sandbox/production, 3: business name, 4: TIN.
+#, php-format
+msgid "#%1$d (%2$s) — %3$s, TIN %4$s"
+msgstr "№%1$d (%2$s) — %3$s, ՀՎՀՀ %4$s"
+
+msgid "sandbox"
+msgstr "sandbox"
+
+msgid "No API key saved"
+msgstr "API բանալին պահպանված չէ"
+
+msgid "Unknown — vcr.am unreachable from this server"
+msgstr "Անհայտ է — vcr.am-ն այս սերվերից հասանելի չէ"
+
+msgid "Unknown — API key rejected"
+msgstr "Անհայտ է — API բանալին մերժվել է"
+
+msgid "Not activated with the tax service yet"
+msgstr "Դեռ ակտիվացված չէ ՊԵԿ-ում"
+
+msgid "Unknown — access to this register denied"
+msgstr "Անհայտ է — այս դրամարկղի հասանելիությունը մերժվել է"
+
+msgid "Unknown — vcr.am returned an error"
+msgstr "Անհայտ է — vcr.am-ը սխալ է վերադարձրել"
+
+msgid "Unknown — unreadable answer from vcr.am"
+msgstr "Անհայտ է — vcr.am-ի պատասխանն անընթեռնելի է"
+
+msgid "VCR plugin is not fully configured (missing API key or cashier). Open WooCommerce → Settings → VCR to finish setup, then retry."
+msgstr "VCR խրվակն ամբողջությամբ կարգավորված չէ (բացակայում է API բանալին կամ գանձապահը)։ Բացեք WooCommerce → Settings → VCR, ավարտեք կարգավորումը և կրկին փորձեք։"
+
+#. translators: 1: SRC fiscal serial number, 2: customer-facing receipt URL slug.
+#, php-format
+msgid "VCR fiscal receipt registered. Fiscal: %1$s. Receipt id: %2$s."
+msgstr "VCR ֆիսկալ կտրոնը գրանցված է։ Ֆիսկալ համար՝ %1$s։ Կտրոնի ID՝ %2$s։"
+
+#. translators: 1: total number of attempts, 2: error message from the last attempt.
+#, php-format
+msgid "Gave up after %1$d attempts. Last error: %2$s"
+msgstr "Փորձերը սպառվեցին (%1$d)։ Վերջին սխալը՝ %2$s"
+
+#. translators: 1: technical detail — HTTP status, API request id, server message.
+#, php-format
+msgid "This order changed after its first fiscalisation attempt, so it no longer matches the receipt the tax service was asked to register. Use \"Fiscalize now\" on the order to register it as it stands. (%1$s)"
+msgstr "Պատվերը փոխվել է ֆիսկալացման առաջին փորձից հետո և այլևս չի համընկնում այն կտրոնի հետ, որն ուղարկվել էր ՊԵԿ՝ գրանցման։ Պատվերում սեղմեք «Ֆիսկալացնել հիմա»՝ այն ներկա տեսքով գրանցելու համար։ (%1$s)"
+
+msgid "Connected. This store will now file its receipts to the register you chose."
+msgstr "Միացված է։ Այսուհետ խանութն իր կտրոնները կգրանցի ձեր ընտրած դրամարկղում։"
+
+msgid "The connection was not approved, so nothing changed."
+msgstr "Միացումը չի հաստատվել, ուստի ոչինչ չի փոխվել։"
+
+msgid "That connection attempt has expired. Press Connect to VCR.AM again."
+msgstr "Միացման այդ փորձի ժամկետը լրացել է։ Կրկին սեղմեք «Միանալ VCR.AM-ին»։"
+
+msgid "Could not connect to VCR.AM. Check the error log, then try again."
+msgstr "Չհաջողվեց միանալ VCR.AM-ին։ Ստուգեք սխալների մատյանը և կրկին փորձեք։"
+
+msgid "You do not have permission to connect this store to VCR.AM."
+msgstr "Դուք այս խանութը VCR.AM-ին միացնելու թույլտվություն չունեք։"
+
+msgid "VCR — Fiscal Receipts for Armenia requires WooCommerce to be installed and active."
+msgstr "«VCR — ֆիսկալ կտրոններ Հայաստանի համար» խրվակի համար WooCommerce-ը պետք է տեղադրված և ակտիվ լինի։"
+
+msgid "VCR — Fiscal Receipts for Armenia cannot store your API key: this server has no libsodium. Ask your host to enable the PHP sodium extension."
+msgstr "«VCR — ֆիսկալ կտրոններ Հայաստանի համար» խրվակը չի կարող պահպանել ձեր API բանալին. այս սերվերում libsodium չկա։ Խնդրեք ձեր հոսթինգ մատակարարին միացնել PHP-ի sodium ընդլայնումը։"
+
+msgid "This site uses the VCR plugin to issue fiscal receipts (eHDM) to the Armenian State Revenue Committee (SRC) via the VCR.AM gateway. The text below describes the data flow and lawful basis. Edit and paste the parts relevant to your store into your published privacy policy."
+msgstr "Այս կայքն օգտագործում է VCR խրվակը՝ VCR.AM դարպասի միջոցով ֆիսկալ կտրոններ (eHDM) թողարկելու և Հայաստանի Պետական եկամուտների կոմիտեում (ՊԵԿ) գրանցելու համար։ Ստորև տեքստը նկարագրում է տվյալների հոսքը և իրավական հիմքը։ Խմբագրեք այն և ձեր խանութին վերաբերող մասերը տեղադրեք ձեր հրապարակված գաղտնիության քաղաքականության մեջ։"
+
+msgid "Suggested text:"
+msgstr "Առաջարկվող տեքստ՝"
+
+msgid "When you place an order, our store transmits the order line items, totals, taxes, payment method (cash / non-cash), currency, and the corresponding refund records (if any) to the VCR.AM fiscal-receipt operator (vcr.am, registered in the Republic of Armenia), which forwards them to the Armenian State Revenue Committee (SRC) so a fiscal receipt can be issued in your name."
+msgstr "Երբ դուք պատվեր եք ձևակերպում, մեր խանութը պատվերի տողերը, ընդհանուր գումարները, հարկերը, վճարման եղանակը (կանխիկ / անկանխիկ), արժույթը և համապատասխան վերադարձների գրառումները (առկայության դեպքում) փոխանցում է ֆիսկալ կտրոնների օպերատոր VCR.AM-ին (vcr.am, գրանցված է Հայաստանի Հանրապետությունում), որն էլ դրանք փոխանցում է Հայաստանի Պետական եկամուտների կոմիտեին (ՊԵԿ), որպեսզի ձեր անունով ֆիսկալ կտրոն թողարկվի։"
+
+msgid "We do NOT transmit your name, email address, phone number, billing address, or IP address to VCR.AM or to the SRC. Fiscal receipts are issued to an anonymised buyer record. The personal data we collect at checkout (name, address, etc.) stays in this store for order fulfilment under our usual policies."
+msgstr "Մենք ՉԵՆՔ փոխանցում ձեր անունը, էլեկտրոնային փոստի հասցեն, հեռախոսահամարը, վճարման հասցեն կամ IP հասցեն ո՛չ VCR.AM-ին, ո՛չ ՊԵԿ-ին։ Ֆիսկալ կտրոնները թողարկվում են գնորդի անանունացված գրառման վրա։ Պատվերը ձևակերպելիս հավաքվող անձնական տվյալները (անուն, հասցե և այլն) մնում են այս խանութում՝ պատվերի կատարման համար, մեր սովորական կանոնների համաձայն։"
+
+msgid "Lawful basis: GDPR Article 6(1)(c) — processing necessary for compliance with a legal obligation. The obligation is set out in the Armenian Tax Code Article 380.1 (HO-280-N) and Government Decision 1976-N, which require electronic Cash Register (e-HDM) registration of every taxable sale."
+msgstr "Իրավական հիմք՝ GDPR-ի 6(1)(c) հոդված — մշակումն անհրաժեշտ է իրավական պարտականության կատարման համար։ Պարտականությունը սահմանված է Հայաստանի Հարկային օրենսգրքի 380.1 հոդվածով (ՀՕ-280-Ն) և Կառավարության 1976-Ն որոշմամբ, որոնք պահանջում են յուրաքանչյուր հարկվող վաճառք գրանցել էլեկտրոնային հսկիչ-դրամարկղային մեքենայով (e-HDM)։"
+
+msgid "International transfer: VCR.AM operates from the Republic of Armenia, which is not on the European Commission's list of countries with an adequate level of data protection. The transfer is governed by the Standard Contractual Clauses (Commission Implementing Decision (EU) 2021/914), Module Two (controller-to-processor); ask vcr.am for a signed Data Processing Addendum incorporating those clauses before activating the plugin in production."
+msgstr "Միջազգային փոխանցում՝ VCR.AM-ը գործում է Հայաստանի Հանրապետությունից, որը ներառված չէ տվյալների պաշտպանության բավարար մակարդակ ունեցող երկրների՝ Եվրոպական հանձնաժողովի ցանկում։ Փոխանցումը կարգավորվում է Ստանդարտ պայմանագրային դրույթներով (Հանձնաժողովի (ԵՄ) 2021/914 կատարողական որոշում), Մոդուլ 2 (վերահսկողից մշակողին). մինչև խրվակը production ռեժիմում ակտիվացնելը vcr.am-ից խնդրեք այդ դրույթները ներառող՝ ստորագրված Տվյալների մշակման համաձայնագիր։"
+
+msgid "Retention: fiscal records are retained for the period required by the Armenian Tax Code (typically 5 years from the year-end in which the receipt was issued, per Tax Code Article 56). Erasure requests covering fiscal records are refused on legal-obligation grounds under GDPR Article 17(3)(b); local plugin metadata for orders that never resulted in an SRC submission is erased on request."
+msgstr "Պահպանման ժամկետ՝ ֆիսկալ գրառումները պահվում են Հայաստանի Հարկային օրենսգրքով պահանջվող ժամկետով (սովորաբար 5 տարի՝ կտրոնի թողարկման տարվա ավարտից հաշված, Հարկային օրենսգրքի 56-րդ հոդվածի համաձայն)։ Ֆիսկալ գրառումները ջնջելու հարցումները մերժվում են իրավական պարտականության հիմքով՝ GDPR-ի 17(3)(b) հոդվածի համաձայն. խրվակի տեղային մետատվյալները այն պատվերների համար, որոնք այդպես էլ չեն ուղարկվել ՊԵԿ, ջնջվում են ըստ հարցման։"
+
+msgid "Sub-processor: VCR.AM acts as a processor on the merchant's behalf for the purpose of fiscal-receipt issuance. The Armenian SRC is an independent controller receiving the data under national tax law. Both are listed here so that a data subject can identify recipients per GDPR Article 13(1)(e)."
+msgstr "Ենթամշակող՝ VCR.AM-ը գործում է որպես մշակող՝ վաճառողի անունից, ֆիսկալ կտրոններ թողարկելու նպատակով։ Հայաստանի ՊԵԿ-ը անկախ վերահսկող է, որը տվյալները ստանում է ազգային հարկային օրենսդրության հիման վրա։ Երկուսն էլ նշված են այստեղ, որպեսզի տվյալների սուբյեկտը կարողանա պարզել ստացողներին՝ GDPR-ի 13(1)(e) հոդվածի համաձայն։"
+
+msgid "VCR Fiscal Receipts"
+msgstr "VCR ֆիսկալ կտրոններ"
+
+#. translators: %d: WC order id
+#, php-format
+msgid "VCR fiscal record for order #%d retained on legal-obligation grounds: GDPR Article 17(3)(b) — processing necessary for compliance with Armenian Tax Code Article 380.1 (HO-280-N), retention period per Tax Code Article 56 (typically 5 years from year-end). The SRC-side fiscal receipt is unaffected by this request."
+msgstr "№%d պատվերի VCR ֆիսկալ գրառումը պահպանվել է իրավական պարտականության հիմքով՝ GDPR-ի 17(3)(b) հոդված — մշակումն անհրաժեշտ է Հայաստանի Հարկային օրենսգրքի 380.1 հոդվածի (ՀՕ-280-Ն) պահանջները կատարելու համար, պահպանման ժամկետը՝ Հարկային օրենսգրքի 56-րդ հոդվածի համաձայն (սովորաբար 5 տարի՝ տարվա ավարտից հաշված)։ ՊԵԿ-ում պահվող ֆիսկալ կտրոնի վրա այս հարցումը չի ազդում։"
+
+msgid "Fiscal status"
+msgstr "Ֆիսկալացման կարգավիճակ"
+
+msgid "External id"
+msgstr "Արտաքին ID"
+
+msgid "Attempt count"
+msgstr "Փորձերի քանակ"
+
+msgid "Last attempt at"
+msgstr "Վերջին փորձը"
+
+msgid "Last error"
+msgstr "Վերջին սխալը"
+
+msgid "Registered at"
+msgstr "Գրանցման ամսաթիվ"
+
+msgid "SRC CRN"
+msgstr "ՀԴՄ ԳՀ"
+
+msgid "SRC fiscal serial"
+msgstr "Ֆիսկալ համար"
+
+msgid "SRC receipt url id"
+msgstr "Կտրոնի հղման ID"
+
+msgid "SRC sale id"
+msgstr "Վաճառքի ID"
+
+msgid "SRC receipt id"
+msgstr "Կտրոնի ID"
+
+msgid "Refund fiscal status"
+msgstr "Վերադարձի ֆիսկալացման կարգավիճակ"
+
+msgid "Refund external id"
+msgstr "Վերադարձի արտաքին ID"
+
+msgid "Refund attempt count"
+msgstr "Վերադարձի փորձերի քանակ"
+
+msgid "Refund last attempt at"
+msgstr "Վերադարձի վերջին փորձը"
+
+msgid "Refund last error"
+msgstr "Վերադարձի վերջին սխալը"
+
+msgid "Refund registered at"
+msgstr "Վերադարձի գրանցման ամսաթիվ"
+
+msgid "SRC refund CRN"
+msgstr "ՀԴՄ ԳՀ (վերադարձ)"
+
+msgid "SRC refund fiscal serial"
+msgstr "Վերադարձի ֆիսկալ համար"
+
+msgid "SRC refund url id"
+msgstr "Վերադարձի կտրոնի հղման ID"
+
+msgid "SRC sale-refund id"
+msgstr "Վաճառքի վերադարձի ID"
+
+msgid "SRC refund receipt id"
+msgstr "Վերադարձի կտրոնի ID"
+
+msgid "View your fiscal receipt:"
+msgstr "Դիտել ձեր ֆիսկալ կտրոնը՝"
+
+msgid "Fiscal receipt:"
+msgstr "Ֆիսկալ կտրոն՝"
+
+msgid "View your receipt"
+msgstr "Դիտել կտրոնը"
+
+msgid "Fiscal receipt"
+msgstr "Ֆիսկալ կտրոն"
+
+#. translators: 1: refund id
+#, php-format
+msgid "View your fiscal refund receipt (refund #%d):"
+msgstr "Դիտել վերադարձի ֆիսկալ կտրոնը (վերադարձ №%d)՝"
+
+#. translators: 1: refund id
+#, php-format
+msgid "Refund receipt (#%d):"
+msgstr "Վերադարձի կտրոն (№%d)՝"
+
+msgid "View refund receipt"
+msgstr "Դիտել վերադարձի կտրոնը"
+
+#. translators: 1: current fiscal status of the parent order
+#, php-format
+msgid "Cannot auto-register refund: parent order is in fiscal status \"%s\", not \"success\". Wait for the parent sale to register with SRC, then retry this refund."
+msgstr "Հնարավոր չէ վերադարձն ինքնաշխատ գրանցել. սկզբնական պատվերի ֆիսկալացման կարգավիճակը «%s» է, ոչ թե «success»։ Սպասեք, մինչև սկզբնական վաճառքը գրանցվի ՊԵԿ-ում, ապա կրկնեք այս վերադարձը։"
+
+msgid "Cannot auto-register refund: parent order has no SRC saleId on record despite being marked successful. The order metadata may be corrupted — re-fiscalise the parent order first."
+msgstr "Հնարավոր չէ վերադարձն ինքնաշխատ գրանցել. սկզբնական պատվերը նշված է որպես հաջողված, բայց ՊԵԿ-ի saleId-ն պահպանված չէ։ Հնարավոր է՝ պատվերի մետատվյալները վնասված են — նախ նորից ֆիսկալացրեք սկզբնական պատվերը։"
+
+msgid "Cannot auto-register refund: this order already has another refund. The VCR plugin (v0.1) only supports a single full refund per order automatically — additional refunds must be processed manually with SRC."
+msgstr "Հնարավոր չէ վերադարձն ինքնաշխատ գրանցել. այս պատվերն արդեն ունի մեկ այլ վերադարձ։ VCR խրվակը (v0.1) ինքնաշխատ աջակցում է մեկ պատվերի համար միայն մեկ ամբողջական վերադարձ — մնացած վերադարձները պետք է ձեռքով ձևակերպել ՊԵԿ-ում։"
+
+#. translators: 1: refund amount, 2: parent order total
+#, php-format
+msgid "Cannot auto-register refund: refund amount %1$s does not equal order total %2$s. The VCR plugin (v0.1) only supports full refunds automatically — partial refunds must be processed manually with SRC."
+msgstr "Հնարավոր չէ վերադարձն ինքնաշխատ գրանցել. վերադարձի գումարը՝ %1$s, հավասար չէ պատվերի ընդհանուր գումարին՝ %2$s։ VCR խրվակը (v0.1) ինքնաշխատ աջակցում է միայն ամբողջական վերադարձներ — մասնակի վերադարձները պետք է ձեռքով ձևակերպել ՊԵԿ-ում։"
+
+msgid "You do not have permission to retry refund registration."
+msgstr "Դուք վերադարձի գրանցումը կրկնելու թույլտվություն չունեք։"
+
+msgid "VCR plugin is not fully configured (missing API key, cashier, or department). Open WooCommerce → Settings → VCR to finish setup, then retry this refund."
+msgstr "VCR խրվակն ամբողջությամբ կարգավորված չէ (բացակայում է API բանալին, գանձապահը կամ բաժինը)։ Բացեք WooCommerce → Settings → VCR, ավարտեք կարգավորումը և կրկնեք այս վերադարձը։"
+
+#. translators: 1: refund id, 2: SRC fiscal serial (or "n/a"), 3: SRC receipt url id
+#, php-format
+msgid "VCR sale refund registered for refund #%1$d. Fiscal: %2$s. Receipt id: %3$s."
+msgstr "VCR-ում վաճառքի վերադարձը գրանցված է №%1$d վերադարձի համար։ Ֆիսկալ համար՝ %2$s։ Կտրոնի ID՝ %3$s։"
+
+#. translators: 1: technical detail — HTTP status, API request id, server message.
+#, php-format
+msgid "This refund changed after its first registration attempt, so it no longer matches what the tax service was asked to register. Use \"Register refund now\" on the order to register it as it stands. (%1$s)"
+msgstr "Վերադարձը փոխվել է գրանցման առաջին փորձից հետո և այլևս չի համընկնում այն տվյալների հետ, որոնք ուղարկվել էին ՊԵԿ՝ գրանցման։ Պատվերում սեղմեք «Գրանցել վերադարձը հիմա»՝ այն ներկա տեսքով գրանցելու համար։ (%1$s)"
+
+msgid "Advanced"
+msgstr "Լրացուցիչ"
+
+msgid "Leave both of these empty unless you have a specific reason not to. A normal store never needs either."
+msgstr "Թողեք այս երկու դաշտերը դատարկ, եթե դրանք լրացնելու հատուկ պատճառ չունեք։ Սովորական խանութին դրանք պետք չեն։"
+
+msgid "Override only for staging or self-hosted VCR deployments. Leave empty to use the production endpoint. Whatever is here receives your API key on every request."
+msgstr "Փոխեք միայն փորձնական միջավայրերի կամ VCR-ի սեփական տեղակայումների համար։ Թողեք դատարկ՝ production հասցեն օգտագործելու համար։ Այստեղ նշված հասցեն յուրաքանչյուր հարցման հետ ստանում է ձեր API բանալին։"
+
+msgid "Override department"
+msgstr "Վերասահմանել բաժինը"
+
+msgid "— use each offer's own department —"
+msgstr "— օգտագործել յուրաքանչյուր ապրանքի սեփական բաժինը —"
+
+msgid "Leave empty unless you know you need it. Re-saving these settings reloads the list."
+msgstr "Թողեք դատարկ, եթե վստահ չեք, որ դա ձեզ պետք է։ Ցանկը թարմացվում է կարգավորումները կրկին պահպանելիս։"
+
+msgid "The department sets the tax regime printed on the receipt. Each offer already has one, chosen when you onboarded it in VCR, and orders use it automatically. Picking a department here overrides every line of every order — including offers registered under a different regime. Nothing rejects a mismatch, and a fiscal receipt can only be refunded and reissued, never corrected."
+msgstr "Բաժինը որոշում է կտրոնում տպվող հարկային ռեժիմը։ Յուրաքանչյուր ապրանք արդեն ունի իր բաժինը, որն ընտրել եք այն VCR-ում ստեղծելիս, և պատվերներն այն օգտագործում են ինքնաշխատ։ Այստեղ ընտրված բաժինը կփոխարինի յուրաքանչյուր պատվերի յուրաքանչյուր տողի բաժինը՝ ներառյալ այլ ռեժիմով գրանցված ապրանքները։ Անհամապատասխանությունը ոչնչով չի արգելափակվում, իսկ ֆիսկալ կտրոնը հնարավոր է միայն վերադարձնել և նորից թողարկել, բայց ոչ ուղղել։"
+
+msgid "Nothing loaded — see the checklist above"
+msgstr "Ոչինչ չի բեռնվել — տե՛ս վերևի ստուգացանկը"
+
+msgid "None on this register yet — see the checklist above"
+msgstr "Այս դրամարկղում դեռ չկա — տե՛ս վերևի ստուգացանկը"
+
+msgid "Reconnect to VCR.AM"
+msgstr "Վերամիանալ VCR.AM-ին"
+
+msgid "Connect to VCR.AM"
+msgstr "Միանալ VCR.AM-ին"
+
+msgid "Connecting again replaces the stored key. Use this if the current key stopped working, or to move this store to a different cash register."
+msgstr "Կրկին միանալը կփոխարինի պահպանված բանալին։ Օգտագործեք սա, եթե ներկա բանալին դադարել է աշխատել, կամ խանութն այլ դրամարկղ տեղափոխելու համար։"
+
+msgid "Opens VCR.AM, where you sign in and choose which cash register this store should file receipts to. The key is created for you — there is nothing to copy. You can also paste a key below instead."
+msgstr "Կբացվի VCR.AM-ը, որտեղ մուտք եք գործում և ընտրում, թե որ դրամարկղում խանութը պետք է գրանցի կտրոնները։ Բանալին ստեղծվում է ինքնաշխատ — պատճենելու բան չկա։ Փոխարենը կարող եք բանալին տեղադրել ստորև դաշտում։"
+
+msgid "VCR — Fiscal Receipts for Armenia"
+msgstr "VCR — ֆիսկալ կտրոններ Հայաստանի համար"
+
+msgid "API Key"
+msgstr "API բանալի"
+
+msgid "Your VCR.AM API key. Stored encrypted at rest using your WordPress auth salt; never written to disk in plaintext."
+msgstr "Ձեր VCR.AM API բանալին։ Պահվում է գաղտնագրված՝ ձեր WordPress-ի auth salt-ի կիրառմամբ. բաց տեքստով սկավառակի վրա երբեք չի գրվում։"
+
+msgid "Saved — leave empty to keep current key"
+msgstr "Պահպանված է — թողեք դատարկ՝ ներկա բանալին պահելու համար"
+
+msgid "Required"
+msgstr "Պարտադիր"
+
+msgid "— select a cashier —"
+msgstr "— ընտրեք գանձապահ —"
+
+msgid "Every receipt names the cashier who issued it. Re-saving these settings reloads the list."
+msgstr "Յուրաքանչյուր կտրոնում նշվում է այն թողարկած գանձապահը։ Ցանկը թարմացվում է կարգավորումները կրկին պահպանելիս։"
+
+msgid "Required before any receipt can be issued."
+msgstr "Առանց դրա ոչ մի կտրոն թողարկել հնարավոր չէ։"
+
+msgid "Every receipt line names a catalog item, and a fiscal receipt has to say what kind of thing was sold and under which tax regime. Fill these two in and the plugin creates the catalog item for any product your register has not seen yet, as it files that receipt — nothing to prepare, and nothing to keep in step by hand. Leave them empty and it only references items you onboarded in VCR yourself, refusing orders for anything else. Either way it never rewrites an item that already exists, so a code you refine in VCR stays yours."
+msgstr "Կտրոնի յուրաքանչյուր տող հղվում է կատալոգի գրառման, իսկ ֆիսկալ կտրոնում պետք է նշված լինի, թե ինչ է վաճառվել և որ հարկային ռեժիմով։ Լրացրեք այս երկու դաշտերը, և խրվակն ինքը կստեղծի կատալոգի գրառում ցանկացած ապրանքի համար, որը դրամարկղը դեռ չի տեսել՝ հենց կտրոնը գրանցելիս. նախապես ոչինչ պատրաստել կամ ձեռքով համաժամեցնել պետք չէ։ Եթե դրանք թողնեք դատարկ, խրվակը կհղվի միայն այն գրառումներին, որոնք ինքներդ եք ստեղծել VCR-ում, և կմերժի մնացած ամեն ինչով պատվերները։ Երկու դեպքում էլ այն երբեք չի վերագրում արդեն գոյություն ունեցող գրառումը, ուստի VCR-ում ձեր ճշգրտած կոդը կմնա անփոփոխ։"
+
+msgid "Classifier code for new catalog items"
+msgstr "Դասակարգչի կոդ կատալոգի նոր գրառումների համար"
+
+#. translators: %s: link to the classifier search page, already wrapped in an anchor.
+#, php-format
+msgid "One code for everything this store sells. %s"
+msgstr "Մեկ կոդ այն ամենի համար, ինչ վաճառում է խանութը։ %s"
+
+msgid "Look one up"
+msgstr "Գտնել կոդը"
+
+msgid "A goods code (ТН ВЭД, digits) or an activity code (КВЭД, like 56.10) — the tax service accepts either on a receipt line. Refine it per item in VCR afterwards if you need to; the plugin will not overwrite what you set there."
+msgstr "Ապրանքի կոդ (ԱՏԳ ԱԱ, թվանշաններ) կամ գործունեության տեսակի կոդ (ԱԴԳՏ, օրինակ՝ 56.10) — ՊԵԿ-ը կտրոնի տողում ընդունում է երկուսն էլ։ Անհրաժեշտության դեպքում հետո ճշգրտեք այն առանձին գրառումների համար VCR-ում. խրվակը չի վերագրի այնտեղ ձեր նշածը։"
+
+msgid "Department for new catalog items"
+msgstr "Բաժին կատալոգի նոր գրառումների համար"
+
+msgid "— select a department —"
+msgstr "— ընտրեք բաժին —"
+
+msgid "Which tax regime a newly created catalog item is filed under. A register with only one department needs no answer here."
+msgstr "Թե որ հարկային ռեժիմով է գրանցվում կատալոգի նոր ստեղծված գրառումը։ Մեկ բաժին ունեցող դրամարկղի դեպքում լրացնել պետք չէ։"
+
+msgid "This is the item's own department, not an override: existing items keep theirs, and each line is still sold from the department its item carries."
+msgstr "Սա գրառման սեփական բաժինն է, ոչ թե վերասահմանում. գոյություն ունեցող գրառումները պահպանում են իրենցը, և յուրաքանչյուր տող դարձյալ վաճառվում է իր գրառման բաժնով։"
+
+msgid "Shipping SKU"
+msgstr "Առաքման SKU"
+
+msgid "Optional. External id of a \"Shipping\" offer you onboarded in VCR, to use instead of the one the plugin would create. Leave empty unless you already have one."
+msgstr "Ոչ պարտադիր։ VCR-ում ձեր ստեղծած «Առաքում» գրառման արտաքին ID-ն՝ խրվակի ստեղծելիքի փոխարեն օգտագործելու համար։ Թողեք դատարկ, եթե այդպիսի գրառում դեռ չունեք։"
+
+msgid "Fee SKU"
+msgstr "Հավելավճարի SKU"
+
+msgid "Optional. Same thing for WooCommerce fee lines (handling charges, surcharges)."
+msgstr "Ոչ պարտադիր։ Նույնը՝ WooCommerce-ի հավելավճարների տողերի համար (մշակման վճարներ, հավելավճարներ)։"
+
+msgid "Cash on delivery"
+msgstr "Վճարում առաքման պահին"
+
+msgid "When to issue the fiscal receipt for orders paid in cash on delivery. Orders paid online are unaffected — their receipt is always issued the moment the payment clears."
+msgstr "Երբ թողարկել ֆիսկալ կտրոնը այն պատվերների համար, որոնք վճարվում են կանխիկ՝ առաքման պահին։ Առցանց վճարված պատվերներին սա չի վերաբերում — դրանց կտրոնը միշտ թողարկվում է վճարումը հաստատվելու պահին։"
+
+msgid "Issue the receipt"
+msgstr "Թողարկել կտրոնը"
+
+msgid "When the order is placed"
+msgstr "Պատվերը ձևակերպելիս"
+
+msgid "When the order is marked Completed"
+msgstr "Երբ պատվերը նշվում է «Completed»"
+
+msgid "Both are lawful: the law lets a delivery seller issue the receipt in advance, as long as it exists before the goods leave you. Issuing it when the order is placed means a refused delivery needs a refund receipt, because a fiscal receipt can never be corrected. Waiting until Completed avoids that, but an order nobody marks Completed is never fiscalised at all."
+msgstr "Երկու տարբերակն էլ օրինական են. օրենքը թույլ է տալիս առաքմամբ վաճառողին կտրոնը թողարկել նախապես, եթե այն առկա է մինչև ապրանքի՝ վաճառողի մոտից դուրս գալը։ Եթե կտրոնը թողարկվում է պատվերը ձևակերպելիս, առաքումից հրաժարվելու դեպքում կպահանջվի վերադարձի կտրոն, քանի որ ֆիսկալ կտրոնը հնարավոր չէ ուղղել։ «Completed» կարգավիճակին սպասելը դրանից ազատում է, բայց պատվերը, որը ոչ ոք «Completed» չի նշել, ընդհանրապես չի ֆիսկալացվի։"
+
+msgid "Reconciliation"
+msgstr "Համադրում"
+
+msgid "Attach a reference to each fiscal receipt so you can match it back to the WooCommerce order from your VCR dashboard. This note is internal to you — it is never shown to the customer and never sent to the tax authority."
+msgstr "Յուրաքանչյուր ֆիսկալ կտրոնին կցեք նշում, որպեսզի VCR-ի կառավարման վահանակում կարողանաք այն համադրել WooCommerce-ի պատվերի հետ։ Այս նշումը միայն ձեզ համար է — այն երբեք չի ցուցադրվում գնորդին և չի ուղարկվում ՊԵԿ։"
+
+msgid "Receipt comment"
+msgstr "Կտրոնի մեկնաբանություն"
+
+msgid "WooCommerce order number"
+msgstr "WooCommerce պատվերի համար"
+
+msgid "Payment transaction ID"
+msgstr "Վճարային գործարքի ID"
+
+msgid "Order number + transaction ID"
+msgstr "Պատվերի համար + գործարքի ID"
+
+msgid "No comment"
+msgstr "Առանց մեկնաբանության"
+
+msgid "The transaction ID is your payment gateway's own reference (e.g. a Stripe pi_… id) and is only available once the payment has cleared."
+msgstr "Գործարքի ID-ն ձեր վճարային համակարգի սեփական նույնացուցիչն է (օրինակ՝ Stripe-ի pi_… ID-ն) և հասանելի է դառնում միայն վճարումը հաստատվելուց հետո։"
+
+msgid "Connect your store to the VCR.AM gateway. Fiscal receipts (e-HDM) are issued directly to the Armenian State Revenue Committee (SRC) on every paid order."
+msgstr "Միացրեք ձեր խանութը VCR.AM դարպասին։ Յուրաքանչյուր վճարված պատվերի համար ֆիսկալ կտրոնը (e-HDM) ուղղակիորեն գրանցվում է Հայաստանի ՊԵԿ-ում։"
+
+msgid "GDPR / data-flow notice: activating this plugin transmits order line items, totals, and payment-method classification (cash / non-cash) to the VCR.AM gateway, which forwards them to the Armenian SRC. Customer name, email, address, and phone number are NOT transmitted. VCR.AM is established in the Republic of Armenia, which is not on the European Commission's adequacy list — when this site is GDPR-subject, the transfer is governed by Standard Contractual Clauses (Commission Implementing Decision (EU) 2021/914)."
+msgstr "GDPR / տվյալների հոսքի ծանուցում՝ խրվակն ակտիվացնելիս պատվերի տողերը, ընդհանուր գումարները և վճարման եղանակի տեսակը (կանխիկ / անկանխիկ) փոխանցվում են VCR.AM դարպասին, որն էլ դրանք փոխանցում է Հայաստանի ՊԵԿ-ին։ Գնորդի անունը, էլեկտրոնային փոստի հասցեն, հասցեն և հեռախոսահամարը ՉԵՆ փոխանցվում։ VCR.AM-ը հիմնադրված է Հայաստանի Հանրապետությունում, որը ներառված չէ Եվրոպական հանձնաժողովի՝ պաշտպանության բավարար մակարդակ ունեցող երկրների ցանկում. եթե կայքի վրա տարածվում է GDPR-ը, փոխանցումը կարգավորվում է Ստանդարտ պայմանագրային դրույթներով (Հանձնաժողովի (ԵՄ) 2021/914 կատարողական որոշում)։"
+
+#. translators: 1: VCR.AM Privacy Policy URL, 2: VCR.AM Data Processing Addendum URL, 3: Standard Contractual Clauses (Commission Decision) URL
+#, php-format
+msgid "Reference links: %1$s · %2$s · %3$s."
+msgstr "Հղումներ՝ %1$s · %2$s · %3$s։"
+
+msgid "VCR.AM Privacy Policy"
+msgstr "VCR.AM-ի գաղտնիության քաղաքականություն"
+
+msgid "Data Processing Addendum (request from VCR.AM)"
+msgstr "Տվյալների մշակման համաձայնագիր (խնդրեք VCR.AM-ից)"
+
+msgid "Standard Contractual Clauses (EU 2021/914)"
+msgstr "Ստանդարտ պայմանագրային դրույթներ (ԵՄ 2021/914)"
+
+msgid "VCR"
+msgstr "VCR"
+
+msgid "General"
+msgstr "Ընդհանուր"
+
+msgid "VCR base URL rejected:"
+msgstr "VCR-ի հիմնական URL-ը մերժվել է՝"

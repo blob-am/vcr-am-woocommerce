@@ -1,0 +1,16 @@
+{
+    "name": "blob-solutions/woocommerce-vcr-am-i18n-bin",
+    "description": "Isolated composer-bin context for wp-cli's i18n command, which extracts the translation template and compiles the catalogues. Kept out of the main require-dev so wp-cli's dependency tree cannot constrain Pest or PHPStan. Both versions are exact: this context has no committed lock, the template records the generator's version, and `bin/i18n check` compares the template byte for byte, so a newer extractor on a CI runner would fail a tree whose strings did not change.",
+    "type": "project",
+    "require": {
+        "php": "^8.3",
+        "wp-cli/i18n-command": "2.7.0",
+        "wp-cli/wp-cli": "2.12.0"
+    },
+    "config": {
+        "sort-packages": true,
+        "platform": {
+            "php": "8.3.0"
+        }
+    }
+}

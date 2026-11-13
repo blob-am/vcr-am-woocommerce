@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+#
+# Translation tooling: one entry point for the three things a catalogue
+# needs done to it.
+#
+#   bin/i18n extract         Regenerate languages/*.pot from the source and
+#                            merge the new strings into every .po.
+#   bin/i18n check           Fail when the .pot no longer matches the source,
+#                            or a .po is incomplete or breaks a placeholder.
+#   bin/i18n compile <dir>   Compile every .po into <dir> as .mo and .l10n.php.
+#
+# The compiled files are build output and are not committed: the .po is the
+# single source, and bin/build-wporg-zip.sh compiles it into the staged tree.
+#
+# wp-cli lives in its own composer-bin context (vendor-bin/i18n), installed
+# by `composer install` alongside Strauss.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+DOMAIN="vcr-am-fiscal-receipts"
+LANG_DIR="$REPO_ROOT/languages"
+POT="$LANG_DIR/$DOMAIN.pot"
+# The PHP entry point, not vendor/bin/wp: that one is a shell shim, and the
+# deprecation filter below has to reach the interpreter.
+WP="$REPO_ROOT/vendor-bin/i18n/vendor/wp-cli/wp-cli/php/boot-fs.php"
+
+if [[ ! -f "$WP" ]]; then
+    echo "error: i18n bin context missing — run: composer bin i18n install" >&2
+    exit 1
+fi
+
+# The headers wp-cli would otherwise derive are pinned, and so is the file
+# comment, which would carry the current year. The project id
+# carries the plugin version and the creation date carries the clock, so
+# either one would make `check` fail on a tree whose strings did not change.
+POT_HEADERS='{"Project-Id-Version":"VCR — Fiscal Receipts for Armenia (eHDM)","Report-Msgid-Bugs-To":"https://github.com/blob-am/vcr-am-woocommerce/issues","POT-Creation-Date":"2026-11-13T00:00:00+00:00"}'
+
+# wp-cli's bundled gettext library predates PHP 8.5 and trips a deprecation
+# on every run; everything else it reports is kept.
+wp() {
+    php -d error_reporting='E_ALL & ~E_DEPRECATED' "$WP" "$@"
+}
+
+make_pot() {
+    # The excludes are not redundant with the includes: an include matches a
+    # path at any depth, so without them the staged copy under build/ is read
+    # as well and a string deleted from src/ lives on in the template.
+    #
+    # File references are left out on purpose: they change with every edit
+    # above a string, which would turn each refactor into a .pot diff.
+    wp i18n make-pot "$REPO_ROOT" "$1" \
+        --slug="$DOMAIN" \
+        --domain="$DOMAIN" \
+        --include="src,assets,$DOMAIN.php,uninstall.php" \
+        --exclude="build,dist,tests,vendor,vendor-bin,vendor-prefixed,node_modules" \
+        --headers="$POT_HEADERS" \
+        --file-comment="This file is distributed under the GPL-2.0-or-later." \
+        --no-location \
+        --quiet
+}
+
+command="${1:-}"
+
+case "$command" in
+    extract)
+        make_pot "$POT"
+        wp i18n update-po "$POT" "$LANG_DIR" --quiet
+        echo "Updated $POT and the catalogues beside it."
+        ;;
+
+    check)
+        fresh="$(mktemp -d)"
+        trap 'rm -rf "$fresh"' EXIT
+        make_pot "$fresh/$DOMAIN.pot"
+        if ! diff -u "$POT" "$fresh/$DOMAIN.pot"; then
+            echo "error: languages/$DOMAIN.pot is out of date — run: bin/i18n extract, then translate the new strings" >&2
+            exit 1
+        fi
+        php "$SCRIPT_DIR/i18n-lint.php" "$POT" "$LANG_DIR"
+        ;;
+
+    compile)
+        target="${2:-}"
+        if [[ -z "$target" || ! -d "$target" ]]; then
+            echo "usage: bin/i18n compile <existing directory>" >&2
+            exit 1
+        fi
+        wp i18n make-mo "$LANG_DIR" "$target" --quiet
+        wp i18n make-php "$LANG_DIR" "$target" --quiet
+        ;;
+
+    *)
+        echo "usage: bin/i18n extract | check | compile <dir>" >&2
+        exit 1
+        ;;
+esac

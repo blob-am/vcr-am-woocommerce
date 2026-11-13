@@ -1,0 +1,880 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: VCR — Fiscal Receipts for Armenia (eHDM)\n"
+"Report-Msgid-Bugs-To: https://github.com/blob-am/vcr-am-woocommerce/issues\n"
+"Last-Translator: Blob Solutions <support@blob.am>\n"
+"Language-Team: Russian\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-11-13T00:00:00+00:00\n"
+"PO-Revision-Date: 2026-11-13T11:46:10+00:00\n"
+"Language: ru_RU\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: vcr-am-fiscal-receipts\n"
+
+#. Plugin Name of the plugin
+msgid "VCR — Fiscal Receipts for Armenia (eHDM)"
+msgstr "VCR — фискальные чеки для Армении (eHDM)"
+
+#. Plugin URI of the plugin
+msgid "https://vcr.am"
+msgstr "https://vcr.am"
+
+#. Description of the plugin
+msgid "Issue Armenian fiscal receipts (eHDM) to the State Revenue Committee directly from WooCommerce orders. Multi-currency + refunds."
+msgstr "Выдавайте армянские фискальные чеки (eHDM) с регистрацией в налоговой прямо из заказов WooCommerce. Мультивалютность и возвраты."
+
+#. Author of the plugin
+msgid "Blob Solutions"
+msgstr "Blob Solutions"
+
+#. Author URI of the plugin
+msgid "https://blob.am"
+msgstr "https://blob.am"
+
+msgid "Test connection"
+msgstr "Проверить подключение"
+
+msgid "Testing…"
+msgstr "Проверяем…"
+
+msgid "Enter an API key first."
+msgstr "Сначала введите API-ключ."
+
+msgid "Connection failed."
+msgstr "Не удалось подключиться."
+
+msgid "Network error — could not reach the server."
+msgstr "Ошибка сети — сервер недоступен."
+
+msgid "Timed out — VCR did not respond in time."
+msgstr "Время ожидания истекло — VCR не ответил вовремя."
+
+msgid "You do not have permission to test the VCR connection."
+msgstr "У вас нет прав на проверку подключения к VCR."
+
+msgid "No API key provided and no saved key found."
+msgstr "API-ключ не введён, и сохранённого ключа нет."
+
+#. translators: %s is the SafeUrlValidator rejection reason.
+#, php-format
+msgid "Refusing to send your API key to that URL: %s"
+msgstr "API-ключ не будет отправлен на этот адрес: %s"
+
+#. translators: 1: business name, 2: TIN, 3: register id, 4: "sandbox" or "production".
+#, php-format
+msgid "Connected to %1$s (TIN %2$s), register #%3$d — %4$s."
+msgstr "Подключено: %1$s (ИНН %2$s), касса №%3$d — %4$s."
+
+msgid "sandbox, receipts are test-only"
+msgstr "sandbox, чеки только тестовые"
+
+msgid "production"
+msgstr "production"
+
+msgid "This register has no cashiers yet, so no receipt can be issued. Add the first one in the VCR dashboard — owner, accountant and developer accounts can all do it."
+msgstr "В этой кассе пока нет кассиров, поэтому чек выдать нельзя. Добавьте первого в панели управления VCR — это могут сделать владелец, бухгалтер и разработчик."
+
+#. translators: %d is the number of cashiers on the register.
+#, php-format
+msgid "%d cashier available."
+msgid_plural "%d cashiers available."
+msgstr[0] "Доступен %d кассир."
+msgstr[1] "Доступно %d кассира."
+msgstr[2] "Доступно %d кассиров."
+
+#. translators: %s is the technical error message.
+#, php-format
+msgid "Unexpected error: %s"
+msgstr "Непредвиденная ошибка: %s"
+
+msgid "You do not have permission to retry fiscalisation for this order."
+msgstr "У вас нет прав на повторную фискализацию этого заказа."
+
+msgid "VCR Fiscal Receipt"
+msgstr "Фискальный чек VCR"
+
+msgid "Order not available."
+msgstr "Заказ недоступен."
+
+msgid "Not yet fiscalised. The plugin will queue this order automatically once payment completes."
+msgstr "Ещё не фискализирован. Плагин поставит заказ в очередь автоматически, как только пройдёт оплата."
+
+msgid "Status:"
+msgstr "Статус:"
+
+msgid "Queued for fiscalisation"
+msgstr "В очереди на фискализацию"
+
+msgid "Attempts so far:"
+msgstr "Попыток:"
+
+msgid "Registered with SRC"
+msgstr "Зарегистрирован в налоговой"
+
+msgid "Fiscal serial"
+msgstr "Фискальный номер"
+
+msgid "CRN"
+msgstr "РН"
+
+msgid "Receipt id"
+msgstr "ID чека"
+
+msgid "Failed (retries exhausted)"
+msgstr "Не удалось (попытки исчерпаны)"
+
+msgid "Needs your attention"
+msgstr "Требует вашего внимания"
+
+msgid "Fiscalize now"
+msgstr "Фискализировать сейчас"
+
+msgid "Last error:"
+msgstr "Последняя ошибка:"
+
+msgid "Fiscalisation re-queued. The next attempt will run shortly."
+msgstr "Фискализация снова поставлена в очередь. Следующая попытка начнётся в ближайшее время."
+
+msgid "Order is already fiscalised — nothing to retry."
+msgstr "Заказ уже фискализирован — повторять нечего."
+
+msgid "Order is not in a state that can be retried."
+msgstr "В текущем состоянии заказа повтор невозможен."
+
+msgid "The selected order could not be found."
+msgstr "Выбранный заказ не найден."
+
+msgid "Refund registration re-queued. The next attempt will run shortly."
+msgstr "Регистрация возврата снова поставлена в очередь. Следующая попытка начнётся в ближайшее время."
+
+msgid "Refund is already registered with SRC — nothing to retry."
+msgstr "Возврат уже зарегистрирован в налоговой — повторять нечего."
+
+msgid "Refund is not in a state that can be retried."
+msgstr "В текущем состоянии возврата повтор невозможен."
+
+msgid "The selected refund could not be found."
+msgstr "Выбранный возврат не найден."
+
+msgid "Refunds:"
+msgstr "Возвраты:"
+
+msgid "Refund"
+msgstr "Возврат"
+
+msgid "Status: not yet enqueued."
+msgstr "Статус: ещё не в очереди."
+
+msgid "Fiscal:"
+msgstr "Фискальный номер:"
+
+msgid "CRN:"
+msgstr "РН:"
+
+msgid "Receipt id:"
+msgstr "ID чека:"
+
+msgid "Register refund now"
+msgstr "Зарегистрировать возврат сейчас"
+
+msgid "Queued for SRC registration"
+msgstr "В очереди на регистрацию в налоговой"
+
+#. translators: %d: number of orders re-queued for fiscalisation
+#, php-format
+msgid "%d order re-queued for VCR fiscalisation."
+msgid_plural "%d orders re-queued for VCR fiscalisation."
+msgstr[0] "%d заказ снова поставлен в очередь на фискализацию в VCR."
+msgstr[1] "%d заказа снова поставлены в очередь на фискализацию в VCR."
+msgstr[2] "%d заказов снова поставлены в очередь на фискализацию в VCR."
+
+#. translators: %d: number of orders skipped (not in a retriable state)
+#, php-format
+msgid "%d order skipped (not in a retriable state)."
+msgid_plural "%d orders skipped (not in a retriable state)."
+msgstr[0] "%d заказ пропущен (в его состоянии повтор невозможен)."
+msgstr[1] "%d заказа пропущены (в их состоянии повтор невозможен)."
+msgstr[2] "%d заказов пропущено (в их состоянии повтор невозможен)."
+
+msgid "Retry VCR fiscalisation"
+msgstr "Повторить фискализацию в VCR"
+
+msgid "Fiscal"
+msgstr "Фискализация"
+
+msgid "Queued"
+msgstr "В очереди"
+
+msgid "Registered"
+msgstr "Зарегистрирован"
+
+msgid "Failed"
+msgstr "Ошибка"
+
+msgid "Manual"
+msgstr "Вручную"
+
+msgid "All fiscal statuses"
+msgstr "Все статусы фискализации"
+
+msgid "Not enqueued"
+msgstr "Не в очереди"
+
+msgid "Needs attention"
+msgstr "Требует внимания"
+
+msgid "Settings"
+msgstr "Настройки"
+
+msgid "Docs"
+msgstr "Документация"
+
+#. translators: 1: business name, 2: TIN, 3: register id, 4: register name.
+#, php-format
+msgid "Connected to %1$s (TIN %2$s), register #%3$d %4$s."
+msgstr "Подключено: %1$s (ИНН %2$s), касса №%3$d %4$s."
+
+msgid "Connection"
+msgstr "Подключение"
+
+msgid "This is a sandbox register: receipts issued from it are test receipts and have no legal force. Save the key of your production register when you have finished testing."
+msgstr "Это sandbox-касса: выданные из неё чеки — тестовые и не имеют юридической силы. Когда закончите тестирование, сохраните ключ production-кассы."
+
+msgid "The register has no registration number from the tax service yet, so receipts cannot be filed. Finish its activation in the VCR dashboard."
+msgstr "У кассы ещё нет регистрационного номера от налоговой, поэтому чеки подавать нельзя. Завершите активацию кассы в панели управления VCR."
+
+msgid "Receipts are filed with the tax service."
+msgstr "Чеки регистрируются в налоговой."
+
+msgid "No API key saved yet. Paste the key from your VCR dashboard into the field below and press Save changes."
+msgstr "API-ключ ещё не сохранён. Вставьте ключ из панели управления VCR в поле ниже и нажмите «Сохранить изменения»."
+
+msgid "Open the VCR dashboard"
+msgstr "Открыть панель управления VCR"
+
+msgid "This server could not reach vcr.am — the request failed before any answer came back. Outbound HTTPS is usually blocked by the hosting firewall; ask your host to allow it, then reload this page."
+msgstr "Этот сервер не смог связаться с vcr.am — запрос оборвался до получения ответа. Обычно исходящие HTTPS-запросы блокирует файрвол хостинга: попросите хостинг-провайдера разрешить их и перезагрузите страницу."
+
+msgid "The status report shows whether PHP can make HTTP requests at all"
+msgstr "В отчёте о состоянии видно, может ли PHP вообще отправлять HTTP-запросы"
+
+msgid "vcr.am does not recognise this API key. It may have been revoked, or it may belong to a register that no longer exists — create a new key in the dashboard and save it here."
+msgstr "vcr.am не узнаёт этот API-ключ. Возможно, он отозван или относится к кассе, которой больше нет, — создайте новый ключ в панели управления и сохраните его здесь."
+
+msgid "The key works, but its register has not finished activation with the tax service and cannot issue anything yet. Finish activation in the dashboard — or create a sandbox register and use its key to test the integration first."
+msgstr "Ключ рабочий, но его касса ещё не активирована в налоговой и пока ничего выдавать не может. Завершите активацию в панели управления — или создайте sandbox-кассу и сначала проверьте интеграцию с её ключом."
+
+msgid "vcr.am refused this API key. It belongs to a different register, or its access was withdrawn."
+msgstr "vcr.am отклонил этот API-ключ. Он относится к другой кассе, или доступ по нему отозван."
+
+msgid "vcr.am answered in a way this plugin could not read. If it keeps happening, update the plugin — and send support the message below."
+msgstr "vcr.am прислал ответ, который плагин не смог разобрать. Если это повторяется, обновите плагин и отправьте в поддержку сообщение ниже."
+
+msgid "vcr.am answered with an error of its own. Try again in a minute; if it keeps happening, write to support."
+msgstr "vcr.am ответил собственной ошибкой. Повторите через минуту; если это повторяется, напишите в поддержку."
+
+#. translators: %s is a request id to quote to support.
+#, php-format
+msgid "vcr.am answered with an error of its own. Try again in a minute; if it keeps happening, send support this request id: %s."
+msgstr "vcr.am ответил собственной ошибкой. Повторите через минуту; если это повторяется, отправьте в поддержку идентификатор запроса: %s."
+
+msgid "Cashier"
+msgstr "Кассир"
+
+msgid "The cashier list could not be loaded just now. Reload the page; the connection itself is fine."
+msgstr "Список кассиров сейчас не удалось загрузить. Перезагрузите страницу; само подключение в порядке."
+
+msgid "This register has no cashiers yet, and every receipt has to name one. Add one in the VCR dashboard — owner, accountant and developer accounts can all do it, and for a one-person shop opening the register's desk once is enough — after which this page will find it."
+msgstr "В этой кассе пока нет кассиров, а в каждом чеке должен быть указан кассир. Добавьте его в панели управления VCR — это могут сделать владелец, бухгалтер и разработчик, а магазину из одного человека достаточно один раз открыть кассу, — после этого он появится на этой странице."
+
+msgid "Choose the cashier receipts will be issued by, below, and press Save changes."
+msgstr "Выберите ниже кассира, от имени которого будут выдаваться чеки, и нажмите «Сохранить изменения»."
+
+#. translators: %d is the stored cashier number.
+#, php-format
+msgid "The saved cashier (#%d) is not on this register any more, so receipts are being refused. Choose another one below."
+msgstr "Сохранённого кассира (№%d) в этой кассе больше нет, поэтому чеки отклоняются. Выберите другого ниже."
+
+#. translators: %s is the chosen cashier's label.
+#, php-format
+msgid "Receipts will be issued by %s."
+msgstr "Чеки будет выдавать %s."
+
+msgid "Departments"
+msgstr "Отделы"
+
+msgid "This register has no departments, so nothing can be fiscalised. Add one in the VCR dashboard."
+msgstr "В этой кассе нет отделов, поэтому фискализировать ничего нельзя. Добавьте отдел в панели управления VCR."
+
+msgid "Department override"
+msgstr "Переопределение отдела"
+
+#. translators: %d is the stored department number.
+#, php-format
+msgid "The saved department override (#%d) is not on this register any more, so every receipt is being refused. Choose another one below, or clear the field to file each offer under its own department."
+msgstr "Сохранённого отдела для переопределения (№%d) в этой кассе больше нет, поэтому все чеки отклоняются. Выберите другой ниже или очистите поле, чтобы каждая позиция проводилась по своему отделу."
+
+#. translators: %s is the department label, or its number when the list is unavailable.
+#, php-format
+msgid "Every line of every receipt will be filed under %s, ignoring the department each offer was registered with. The department decides the tax regime printed on the receipt, and a receipt can only be refunded, never corrected."
+msgstr "Каждая строка каждого чека будет проведена по отделу «%s», независимо от того, с каким отделом зарегистрирована позиция. От отдела зависит режим налогообложения, который печатается в чеке, а чек можно только вернуть, но не исправить."
+
+msgid "Catalog"
+msgstr "Каталог"
+
+msgid "A product your register has no catalog item for cannot be fiscalised: that order is held for manual review until you add the item in VCR. Set a classifier code below and the plugin creates the item itself, as it issues the receipt."
+msgstr "Товар, для которого в каталоге кассы нет позиции, фискализировать нельзя: такой заказ откладывается на ручную проверку, пока вы не добавите позицию в VCR. Укажите ниже код классификатора — и плагин будет создавать позицию сам при выдаче чека."
+
+msgid "This register has more than one department, so the plugin cannot tell which tax regime a new catalog item belongs to. Pick one under \"Department for new catalog items\" below; until then a product not already in the catalog holds its order."
+msgstr "В этой кассе больше одного отдела, поэтому плагин не может определить, к какому режиму налогообложения относится новая позиция каталога. Выберите отдел ниже, в поле «Отдел для новых позиций каталога»; до тех пор заказ с товаром, которого ещё нет в каталоге, будет отложен."
+
+#. translators: %s: the configured classifier code.
+#, php-format
+msgid "New products are added to the register's catalog under code %s as their first receipt is issued. Change a code per item in VCR any time — the plugin never overwrites one."
+msgstr "Новые товары добавляются в каталог кассы с кодом %s при выдаче первого чека. Код отдельной позиции можно в любой момент изменить в VCR — плагин его не перезаписывает."
+
+msgid "Shipping line"
+msgstr "Строка доставки"
+
+msgid "Shipping is enabled in this store and no Shipping SKU is set, so an order that charges for delivery will be held for manual review instead of getting a receipt. Onboard one \"shipping\" offer in the VCR catalog and name its SKU below."
+msgstr "В магазине включена доставка, а артикул доставки не задан, поэтому заказ с платной доставкой будет отложен на ручную проверку и не получит чек. Заведите в каталоге VCR позицию «доставка» и укажите её артикул ниже."
+
+msgid "VCR — Fiscal Receipts (Armenia)"
+msgstr "VCR — фискальные чеки (Армения)"
+
+msgid "Plugin version"
+msgstr "Версия плагина"
+
+msgid "libsodium"
+msgstr "libsodium"
+
+msgid "Native extension"
+msgstr "Нативное расширение"
+
+msgid "WordPress polyfill (ext-sodium not installed)"
+msgstr "Полифил WordPress (ext-sodium не установлен)"
+
+msgid "HTTP transport"
+msgstr "HTTP-транспорт"
+
+msgid "API key configured"
+msgstr "API-ключ задан"
+
+msgid "Yes"
+msgstr "Да"
+
+msgid "No"
+msgstr "Нет"
+
+msgid "Base URL"
+msgstr "Базовый URL"
+
+msgid "Register"
+msgstr "Касса"
+
+msgid "Default cashier configured"
+msgstr "Кассир по умолчанию задан"
+
+msgid "Default department configured"
+msgstr "Отдел по умолчанию задан"
+
+msgid "Shipping SKU configured"
+msgstr "Артикул доставки задан"
+
+msgid "Fee SKU configured"
+msgstr "Артикул комиссии задан"
+
+msgid "Fully configured"
+msgstr "Настройка завершена"
+
+msgid "Pending sale jobs"
+msgstr "Задач продаж в очереди"
+
+msgid "Pending refund jobs"
+msgstr "Задач возвратов в очереди"
+
+msgid "Sale orders — Pending"
+msgstr "Заказы — в очереди"
+
+msgid "Sale orders — Failed"
+msgstr "Заказы — ошибка"
+
+msgid "Sale orders — Manual required"
+msgstr "Заказы — требуется ручная обработка"
+
+msgid "Refunds — Pending"
+msgstr "Возвраты — в очереди"
+
+msgid "Refunds — Failed"
+msgstr "Возвраты — ошибка"
+
+msgid "Refunds — Manual required"
+msgstr "Возвраты — требуется ручная обработка"
+
+msgid "cURL"
+msgstr "cURL"
+
+msgid "PHP streams (allow_url_fopen)"
+msgstr "Потоки PHP (allow_url_fopen)"
+
+msgid "None — no ext-curl and allow_url_fopen is off; VCR is unreachable from this server"
+msgstr "Нет — ext-curl отсутствует, allow_url_fopen выключен; VCR с этого сервера недоступен"
+
+msgid "Shipping line (from settings)"
+msgstr "Строка доставки (из настроек)"
+
+msgid "Fee line (from settings)"
+msgstr "Строка комиссии (из настроек)"
+
+#. translators: 1: tax regime name, 2: department internal id.
+#, php-format
+msgid "%1$s (#%2$d)"
+msgstr "%1$s (№%2$d)"
+
+#. translators: 1: tax regime name, 2: department title, 3: department internal id.
+#, php-format
+msgid "%1$s — %2$s (#%3$d)"
+msgstr "%1$s — %2$s (№%3$d)"
+
+msgid "VAT"
+msgstr "НДС"
+
+msgid "VAT-exempt"
+msgstr "Без НДС"
+
+msgid "Turnover tax"
+msgstr "Налог с оборота"
+
+msgid "Micro-enterprise"
+msgstr "Микропредпринимательство"
+
+msgid "Shipping"
+msgstr "Доставка"
+
+msgid "Order has shipping charges, and the plugin has no classifier code to create a shipping line with. Set \"Classifier code for new catalog items\" in WooCommerce -> Settings -> VCR, or set a Shipping SKU pointing at an offer you onboarded in VCR."
+msgstr "В заказе есть платная доставка, а у плагина нет кода классификатора, чтобы создать строку доставки. Укажите «Код классификатора для новых позиций каталога» в WooCommerce → Настройки → VCR или задайте артикул доставки, указывающий на позицию, которую вы завели в VCR."
+
+msgid "Service fee"
+msgstr "Сервисный сбор"
+
+msgid "Order has fee lines (handling, surcharge, etc.), and the plugin has no classifier code to create a fee line with. Set \"Classifier code for new catalog items\" in WooCommerce -> Settings -> VCR, or set a Fee SKU pointing at an offer you onboarded in VCR."
+msgstr "В заказе есть строки комиссий (обработка, наценка и т. п.), а у плагина нет кода классификатора, чтобы создать строку комиссии. Укажите «Код классификатора для новых позиций каталога» в WooCommerce → Настройки → VCR или задайте артикул комиссии, указывающий на позицию, которую вы завели в VCR."
+
+msgid "Name on the fiscal receipt"
+msgstr "Название в фискальном чеке"
+
+#. translators: %d: maximum characters a receipt line holds.
+#, php-format
+msgid "Leave empty to print the product name. Set it when that name is longer than %d characters, which is all a receipt line holds -- the plugin will not shorten it for you, because this is the line the buyer reads to recognise what they bought. Variations whose own box is empty print this name too."
+msgstr "Оставьте пустым, чтобы печаталось название товара. Заполните, если название длиннее %d символов — больше в строку чека не помещается: плагин не станет сокращать его за вас, ведь по этой строке покупатель узнаёт, что он купил. Вариации, у которых своё поле пусто, тоже печатают это название."
+
+#. translators: 1: receipt name inherited from the parent product, 2: maximum characters a receipt line holds.
+#, php-format
+msgid "Leave empty to use the parent product's receipt name, \"%1$s\". A receipt line holds %2$d characters."
+msgstr "Оставьте пустым, чтобы использовать название родительского товара для чека — «%1$s». В строку чека помещается %2$d символов."
+
+#. translators: %d: maximum characters a receipt line holds.
+#, php-format
+msgid "Leave empty to print the variation name -- the product name plus its attributes, which is the longest name in your catalog. A receipt line holds %d characters, so this is the box most likely to need filling in."
+msgstr "Оставьте пустым, чтобы печаталось название вариации — название товара вместе с атрибутами, то есть самое длинное название в вашем каталоге. В строку чека помещается %d символов, так что это поле придётся заполнять чаще других."
+
+#. translators: 1: register id, 2: sandbox/production, 3: business name, 4: TIN.
+#, php-format
+msgid "#%1$d (%2$s) — %3$s, TIN %4$s"
+msgstr "№%1$d (%2$s) — %3$s, ИНН %4$s"
+
+msgid "sandbox"
+msgstr "sandbox"
+
+msgid "No API key saved"
+msgstr "API-ключ не сохранён"
+
+msgid "Unknown — vcr.am unreachable from this server"
+msgstr "Неизвестно — vcr.am недоступен с этого сервера"
+
+msgid "Unknown — API key rejected"
+msgstr "Неизвестно — API-ключ отклонён"
+
+msgid "Not activated with the tax service yet"
+msgstr "Ещё не активирована в налоговой"
+
+msgid "Unknown — access to this register denied"
+msgstr "Неизвестно — доступ к этой кассе запрещён"
+
+msgid "Unknown — vcr.am returned an error"
+msgstr "Неизвестно — vcr.am вернул ошибку"
+
+msgid "Unknown — unreadable answer from vcr.am"
+msgstr "Неизвестно — ответ vcr.am не удалось разобрать"
+
+msgid "VCR plugin is not fully configured (missing API key or cashier). Open WooCommerce → Settings → VCR to finish setup, then retry."
+msgstr "Плагин VCR настроен не полностью (нет API-ключа или кассира). Откройте WooCommerce → Настройки → VCR, завершите настройку и повторите попытку."
+
+#. translators: 1: SRC fiscal serial number, 2: customer-facing receipt URL slug.
+#, php-format
+msgid "VCR fiscal receipt registered. Fiscal: %1$s. Receipt id: %2$s."
+msgstr "Фискальный чек VCR зарегистрирован. Фискальный номер: %1$s. ID чека: %2$s."
+
+#. translators: 1: total number of attempts, 2: error message from the last attempt.
+#, php-format
+msgid "Gave up after %1$d attempts. Last error: %2$s"
+msgstr "Попытки исчерпаны (%1$d). Последняя ошибка: %2$s"
+
+#. translators: 1: technical detail — HTTP status, API request id, server message.
+#, php-format
+msgid "This order changed after its first fiscalisation attempt, so it no longer matches the receipt the tax service was asked to register. Use \"Fiscalize now\" on the order to register it as it stands. (%1$s)"
+msgstr "Заказ изменился после первой попытки фискализации и больше не совпадает с чеком, который был отправлен на регистрацию в налоговую. Нажмите «Фискализировать сейчас» в заказе, чтобы зарегистрировать его в текущем виде. (%1$s)"
+
+msgid "Connected. This store will now file its receipts to the register you chose."
+msgstr "Подключено. Теперь магазин будет регистрировать чеки в выбранной вами кассе."
+
+msgid "The connection was not approved, so nothing changed."
+msgstr "Подключение не было подтверждено, поэтому ничего не изменилось."
+
+msgid "That connection attempt has expired. Press Connect to VCR.AM again."
+msgstr "Срок действия этой попытки подключения истёк. Нажмите «Подключить к VCR.AM» ещё раз."
+
+msgid "Could not connect to VCR.AM. Check the error log, then try again."
+msgstr "Не удалось подключиться к VCR.AM. Проверьте журнал ошибок и повторите попытку."
+
+msgid "You do not have permission to connect this store to VCR.AM."
+msgstr "У вас нет прав на подключение этого магазина к VCR.AM."
+
+msgid "VCR — Fiscal Receipts for Armenia requires WooCommerce to be installed and active."
+msgstr "Плагину «VCR — фискальные чеки для Армении» нужен установленный и активный WooCommerce."
+
+msgid "VCR — Fiscal Receipts for Armenia cannot store your API key: this server has no libsodium. Ask your host to enable the PHP sodium extension."
+msgstr "Плагин «VCR — фискальные чеки для Армении» не может сохранить ваш API-ключ: на этом сервере нет libsodium. Попросите хостинг-провайдера включить PHP-расширение sodium."
+
+msgid "This site uses the VCR plugin to issue fiscal receipts (eHDM) to the Armenian State Revenue Committee (SRC) via the VCR.AM gateway. The text below describes the data flow and lawful basis. Edit and paste the parts relevant to your store into your published privacy policy."
+msgstr "Этот сайт использует плагин VCR для выдачи фискальных чеков (eHDM) с регистрацией в Комитете государственных доходов Армении (КГД) через шлюз VCR.AM. Текст ниже описывает потоки данных и правовое основание. Отредактируйте его и вставьте подходящие вашему магазину части в опубликованную политику конфиденциальности."
+
+msgid "Suggested text:"
+msgstr "Рекомендуемый текст:"
+
+msgid "When you place an order, our store transmits the order line items, totals, taxes, payment method (cash / non-cash), currency, and the corresponding refund records (if any) to the VCR.AM fiscal-receipt operator (vcr.am, registered in the Republic of Armenia), which forwards them to the Armenian State Revenue Committee (SRC) so a fiscal receipt can be issued in your name."
+msgstr "Когда вы оформляете заказ, наш магазин передаёт позиции заказа, итоговые суммы, налоги, способ оплаты (наличный / безналичный), валюту и соответствующие записи о возвратах (если они есть) оператору фискальных чеков VCR.AM (vcr.am, зарегистрирован в Республике Армения), который пересылает их в Комитет государственных доходов Армении (КГД), чтобы на ваше имя был выдан фискальный чек."
+
+msgid "We do NOT transmit your name, email address, phone number, billing address, or IP address to VCR.AM or to the SRC. Fiscal receipts are issued to an anonymised buyer record. The personal data we collect at checkout (name, address, etc.) stays in this store for order fulfilment under our usual policies."
+msgstr "Мы НЕ передаём ваше имя, адрес электронной почты, номер телефона, платёжный адрес и IP-адрес ни VCR.AM, ни КГД. Фискальные чеки выдаются на обезличенную запись покупателя. Персональные данные, которые мы собираем при оформлении заказа (имя, адрес и т. д.), остаются в этом магазине и используются для выполнения заказа по нашим обычным правилам."
+
+msgid "Lawful basis: GDPR Article 6(1)(c) — processing necessary for compliance with a legal obligation. The obligation is set out in the Armenian Tax Code Article 380.1 (HO-280-N) and Government Decision 1976-N, which require electronic Cash Register (e-HDM) registration of every taxable sale."
+msgstr "Правовое основание: статья 6(1)(c) GDPR — обработка необходима для исполнения юридической обязанности. Обязанность установлена статьёй 380.1 Налогового кодекса Армении (HO-280-N) и постановлением Правительства 1976-N, которые требуют регистрировать каждую облагаемую продажу через электронный контрольно-кассовый аппарат (e-HDM)."
+
+msgid "International transfer: VCR.AM operates from the Republic of Armenia, which is not on the European Commission's list of countries with an adequate level of data protection. The transfer is governed by the Standard Contractual Clauses (Commission Implementing Decision (EU) 2021/914), Module Two (controller-to-processor); ask vcr.am for a signed Data Processing Addendum incorporating those clauses before activating the plugin in production."
+msgstr "Трансграничная передача: VCR.AM работает из Республики Армения, которая не входит в утверждённый Европейской комиссией перечень стран с достаточным уровнем защиты данных. Передача регулируется Стандартными договорными условиями (Исполнительное решение Комиссии (ЕС) 2021/914), Модуль 2 (от контролёра к обработчику); до включения плагина в рабочем режиме запросите у vcr.am подписанное Соглашение об обработке данных, включающее эти условия."
+
+msgid "Retention: fiscal records are retained for the period required by the Armenian Tax Code (typically 5 years from the year-end in which the receipt was issued, per Tax Code Article 56). Erasure requests covering fiscal records are refused on legal-obligation grounds under GDPR Article 17(3)(b); local plugin metadata for orders that never resulted in an SRC submission is erased on request."
+msgstr "Срок хранения: фискальные записи хранятся в течение срока, установленного Налоговым кодексом Армении (как правило, 5 лет с конца года, в котором выдан чек, согласно статье 56 Налогового кодекса). Запросы на удаление фискальных записей отклоняются на основании юридической обязанности по статье 17(3)(b) GDPR; локальные метаданные плагина по заказам, которые так и не были отправлены в КГД, удаляются по запросу."
+
+msgid "Sub-processor: VCR.AM acts as a processor on the merchant's behalf for the purpose of fiscal-receipt issuance. The Armenian SRC is an independent controller receiving the data under national tax law. Both are listed here so that a data subject can identify recipients per GDPR Article 13(1)(e)."
+msgstr "Обработчик: VCR.AM действует как обработчик от имени продавца для выдачи фискальных чеков. КГД Армении — самостоятельный контролёр, который получает данные на основании национального налогового законодательства. Оба указаны здесь, чтобы субъект данных мог определить получателей согласно статье 13(1)(e) GDPR."
+
+msgid "VCR Fiscal Receipts"
+msgstr "Фискальные чеки VCR"
+
+#. translators: %d: WC order id
+#, php-format
+msgid "VCR fiscal record for order #%d retained on legal-obligation grounds: GDPR Article 17(3)(b) — processing necessary for compliance with Armenian Tax Code Article 380.1 (HO-280-N), retention period per Tax Code Article 56 (typically 5 years from year-end). The SRC-side fiscal receipt is unaffected by this request."
+msgstr "Фискальная запись VCR по заказу №%d сохранена на основании юридической обязанности: статья 17(3)(b) GDPR — обработка необходима для соблюдения статьи 380.1 Налогового кодекса Армении (HO-280-N), срок хранения — по статье 56 Налогового кодекса (как правило, 5 лет с конца года). На фискальный чек, хранящийся в КГД, этот запрос не влияет."
+
+msgid "Fiscal status"
+msgstr "Статус фискализации"
+
+msgid "External id"
+msgstr "Внешний ID"
+
+msgid "Attempt count"
+msgstr "Число попыток"
+
+msgid "Last attempt at"
+msgstr "Последняя попытка"
+
+msgid "Last error"
+msgstr "Последняя ошибка"
+
+msgid "Registered at"
+msgstr "Дата регистрации"
+
+msgid "SRC CRN"
+msgstr "РН кассы"
+
+msgid "SRC fiscal serial"
+msgstr "Фискальный номер"
+
+msgid "SRC receipt url id"
+msgstr "ID ссылки на чек"
+
+msgid "SRC sale id"
+msgstr "ID продажи"
+
+msgid "SRC receipt id"
+msgstr "ID чека"
+
+msgid "Refund fiscal status"
+msgstr "Статус фискализации возврата"
+
+msgid "Refund external id"
+msgstr "Внешний ID возврата"
+
+msgid "Refund attempt count"
+msgstr "Число попыток возврата"
+
+msgid "Refund last attempt at"
+msgstr "Последняя попытка возврата"
+
+msgid "Refund last error"
+msgstr "Последняя ошибка возврата"
+
+msgid "Refund registered at"
+msgstr "Дата регистрации возврата"
+
+msgid "SRC refund CRN"
+msgstr "РН кассы (возврат)"
+
+msgid "SRC refund fiscal serial"
+msgstr "Фискальный номер возврата"
+
+msgid "SRC refund url id"
+msgstr "ID ссылки на чек возврата"
+
+msgid "SRC sale-refund id"
+msgstr "ID возврата продажи"
+
+msgid "SRC refund receipt id"
+msgstr "ID чека возврата"
+
+msgid "View your fiscal receipt:"
+msgstr "Посмотреть ваш фискальный чек:"
+
+msgid "Fiscal receipt:"
+msgstr "Фискальный чек:"
+
+msgid "View your receipt"
+msgstr "Посмотреть чек"
+
+msgid "Fiscal receipt"
+msgstr "Фискальный чек"
+
+#. translators: 1: refund id
+#, php-format
+msgid "View your fiscal refund receipt (refund #%d):"
+msgstr "Посмотреть фискальный чек возврата (возврат №%d):"
+
+#. translators: 1: refund id
+#, php-format
+msgid "Refund receipt (#%d):"
+msgstr "Чек возврата (№%d):"
+
+msgid "View refund receipt"
+msgstr "Посмотреть чек возврата"
+
+#. translators: 1: current fiscal status of the parent order
+#, php-format
+msgid "Cannot auto-register refund: parent order is in fiscal status \"%s\", not \"success\". Wait for the parent sale to register with SRC, then retry this refund."
+msgstr "Не удаётся автоматически зарегистрировать возврат: статус фискализации исходного заказа — «%s», а не «success». Дождитесь регистрации исходной продажи в налоговой и повторите возврат."
+
+msgid "Cannot auto-register refund: parent order has no SRC saleId on record despite being marked successful. The order metadata may be corrupted — re-fiscalise the parent order first."
+msgstr "Не удаётся автоматически зарегистрировать возврат: у исходного заказа нет сохранённого saleId из налоговой, хотя он помечен как успешный. Возможно, метаданные заказа повреждены — сначала заново фискализируйте исходный заказ."
+
+msgid "Cannot auto-register refund: this order already has another refund. The VCR plugin (v0.1) only supports a single full refund per order automatically — additional refunds must be processed manually with SRC."
+msgstr "Не удаётся автоматически зарегистрировать возврат: у этого заказа уже есть другой возврат. Плагин VCR (v0.1) автоматически поддерживает только один полный возврат на заказ — остальные возвраты нужно оформлять в налоговой вручную."
+
+#. translators: 1: refund amount, 2: parent order total
+#, php-format
+msgid "Cannot auto-register refund: refund amount %1$s does not equal order total %2$s. The VCR plugin (v0.1) only supports full refunds automatically — partial refunds must be processed manually with SRC."
+msgstr "Не удаётся автоматически зарегистрировать возврат: сумма возврата %1$s не равна сумме заказа %2$s. Плагин VCR (v0.1) автоматически поддерживает только полные возвраты — частичные возвраты нужно оформлять в налоговой вручную."
+
+msgid "You do not have permission to retry refund registration."
+msgstr "У вас нет прав на повторную регистрацию возврата."
+
+msgid "VCR plugin is not fully configured (missing API key, cashier, or department). Open WooCommerce → Settings → VCR to finish setup, then retry this refund."
+msgstr "Плагин VCR настроен не полностью (нет API-ключа, кассира или отдела). Откройте WooCommerce → Настройки → VCR, завершите настройку и повторите этот возврат."
+
+#. translators: 1: refund id, 2: SRC fiscal serial (or "n/a"), 3: SRC receipt url id
+#, php-format
+msgid "VCR sale refund registered for refund #%1$d. Fiscal: %2$s. Receipt id: %3$s."
+msgstr "Возврат продажи в VCR зарегистрирован для возврата №%1$d. Фискальный номер: %2$s. ID чека: %3$s."
+
+#. translators: 1: technical detail — HTTP status, API request id, server message.
+#, php-format
+msgid "This refund changed after its first registration attempt, so it no longer matches what the tax service was asked to register. Use \"Register refund now\" on the order to register it as it stands. (%1$s)"
+msgstr "Возврат изменился после первой попытки регистрации и больше не совпадает с тем, что было отправлено на регистрацию в налоговую. Нажмите «Зарегистрировать возврат сейчас» в заказе, чтобы зарегистрировать его в текущем виде. (%1$s)"
+
+msgid "Advanced"
+msgstr "Дополнительно"
+
+msgid "Leave both of these empty unless you have a specific reason not to. A normal store never needs either."
+msgstr "Оставьте оба поля пустыми, если у вас нет особой причины их заполнять. Обычному магазину они не нужны."
+
+msgid "Override only for staging or self-hosted VCR deployments. Leave empty to use the production endpoint. Whatever is here receives your API key on every request."
+msgstr "Меняйте только для тестовых стендов или собственных развёртываний VCR. Оставьте пустым, чтобы использовать рабочий адрес. Указанный здесь адрес получает ваш API-ключ при каждом запросе."
+
+msgid "Override department"
+msgstr "Переопределить отдел"
+
+msgid "— use each offer's own department —"
+msgstr "— использовать отдел самой позиции —"
+
+msgid "Leave empty unless you know you need it. Re-saving these settings reloads the list."
+msgstr "Оставьте пустым, если не уверены, что это вам нужно. Список обновляется при повторном сохранении настроек."
+
+msgid "The department sets the tax regime printed on the receipt. Each offer already has one, chosen when you onboarded it in VCR, and orders use it automatically. Picking a department here overrides every line of every order — including offers registered under a different regime. Nothing rejects a mismatch, and a fiscal receipt can only be refunded and reissued, never corrected."
+msgstr "Отдел определяет режим налогообложения, который печатается в чеке. У каждой позиции он уже есть — вы выбрали его, когда заводили позицию в VCR, — и заказы используют его автоматически. Выбранный здесь отдел заменит отдел в каждой строке каждого заказа, включая позиции, зарегистрированные под другим режимом. Несоответствие ничем не блокируется, а фискальный чек можно только вернуть и выдать заново, но не исправить."
+
+msgid "Nothing loaded — see the checklist above"
+msgstr "Ничего не загружено — см. чек-лист выше"
+
+msgid "None on this register yet — see the checklist above"
+msgstr "В этой кассе пока нет — см. чек-лист выше"
+
+msgid "Reconnect to VCR.AM"
+msgstr "Подключить к VCR.AM заново"
+
+msgid "Connect to VCR.AM"
+msgstr "Подключить к VCR.AM"
+
+msgid "Connecting again replaces the stored key. Use this if the current key stopped working, or to move this store to a different cash register."
+msgstr "Повторное подключение заменит сохранённый ключ. Используйте его, если текущий ключ перестал работать или нужно перевести магазин на другую кассу."
+
+msgid "Opens VCR.AM, where you sign in and choose which cash register this store should file receipts to. The key is created for you — there is nothing to copy. You can also paste a key below instead."
+msgstr "Откроется VCR.AM: войдите и выберите кассу, в которой магазин будет регистрировать чеки. Ключ создаётся автоматически — копировать ничего не нужно. Вместо этого можно вставить ключ в поле ниже."
+
+msgid "VCR — Fiscal Receipts for Armenia"
+msgstr "VCR — фискальные чеки для Армении"
+
+msgid "API Key"
+msgstr "API-ключ"
+
+msgid "Your VCR.AM API key. Stored encrypted at rest using your WordPress auth salt; never written to disk in plaintext."
+msgstr "Ваш API-ключ VCR.AM. Хранится в зашифрованном виде с использованием auth-соли вашего WordPress; в открытом виде на диск не записывается."
+
+msgid "Saved — leave empty to keep current key"
+msgstr "Сохранён — оставьте пустым, чтобы не менять ключ"
+
+msgid "Required"
+msgstr "Обязательно"
+
+msgid "— select a cashier —"
+msgstr "— выберите кассира —"
+
+msgid "Every receipt names the cashier who issued it. Re-saving these settings reloads the list."
+msgstr "В каждом чеке указан выдавший его кассир. Список обновляется при повторном сохранении настроек."
+
+msgid "Required before any receipt can be issued."
+msgstr "Без этого нельзя выдать ни одного чека."
+
+msgid "Every receipt line names a catalog item, and a fiscal receipt has to say what kind of thing was sold and under which tax regime. Fill these two in and the plugin creates the catalog item for any product your register has not seen yet, as it files that receipt — nothing to prepare, and nothing to keep in step by hand. Leave them empty and it only references items you onboarded in VCR yourself, refusing orders for anything else. Either way it never rewrites an item that already exists, so a code you refine in VCR stays yours."
+msgstr "Каждая строка чека ссылается на позицию каталога, а в фискальном чеке должно быть указано, что именно продано и под каким режимом налогообложения. Заполните эти два поля — и плагин сам создаст позицию каталога для любого товара, которого касса ещё не видела, прямо при регистрации чека: ничего не нужно готовить заранее и синхронизировать вручную. Если оставить их пустыми, плагин будет ссылаться только на позиции, которые вы сами завели в VCR, и отклонять заказы со всем остальным. В обоих случаях он не переписывает существующие позиции, так что код, уточнённый вами в VCR, останется вашим."
+
+msgid "Classifier code for new catalog items"
+msgstr "Код классификатора для новых позиций каталога"
+
+#. translators: %s: link to the classifier search page, already wrapped in an anchor.
+#, php-format
+msgid "One code for everything this store sells. %s"
+msgstr "Один код на всё, что продаёт магазин. %s"
+
+msgid "Look one up"
+msgstr "Найти код"
+
+msgid "A goods code (ТН ВЭД, digits) or an activity code (КВЭД, like 56.10) — the tax service accepts either on a receipt line. Refine it per item in VCR afterwards if you need to; the plugin will not overwrite what you set there."
+msgstr "Код товара (ТН ВЭД, цифры) или код вида деятельности (КВЭД, например 56.10) — налоговая принимает в строке чека любой из них. При необходимости уточните его для отдельных позиций в VCR; плагин не перезапишет то, что вы там указали."
+
+msgid "Department for new catalog items"
+msgstr "Отдел для новых позиций каталога"
+
+msgid "— select a department —"
+msgstr "— выберите отдел —"
+
+msgid "Which tax regime a newly created catalog item is filed under. A register with only one department needs no answer here."
+msgstr "Под каким режимом налогообложения заводится новая позиция каталога. Для кассы с одним отделом заполнять не нужно."
+
+msgid "This is the item's own department, not an override: existing items keep theirs, and each line is still sold from the department its item carries."
+msgstr "Это собственный отдел позиции, а не переопределение: существующие позиции сохраняют свой отдел, и каждая строка по-прежнему продаётся по отделу своей позиции."
+
+msgid "Shipping SKU"
+msgstr "Артикул доставки"
+
+msgid "Optional. External id of a \"Shipping\" offer you onboarded in VCR, to use instead of the one the plugin would create. Leave empty unless you already have one."
+msgstr "Необязательно. Внешний ID позиции «Доставка», которую вы завели в VCR, — она будет использоваться вместо той, что создал бы плагин. Оставьте пустым, если такой позиции у вас ещё нет."
+
+msgid "Fee SKU"
+msgstr "Артикул комиссии"
+
+msgid "Optional. Same thing for WooCommerce fee lines (handling charges, surcharges)."
+msgstr "Необязательно. То же самое для строк комиссий WooCommerce (плата за обработку, наценки)."
+
+msgid "Cash on delivery"
+msgstr "Оплата при доставке"
+
+msgid "When to issue the fiscal receipt for orders paid in cash on delivery. Orders paid online are unaffected — their receipt is always issued the moment the payment clears."
+msgstr "Когда выдавать фискальный чек по заказам с оплатой наличными при доставке. Заказов с онлайн-оплатой это не касается — чек по ним всегда выдаётся в момент поступления оплаты."
+
+msgid "Issue the receipt"
+msgstr "Выдавать чек"
+
+msgid "When the order is placed"
+msgstr "При оформлении заказа"
+
+msgid "When the order is marked Completed"
+msgstr "Когда заказ переведён в статус «Выполнен»"
+
+msgid "Both are lawful: the law lets a delivery seller issue the receipt in advance, as long as it exists before the goods leave you. Issuing it when the order is placed means a refused delivery needs a refund receipt, because a fiscal receipt can never be corrected. Waiting until Completed avoids that, but an order nobody marks Completed is never fiscalised at all."
+msgstr "Оба варианта законны: закон позволяет продавцу с доставкой выдать чек заранее — главное, чтобы он существовал до того, как товар покинет продавца. Если выдавать чек при оформлении заказа, то при отказе от доставки понадобится чек возврата, потому что фискальный чек исправить нельзя. Ожидание статуса «Выполнен» избавляет от этого, но заказ, который никто не перевёл в «Выполнен», не будет фискализирован вовсе."
+
+msgid "Reconciliation"
+msgstr "Сверка"
+
+msgid "Attach a reference to each fiscal receipt so you can match it back to the WooCommerce order from your VCR dashboard. This note is internal to you — it is never shown to the customer and never sent to the tax authority."
+msgstr "Добавляйте к каждому фискальному чеку пометку, чтобы в панели управления VCR сопоставлять его с заказом WooCommerce. Пометка видна только вам — она не показывается покупателю и не отправляется в налоговую."
+
+msgid "Receipt comment"
+msgstr "Комментарий к чеку"
+
+msgid "WooCommerce order number"
+msgstr "Номер заказа WooCommerce"
+
+msgid "Payment transaction ID"
+msgstr "ID платёжной транзакции"
+
+msgid "Order number + transaction ID"
+msgstr "Номер заказа + ID транзакции"
+
+msgid "No comment"
+msgstr "Без комментария"
+
+msgid "The transaction ID is your payment gateway's own reference (e.g. a Stripe pi_… id) and is only available once the payment has cleared."
+msgstr "ID транзакции — это собственный идентификатор вашего платёжного шлюза (например, pi_… у Stripe); он появляется только после поступления оплаты."
+
+msgid "Connect your store to the VCR.AM gateway. Fiscal receipts (e-HDM) are issued directly to the Armenian State Revenue Committee (SRC) on every paid order."
+msgstr "Подключите магазин к шлюзу VCR.AM. По каждому оплаченному заказу фискальный чек (e-HDM) регистрируется напрямую в налоговой Армении."
+
+msgid "GDPR / data-flow notice: activating this plugin transmits order line items, totals, and payment-method classification (cash / non-cash) to the VCR.AM gateway, which forwards them to the Armenian SRC. Customer name, email, address, and phone number are NOT transmitted. VCR.AM is established in the Republic of Armenia, which is not on the European Commission's adequacy list — when this site is GDPR-subject, the transfer is governed by Standard Contractual Clauses (Commission Implementing Decision (EU) 2021/914)."
+msgstr "Уведомление о GDPR и потоках данных: при включении плагина позиции заказа, итоговые суммы и тип способа оплаты (наличный / безналичный) передаются в шлюз VCR.AM, который пересылает их в Комитет государственных доходов Армении. Имя, адрес электронной почты, адрес и номер телефона покупателя НЕ передаются. VCR.AM учреждён в Республике Армения, которая не входит в утверждённый Европейской комиссией перечень стран с достаточным уровнем защиты; если на сайт распространяется GDPR, передача регулируется Стандартными договорными условиями (Исполнительное решение Комиссии (ЕС) 2021/914)."
+
+#. translators: 1: VCR.AM Privacy Policy URL, 2: VCR.AM Data Processing Addendum URL, 3: Standard Contractual Clauses (Commission Decision) URL
+#, php-format
+msgid "Reference links: %1$s · %2$s · %3$s."
+msgstr "Ссылки: %1$s · %2$s · %3$s."
+
+msgid "VCR.AM Privacy Policy"
+msgstr "Политика конфиденциальности VCR.AM"
+
+msgid "Data Processing Addendum (request from VCR.AM)"
+msgstr "Соглашение об обработке данных (запросите у VCR.AM)"
+
+msgid "Standard Contractual Clauses (EU 2021/914)"
+msgstr "Стандартные договорные условия (ЕС 2021/914)"
+
+msgid "VCR"
+msgstr "VCR"
+
+msgid "General"
+msgstr "Основные"
+
+msgid "VCR base URL rejected:"
+msgstr "Базовый URL VCR отклонён:"

@@ -60,6 +60,7 @@ vcr-am-woocommerce/
 ├── phpunit.xml.dist              ← test harness
 ├── readme.txt                    ← WordPress.org plugin directory readme
 ├── LICENSE                       ← GPL-2.0-or-later (WP.org requirement)
+├── languages/                    ← translation template (.pot) and the Russian and Armenian catalogues (.po)
 ├── src/
 │   ├── Plugin.php                ← bootstrap + wiring (HPOS / Blocks declarations, WC active guard)
 │   ├── Configuration.php         ← every stored option, read through one class
@@ -88,13 +89,23 @@ vcr-am-woocommerce/
 ## Local development
 
 ```bash
-composer check          # full local CI: format + phpstan + tests
+composer check          # full local CI: format + phpstan + tests + translations
 composer test           # Pest test suite
 composer phpstan        # static analysis
 composer format         # apply Pint code style fixes
 composer format:check   # verify code style without writing
 composer strauss        # re-run Strauss (auto-runs after install/update)
+composer i18n:extract   # regenerate languages/*.pot and merge new strings into every .po
+composer i18n:check     # fail on a stale .pot or an incomplete .po
 ```
+
+### Translations
+
+The plugin ships in English, Russian (`ru_RU`) and Armenian (`hy`). It is not hosted on WordPress.org, so no language pack is ever downloaded for it: the catalogues in `languages/` are the only translations a store gets, and the build compiles them into the ZIP.
+
+After adding or changing a string, run `composer i18n:extract`, fill in the entries it added to both `.po` files, and run `composer i18n:check`. CI runs the same check, so a string cannot be merged untranslated. The `.mo` and `.l10n.php` files are build output and are not committed.
+
+WordPress loads these files by itself from 6.8 on. On 6.7 the plugin works and stays in English.
 
 ### End-to-end tests
 
@@ -175,7 +186,8 @@ This plugin follows the same conventions as the rest of the VCR.AM ecosystem:
 | 5 | E2E suite via wp-env + Playwright, against a mock VCR server | ✅ done |
 | 6 | Validate against a live register on a real store — tagged releases and the distributable ZIP are done; nobody has yet run this against a real SRC register | next |
 | 7 | Idempotency key on every submission | ✅ done |
-| 8 | Partial refunds (needs per-item SRC ids from the SDK), B2B buyer, per-product unit, `hy_AM` / `ru_RU` translations, QR code, WordPress.org submission | planned |
+| 8 | Russian and Armenian translations | ✅ done |
+| 9 | Partial refunds (needs per-item SRC ids from the SDK), B2B buyer, per-product unit, QR code, WordPress.org submission | planned |
 
 Deliberately out of scope for now: excise marks (eMark), so shops selling alcohol, tobacco or pharmaceuticals cannot use this plugin yet; prepayment receipts; mixed/split tender.
 

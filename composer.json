@@ -95,29 +95,34 @@
             "@bin-install",
             "@strauss"
         ],
-        "bin-install": "@composer bin strauss install --ansi --no-interaction",
+        "bin-install": "@composer bin all install --ansi --no-interaction",
         "strauss": "@php bin/strauss",
         "test": "pest --colors=always",
         "phpstan": "phpstan analyse --no-progress --memory-limit=1G",
         "format": "pint",
         "format:check": "pint --test",
+        "i18n:extract": "bash bin/i18n extract",
+        "i18n:check": "bash bin/i18n check",
         "check": [
             "@format:check",
             "@phpstan",
-            "@test"
+            "@test",
+            "@i18n:check"
         ],
         "deps:audit": "@composer audit --locked",
         "deps:outdated": "@composer update --dry-run --no-scripts",
         "build:wporg": "bash bin/build-wporg-zip.sh"
     },
     "scripts-descriptions": {
-        "bin-install": "Install Strauss into its isolated composer-bin context (vendor-bin/strauss/vendor/) so its transitive deps don't conflict with the main composer environment (Pest 4 / php-parser 5.x)",
+        "bin-install": "Install the isolated composer-bin contexts: Strauss (vendor-bin/strauss/), whose transitive deps conflict with the main composer environment (Pest 4 / php-parser 5.x), and wp-cli's i18n command (vendor-bin/i18n/)",
+        "i18n:extract": "Regenerate languages/*.pot from the source and merge new strings into every .po — run it after adding or changing a translatable string, then translate what it added",
+        "i18n:check": "Fail when the .pot is out of date, or a .po is incomplete, fuzzy or drops a placeholder",
         "strauss": "Run Strauss to scope production dependencies into vendor-prefixed/, namespacing them under BlobSolutions\\WooCommerceVcrAm\\Vendor\\ to prevent conflicts with other plugins bundling the same libs",
         "test": "Run Pest test suite",
         "phpstan": "Run static analysis at level max + strict rules with WordPress / WooCommerce stubs",
         "format": "Apply Pint code style fixes",
         "format:check": "Verify code style without writing changes",
-        "check": "Run the full local CI pipeline (format + phpstan + test)",
+        "check": "Run the full local CI pipeline (format + phpstan + test + translations)",
         "deps:audit": "Check the LOCK for security advisories. Both --locked forms are deliberate: Strauss deletes every scoped package from vendor/composer/installed.json, so a plain `composer audit` sees the dev tree only and reports all-clear over a vulnerable shipped ZIP",
         "deps:outdated": "List every dependency a fresh resolve would move, production ones included \u2014 `composer outdated` cannot see them for the same reason `composer audit` cannot",
         "build:wporg": "Build a clean WP.org-ready ZIP into dist/ using .distignore as the exclusion list"

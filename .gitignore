@@ -51,3 +51,8 @@ Thumbs.db
 
 # E2E artefacts
 /.wp-env/
+
+# Compiled translations are build output: bin/build-wporg-zip.sh makes them
+# from the .po files, which are the source.
+/languages/*.mo
+/languages/*.l10n.php

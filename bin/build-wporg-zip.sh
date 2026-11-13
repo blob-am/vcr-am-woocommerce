@@ -11,9 +11,11 @@
 #   3. Runs `composer install --no-dev --optimize-autoloader --classmap-authoritative`
 #      inside the staging directory. The post-install hook re-runs Strauss so
 #      vendor-prefixed/ is regenerated against the prod-only dependency tree.
-#   4. Strips the dev-only Strauss tooling (composer-bin, vendor-bin) from
+#   4. Compiles languages/*.po into the .mo and .l10n.php files WordPress
+#      loads.
+#   5. Strips the dev-only Strauss tooling (composer-bin, vendor-bin) from
 #      the staged copy — they're needed *during* install but not at runtime.
-#   5. Zips build/<slug>/ into dist/<slug>.zip.
+#   6. Zips build/<slug>/ into dist/<slug>.zip.
 #
 # Why a shell script and not a composer script: composer scripts run inside
 # the repo's vendor environment, so `composer install --no-dev` would mutate
@@ -158,6 +160,26 @@ echo "==> Regenerating the production autoloader"
         --no-scripts \
         --quiet
 )
+
+# Compile the translations into the staged tree. The .po files are the source
+# and travel with the plugin; the .mo and .l10n.php WordPress actually loads
+# are built here, from them, so a catalogue can never ship out of step with
+# its source. A locale whose compiled file is missing would fall back to
+# English without a word, hence the assertion.
+echo "==> Compiling translations"
+if [[ ! -f "$REPO_ROOT/vendor-bin/i18n/vendor/autoload.php" ]]; then
+    echo "error: i18n bin context missing — run: composer bin i18n install" >&2
+    exit 1
+fi
+"$REPO_ROOT/bin/i18n" compile "$STAGING_DIR/languages"
+for catalogue in "$STAGING_DIR"/languages/*.po; do
+    for compiled in "${catalogue%.po}.mo" "${catalogue%.po}.l10n.php"; do
+        if [[ ! -s "$compiled" ]]; then
+            echo "error: $(basename "$compiled") was not produced" >&2
+            exit 1
+        fi
+    done
+done
 
 # Strauss leaves its bootstrap (bin/strauss) and the bin-installed tooling
 # (vendor-bin/) in place because composer-bin-plugin is a dev dependency and

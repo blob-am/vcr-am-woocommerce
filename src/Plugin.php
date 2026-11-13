@@ -155,13 +155,12 @@ final class Plugin
             return;
         }
 
-        // load_plugin_textdomain() intentionally NOT called here. Since
-        // WP 4.6, plugins hosted on WordPress.org get translations
-        // auto-loaded by core based on the slug + Text Domain header.
-        // Calling it here would just re-do work and trigger a
-        // PluginCheck.CodeAnalysis.DiscouragedFunctions warning.
-        // Self-hosted distributions can drop a .mo into /languages/
-        // and WP will still find it via Domain Path.
+        // load_plugin_textdomain() is intentionally not called. Since
+        // WordPress 6.8 core loads a plugin's translations on first use
+        // from the directory its Domain Path header names, whether or not
+        // the plugin is hosted on WordPress.org, and the catalogues ship
+        // in /languages. On 6.7, the oldest version this plugin accepts,
+        // that lookup does not exist and the interface stays in English.
 
         // Migration handler runs first so any schema/option changes
         // a future version needs are in place before downstream

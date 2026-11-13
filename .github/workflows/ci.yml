@@ -130,3 +130,33 @@ jobs:
         run: composer install --prefer-dist --no-interaction --no-progress
       - name: Run Pest
         run: composer test
+
+  translations:
+    name: Translations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-8.3-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-8.3-
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      # A string added without a translation does not fail anything on its
+      # own: the store shows English in the middle of a Russian screen. This
+      # is the only place that notices.
+      - name: Check the template and the catalogues
+        run: composer i18n:check

@@ -229,7 +229,7 @@ class RefundJob
             // No stale-skip for refunds — the only auto-give-up trigger
             // is exhausting MAX_ATTEMPTS. See class doc-block.
             $this->refundMeta->markFailed($refund, sprintf(
-                /* translators: 1: total attempts, 2: last error */
+                /* translators: 1: total number of attempts, 2: error message from the last attempt. */
                 __('Gave up after %1$d attempts. Last error: %2$s', 'vcr-am-fiscal-receipts'),
                 $attempt,
                 $message,
