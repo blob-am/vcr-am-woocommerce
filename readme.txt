@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.1.13
+Stable tag: 0.1.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -125,6 +125,14 @@ The plugin keeps a journal in a table of its own in your WordPress database (`{p
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.14 =
+* New: **Report a problem**. From the fiscal receipt box on an order, or from the plugin's row on the Plugins screen, the plugin shows a report of what it knows: versions, settings without the API key, the state of the order and its receipt, and its own journal of what happened. Describe what you saw and press **Send to VCR.AM support**, or copy the report or download it. Nothing is sent until you press the button, and the report holds nothing about your customer. `wp vcr report` does the same from a shell.
+* New: the plugin keeps a journal of its own: which order events it saw, whether it queued a receipt and why not when it did not, how each attempt ended, and each call it made to VCR.AM. It is kept for a year in a table of its own and removed when the plugin is uninstalled.
+* New: an order that is still unpaid in WooCommerce and has no receipt now says why in its fiscal receipt box. The store that prompted this had a bank that charged the customer and a payment gateway that never told WooCommerce; the plugin was never asked for a receipt, and nothing on the screen said so.
+* Fixed: the **Test connection** button on the settings screen was missing from every release so far. Its script was left out of the plugin's ZIP.
+* Fixed: refunds are shown on an order the plugin never registered a sale for.
+* Fixed: `wp vcr status` no longer prints a login and password embedded in the base URL.
 
 = 0.1.13 =
 * New: WordPress tells you when a newer version of this plugin is out, the way it does for every other plugin — a notice on the Plugins screen, the changelog behind a link, and an Update button. The plugin is installed from a file rather than from the WordPress directory, so until now nothing told a store a release had happened: the store that prompted this was six versions behind and had no way to know.
