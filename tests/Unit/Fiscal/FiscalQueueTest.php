@@ -19,6 +19,7 @@ beforeEach(function (): void {
     $this->job = Mockery::mock(FiscalJob::class);
     $this->meta = Mockery::mock(FiscalStatusMeta::class);
     $this->journal = Mockery::spy(Journal::class);
+    $this->journal->allows('during')->andReturnUsing(static fn (?int $orderId, callable $job): mixed => $job());
     $this->queue = new FiscalQueue($this->job, $this->meta, $this->journal);
 });
 
@@ -245,4 +246,12 @@ describe('journal', function (): void {
             'reason' => 'Cashier 3 does not exist',
         ]);
     });
+});
+
+it('runs the job inside the order it belongs to, so its API calls are filed there', function (): void {
+    $this->job->allows('run')->andReturn(FiscalJobOutcome::success());
+
+    $this->queue->handle(8402);
+
+    $this->journal->shouldHaveReceived('during')->once()->with(8402, Mockery::type('callable'));
 });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Pairing;
 
 use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Diagnostics\RequestObserver;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterPairingRequestInput;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\PairedRegister;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\PairingRequest;
@@ -33,8 +34,10 @@ class PairingClientFactory
      * @param ?string $integration `User-Agent` product token naming this
      *                             plugin, from {@see \BlobSolutions\WooCommerceVcrAm\IntegrationToken}.
      */
-    public function __construct(private readonly ?string $integration = null)
-    {
+    public function __construct(
+        private readonly ?string $integration = null,
+        private readonly ?RequestObserver $observer = null,
+    ) {
     }
 
     public function create(?string $baseUrl = null): PairingGateway
@@ -48,6 +51,7 @@ class PairingClientFactory
             baseUrl: $baseUrl ?? VcrClient::DEFAULT_BASE_URL,
             httpClient: $guzzle,
             integration: $this->integration,
+            requestObserver: $this->observer,
         );
 
         return new class ($client) implements PairingGateway {

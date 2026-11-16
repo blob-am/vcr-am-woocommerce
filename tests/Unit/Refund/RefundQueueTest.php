@@ -20,6 +20,7 @@ beforeEach(function (): void {
     $this->job = Mockery::mock(RefundJob::class);
     $this->meta = Mockery::mock(RefundStatusMeta::class);
     $this->journal = Mockery::spy(Journal::class);
+    $this->journal->allows('during')->andReturnUsing(static fn (?int $orderId, callable $job): mixed => $job());
     $this->queue = new RefundQueue($this->job, $this->meta, $this->journal);
 });
 
@@ -269,4 +270,15 @@ describe('journal', function (): void {
 
         $this->journal->shouldHaveReceived('record')->once()->with('refund.attempt', null, Mockery::subset(['refund_id' => 123]));
     });
+});
+
+it('runs a refund job inside its parent order, so its API calls are filed there', function (): void {
+    $refund = Mockery::mock(WC_Order_Refund::class);
+    $refund->allows(['get_parent_id' => 8402, 'get_id' => 123]);
+    Functions\when('wc_get_order')->justReturn($refund);
+    $this->job->allows('run')->andReturn(FiscalJobOutcome::success());
+
+    $this->queue->handle(123);
+
+    $this->journal->shouldHaveReceived('during')->once()->with(8402, Mockery::type('callable'));
 });

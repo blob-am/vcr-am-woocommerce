@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm;
 
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Diagnostics\RequestObserver;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\VcrClient;
 use BlobSolutions\WooCommerceVcrAm\Vendor\GuzzleHttp\Client as GuzzleClient;
 
@@ -55,8 +56,10 @@ class VcrClientFactory
      *                             where there is no site to describe — the
      *                             tests — and the SDK then sends only its own.
      */
-    public function __construct(private readonly ?string $integration = null)
-    {
+    public function __construct(
+        private readonly ?string $integration = null,
+        private readonly ?RequestObserver $observer = null,
+    ) {
     }
 
     public function create(
@@ -75,6 +78,7 @@ class VcrClientFactory
             baseUrl: $baseUrl ?? VcrClient::DEFAULT_BASE_URL,
             httpClient: $guzzle,
             integration: $this->integration,
+            requestObserver: $this->observer,
         );
     }
 }

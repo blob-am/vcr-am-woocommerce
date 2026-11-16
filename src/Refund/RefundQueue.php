@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Refund;
 
+use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJobOutcome;
 use BlobSolutions\WooCommerceVcrAm\Journal\DatabaseStore;
 use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use WC_Order_Refund;
@@ -116,13 +117,13 @@ class RefundQueue
             return;
         }
 
-        $outcome = $this->job->run($refundId);
-
         $refund = wc_get_order($refundId);
         // Journal lines are filed under the order the refund belongs to, so
-        // that an order's report tells the whole story. A refund deleted
-        // while its job ran has no order left to file under.
+        // that an order's report tells the whole story. An id that is not a
+        // refund has no order to file under.
         $orderId = $refund instanceof WC_Order_Refund ? $refund->get_parent_id() : null;
+
+        $outcome = $this->journal->during($orderId, fn (): FiscalJobOutcome => $this->job->run($refundId));
 
         $this->journal->record('refund.attempt', $orderId, [
             'refund_id' => $refundId,

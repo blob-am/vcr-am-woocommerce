@@ -170,7 +170,7 @@ class FiscalQueue
             return;
         }
 
-        $outcome = $this->job->run($orderId);
+        $outcome = $this->journal->during($orderId, fn (): FiscalJobOutcome => $this->job->run($orderId));
 
         $this->journal->record('order.attempt', $orderId, [
             'fiscal_status' => $outcome->status->value,

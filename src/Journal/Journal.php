@@ -29,6 +29,9 @@ class Journal
 {
     public const RETENTION_DAYS = 365;
 
+    /** The order whose job is running, if one is. */
+    private ?int $currentOrderId = null;
+
     public function __construct(
         private readonly Store $store,
         private readonly Logger $logger = new Logger(),
@@ -42,10 +45,13 @@ class Journal
      *
      * @param string               $event   Dotted name, e.g. `order.queued`
      * @param array<string, mixed> $data    Facts about the event; masked before storing
+     * @param ?int                 $orderId Defaults to the order whose job is running, see {@see during()}
      * @param ?string              $traceId The server's id of the API call this line is about
      */
     public function record(string $event, ?int $orderId = null, array $data = [], ?string $traceId = null): void
     {
+        $orderId ??= $this->currentOrderId;
+
         try {
             $this->store->append($event, $orderId, $traceId, $this->logger->redactContext($data));
         } catch (StoreException $e) {
@@ -53,6 +59,32 @@ class Journal
                 'event' => $event,
                 'order_id' => $orderId,
             ]);
+        }
+    }
+
+    /**
+     * Run a job for one order, filing under it every line written meanwhile
+     * that names no order of its own.
+     *
+     * The API calls a job makes are journalled from inside the HTTP client,
+     * which has no idea whose receipt it is sending. This is how those lines
+     * end up in that order's report.
+     *
+     * @template T
+     *
+     * @param callable(): T $job
+     *
+     * @return T
+     */
+    public function during(?int $orderId, callable $job): mixed
+    {
+        $previous = $this->currentOrderId;
+        $this->currentOrderId = $orderId;
+
+        try {
+            return $job();
+        } finally {
+            $this->currentOrderId = $previous;
         }
     }
 

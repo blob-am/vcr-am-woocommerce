@@ -48,6 +48,7 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\ItemBuilder;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\OrderListener;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\PaymentMapper;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrarFactory;
+use BlobSolutions\WooCommerceVcrAm\Journal\ApiCallRecorder;
 use BlobSolutions\WooCommerceVcrAm\Journal\DatabaseStore;
 use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use BlobSolutions\WooCommerceVcrAm\Journal\Maintenance as JournalMaintenance;
@@ -197,7 +198,11 @@ final class Plugin
 
         $keyStore = new KeyStore(self::API_KEY_OPTION);
         $config = new Configuration($keyStore);
-        $clientFactory = new VcrClientFactory(IntegrationToken::forPlugin($this->version));
+        $journal = new Journal(new DatabaseStore());
+        (new JournalMaintenance($journal))->register();
+        $apiCalls = new ApiCallRecorder($journal);
+
+        $clientFactory = new VcrClientFactory(IntegrationToken::forPlugin($this->version), $apiCalls);
         $listerFactory = new CashierListerFactory($config, $clientFactory);
         $cashierCatalog = new CashierCatalog($config, $listerFactory);
         $departmentCatalog = new DepartmentCatalog(
@@ -237,10 +242,7 @@ final class Plugin
         // two ends, one testing a key the merchant typed and one fetching a
         // key so they do not have to.
         $pairingSession = new PairingSession();
-        $journal = new Journal(new DatabaseStore());
-        (new JournalMaintenance($journal))->register();
-
-        $pairingClientFactory = new PairingClientFactory(IntegrationToken::forPlugin($this->version));
+        $pairingClientFactory = new PairingClientFactory(IntegrationToken::forPlugin($this->version), $apiCalls);
         // One instance across all three: whichever half of the handshake fails
         // writes the reason, and the notice is what reads it back.
         $pairingFailure = new FailureDetail();
