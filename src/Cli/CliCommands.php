@@ -11,6 +11,7 @@ use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionSummary;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
+use BlobSolutions\WooCommerceVcrAm\Net\UrlCredentials;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundQueue;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
 use WC_Order;
@@ -222,7 +223,7 @@ class CliCommands
 
         $rows = [
             ['key' => 'API key configured', 'value' => $this->configuration->hasCredentials() ? 'yes' : 'no'],
-            ['key' => 'Base URL', 'value' => $this->configuration->baseUrl()],
+            ['key' => 'Base URL', 'value' => UrlCredentials::strip($this->configuration->baseUrl())],
             ['key' => 'Register', 'value' => $this->summary->line($this->probe->state())],
             ['key' => 'Default cashier id', 'value' => (string) ($this->configuration->defaultCashierId() ?? 'unset')],
             ['key' => 'Default department id', 'value' => (string) ($this->configuration->defaultDepartmentId() ?? 'unset')],

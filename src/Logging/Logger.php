@@ -175,7 +175,7 @@ class Logger
     /**
      * Apply email + phone redaction patterns to a free-form string.
      */
-    private function redactString(string $value): string
+    public function redactString(string $value): string
     {
         $redacted = preg_replace(self::EMAIL_PATTERN, '[EMAIL_REDACTED]', $value);
         $redacted = is_string($redacted) ? $redacted : $value;

@@ -10,6 +10,7 @@ use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionSummary;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
+use BlobSolutions\WooCommerceVcrAm\Net\UrlCredentials;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundQueue;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
 
@@ -117,7 +118,7 @@ class SystemStatusReport
             // that into a one-line answer.
             __('HTTP transport', 'vcr-am-fiscal-receipts') => $this->httpTransport(),
             __('API key configured', 'vcr-am-fiscal-receipts') => $this->config->hasCredentials() ? __('Yes', 'vcr-am-fiscal-receipts') : __('No', 'vcr-am-fiscal-receipts'),
-            __('Base URL', 'vcr-am-fiscal-receipts') => $this->stripCredentials($this->config->baseUrl()),
+            __('Base URL', 'vcr-am-fiscal-receipts') => UrlCredentials::strip($this->config->baseUrl()),
             // Which register, straight from the API — this replaced a "Test
             // mode" row that reported an option nothing in the plugin read.
             // Support's first question on any report is whether the store is
@@ -258,39 +259,6 @@ class SystemStatusReport
         }
 
         return __('None — no ext-curl and allow_url_fopen is off; VCR is unreachable from this server', 'vcr-am-fiscal-receipts');
-    }
-
-    /**
-     * Remove `user:pass@` userinfo from a URL before exposing it via
-     * the system-status report. Most installs never have credentials
-     * embedded in the URL, but a misguided admin who pastes
-     * `https://api:secret@vcr.am/...` would otherwise leak the secret
-     * to anyone they paste the System Status report to. Strip
-     * defensively.
-     */
-    private function stripCredentials(string $url): string
-    {
-        $parts = wp_parse_url($url);
-        if ($parts === false || ! isset($parts['scheme'], $parts['host'])) {
-            return $url;
-        }
-
-        if (! isset($parts['user']) && ! isset($parts['pass'])) {
-            return $url;
-        }
-
-        $rebuilt = $parts['scheme'] . '://' . $parts['host'];
-        if (isset($parts['port'])) {
-            $rebuilt .= ':' . $parts['port'];
-        }
-        if (isset($parts['path'])) {
-            $rebuilt .= $parts['path'];
-        }
-        if (isset($parts['query'])) {
-            $rebuilt .= '?' . $parts['query'];
-        }
-
-        return $rebuilt;
     }
 
     /**
