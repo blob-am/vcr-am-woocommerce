@@ -84,6 +84,16 @@ Yes — declared compatible. Works with both the legacy `wp_posts` storage and t
 
 Yes — declared compatible.
 
+= Something went wrong. What do I send to support? =
+
+Open the order and follow **Something wrong? Build a problem report** in the fiscal receipt box, or use **Report a problem** on the plugin's row on the Plugins screen. The page shows a report: plugin, WordPress, WooCommerce and PHP versions, the plugin's settings without the API key, the state of the order and of its receipt, and the plugin's own journal of what happened. It holds nothing about your customer — no name, address, phone number or email.
+
+Nothing is sent from that page. Read the report, then **Copy** it or **Download as a file** and send it to support@vcr.am with a description of what you saw. From a shell, `wp vcr report` and `wp vcr report --order=<id>` print the same report.
+
+= An order is paid at the bank but still "Pending payment", and there is no receipt. Why? =
+
+The plugin requests a receipt when WooCommerce marks the order as paid. If the payment gateway took the money and never told the store, the order stays unpaid as far as WooCommerce knows, and the plugin was never asked. The fiscal receipt box on the order says so. Change the order status to **Processing** and the receipt is registered; then ask the payment gateway's support why its confirmation did not arrive.
+
 == External services ==
 
 This plugin connects to one external service. The connection is made server-to-server from your WordPress installation; no third-party JavaScript is loaded into your customers' browsers.
@@ -102,6 +112,10 @@ For a multi-currency store the plugin also asks this same gateway for the AMD ra
 
 **Service Terms of Use:** https://vcr.am/terms
 **Service Privacy Policy:** https://vcr.am/privacy
+
+= What the plugin keeps on your own site =
+
+The plugin keeps a journal in a table of its own in your WordPress database (`{prefix}vcr_journal`): which order events it saw, whether it queued a receipt and why not when it did not, and how each attempt ended. It is what a problem report is built from. Lines hold order and refund ids, statuses and error messages; email addresses and phone numbers inside an error message are masked before the line is written. A line is deleted after 365 days, and the table is dropped when the plugin is uninstalled. The journal never leaves your site unless you copy a report out of it yourself.
 
 = GDPR / data-transfer notes =
 
