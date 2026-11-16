@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use BlobSolutions\WooCommerceVcrAm\Journal\StoreException;
 use BlobSolutions\WooCommerceVcrAm\Support\ReportBuilder;
 use BlobSolutions\WooCommerceVcrAm\Support\ReportPage;
+use BlobSolutions\WooCommerceVcrAm\Support\ReportUnavailable;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
 
@@ -15,7 +15,6 @@ beforeEach(function (): void {
         fn (array $args, string $url) => $url . '?' . http_build_query($args),
     );
     Functions\when('wp_nonce_url')->alias(fn (string $url, string $action) => $url . '&_wpnonce=' . $action);
-    Functions\when('wp_json_encode')->alias(fn (mixed $value, int $flags = 0) => json_encode($value, $flags));
     Functions\when('wp_die')->alias(function (string $message, string $title = '', array $args = []): never {
         throw new RuntimeException('wp_die:' . ($args['response'] ?? 0));
     });
@@ -77,7 +76,7 @@ it('refuses to render without the capability', function (): void {
 
 it('shows the store report, says nothing is sent, and offers copy and download', function (): void {
     Functions\when('current_user_can')->justReturn(true);
-    $this->builder->expects('build')->with(null)->andReturn(['plugin' => ['version' => '0.2.0'], 'note' => 'Հայերեն']);
+    $this->builder->expects('json')->with(null)->andReturn("{\n    \"version\": \"0.2.0\",\n    \"note\": \"Հայերեն\"\n}");
 
     $html = renderReportPage($this->page);
 
@@ -95,7 +94,7 @@ it('builds the report for the order named in the address', function (): void {
     $_GET['order_id'] = '8402';
     $order = Mockery::mock(WC_Order::class);
     Functions\when('wc_get_order')->alias(fn (int $id) => $id === 8402 ? $order : false);
-    $this->builder->expects('build')->with($order)->andReturn(['order' => ['id' => 8402]]);
+    $this->builder->expects('json')->with($order)->andReturn('{}');
 
     $html = renderReportPage($this->page);
 
@@ -109,7 +108,7 @@ it('falls back to the store report and says so when the order does not exist', f
     Functions\when('current_user_can')->justReturn(true);
     $_GET['order_id'] = '999';
     Functions\when('wc_get_order')->justReturn(false);
-    $this->builder->expects('build')->with(null)->andReturn(['plugin' => []]);
+    $this->builder->expects('json')->with(null)->andReturn('{}');
 
     $html = renderReportPage($this->page);
 
@@ -118,12 +117,12 @@ it('falls back to the store report and says so when the order does not exist', f
 
 it('says why there is no report when the journal cannot be read', function (): void {
     Functions\when('current_user_can')->justReturn(true);
-    $this->builder->allows('build')->andThrow(new StoreException('Journal read failed: table is missing'));
+    $this->builder->allows('json')->andThrow(new ReportUnavailable('The plugin\'s journal could not be read: table is missing'));
 
     $html = renderReportPage($this->page);
 
     expect($html)
-        ->toContain('journal could not be read: Journal read failed: table is missing')
+        ->toContain('The report could not be built. The plugin&#039;s journal could not be read: table is missing')
         ->not->toContain('vcr-report-text');
 });
 

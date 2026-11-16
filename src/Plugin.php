@@ -34,6 +34,7 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\OfferTitleQueue;
 use BlobSolutions\WooCommerceVcrAm\Catalog\OfferTitleSync;
 use BlobSolutions\WooCommerceVcrAm\Catalog\ReceiptNameField;
 use BlobSolutions\WooCommerceVcrAm\Cli\CliCommands;
+use BlobSolutions\WooCommerceVcrAm\Cli\ReportCommand;
 use BlobSolutions\WooCommerceVcrAm\Currency\CurrencyConverter;
 use BlobSolutions\WooCommerceVcrAm\Currency\VcrExchangeRateProvider;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
@@ -313,8 +314,9 @@ final class Plugin
         // OrderMetaBox renders BOTH sale and refund fiscal status — wired
         // after refund meta is constructed so the per-refund block has data.
         (new OrderMetaBox($meta, $refundMeta))->register();
+        $reportBuilder = new ReportBuilder($this->version, $config, $probe, $meta, $refundMeta, $journal);
         (new ReportPage(
-            new ReportBuilder($this->version, $config, $probe, $meta, $refundMeta, $journal),
+            $reportBuilder,
             $this->pluginFile,
             $this->version,
         ))->register();
@@ -357,6 +359,7 @@ final class Plugin
                 new StoreSkuReader($config),
             );
             (new CliCommands($config, $probe, $meta, $queue, $refundMeta, $refundQueue, $coverage))->register();
+            (new ReportCommand($reportBuilder))->register();
         }
 
         $receiptUrlBuilder = new ReceiptUrlBuilder($config, $meta);

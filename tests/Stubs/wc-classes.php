@@ -337,6 +337,11 @@ if (! class_exists('WP_CLI', false)) {
             return true;
         }
 
+        public static function line(string $message = ''): void
+        {
+            echo $message . "\n";
+        }
+
         public static function log(string $message): void
         {
             echo $message . "\n";

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Support;
 
-use BlobSolutions\WooCommerceVcrAm\Journal\StoreException;
 use WC_Order;
 
 if (! defined('ABSPATH')) {
@@ -135,12 +134,12 @@ final class ReportPage
         }
 
         try {
-            $json = $this->encode($order instanceof WC_Order ? $order : null);
-        } catch (StoreException $e) {
+            $json = $this->builder->json($order instanceof WC_Order ? $order : null);
+        } catch (ReportUnavailable $e) {
             echo '<div class="notice notice-error inline"><p>'
                 . esc_html(sprintf(
-                    /* translators: %s: the database error. */
-                    __('The report could not be built because the plugin\'s journal could not be read: %s', 'vcr-am-fiscal-receipts'),
+                    /* translators: %s: the reason, in English. */
+                    __('The report could not be built. %s', 'vcr-am-fiscal-receipts'),
                     $e->getMessage(),
                 ))
                 . '</p></div></div>';
@@ -192,8 +191,8 @@ final class ReportPage
         $order = $orderId === null ? null : wc_get_order($orderId);
 
         try {
-            $json = $this->encode($order instanceof WC_Order ? $order : null);
-        } catch (StoreException $e) {
+            $json = $this->builder->json($order instanceof WC_Order ? $order : null);
+        } catch (ReportUnavailable $e) {
             wp_die(esc_html($e->getMessage()), '', ['response' => 500, 'back_link' => true]);
         }
 
@@ -209,23 +208,6 @@ final class ReportPage
         // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a JSON file download, not HTML; escaping would corrupt it.
         echo $json;
         exit;
-    }
-
-    /**
-     * @throws StoreException
-     */
-    private function encode(?WC_Order $order): string
-    {
-        $json = wp_json_encode(
-            $this->builder->build($order),
-            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
-        );
-
-        if (! is_string($json)) {
-            throw new StoreException('The report could not be encoded as JSON.');
-        }
-
-        return $json;
     }
 
     private function downloadUrl(?int $orderId): string

@@ -899,9 +899,9 @@ msgstr ""
 msgid "This order does not exist. The report below is about the store as a whole."
 msgstr ""
 
-#. translators: %s: the database error.
+#. translators: %s: the reason, in English.
 #, php-format
-msgid "The report could not be built because the plugin's journal could not be read: %s"
+msgid "The report could not be built. %s"
 msgstr ""
 
 msgid "This is everything the plugin knows about the state of this store: versions, settings, the register it is connected to, and its own journal of recent events."

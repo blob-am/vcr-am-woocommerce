@@ -12,6 +12,7 @@ use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use BlobSolutions\WooCommerceVcrAm\Journal\StoreException;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
 use BlobSolutions\WooCommerceVcrAm\Support\ReportBuilder;
+use BlobSolutions\WooCommerceVcrAm\Support\ReportUnavailable;
 use Brain\Monkey\Functions;
 
 beforeEach(function (): void {
@@ -127,4 +128,23 @@ it('fails when the journal cannot be read, instead of reporting an empty one', f
     $this->journal->allows('recent')->andThrow(new StoreException('table is missing'));
 
     expect(fn () => $this->builder->build())->toThrow(StoreException::class);
+});
+
+it('renders the same report as readable JSON, Armenian and slashes intact', function (): void {
+    Functions\when('wp_json_encode')->alias(fn (mixed $value, int $flags = 0) => json_encode($value, $flags));
+    $this->journal->allows('recent')->andReturn([
+        new Entry(1, '2026-11-16 13:14:12', 'order.skipped', null, null, ['reason' => 'Հայերեն']),
+    ]);
+
+    $json = $this->builder->json();
+
+    expect($json)->toContain('Հայերեն')->toContain('"baseUrl": "https://vcr.am/api/v1"')
+        ->and(json_decode($json, true, 512, JSON_THROW_ON_ERROR)['plugin']['version'])->toBe('0.2.0');
+});
+
+it('says the journal is the reason when it cannot be read', function (): void {
+    $this->journal->allows('recent')->andThrow(new StoreException('table is missing'));
+
+    expect(fn () => $this->builder->json())
+        ->toThrow(ReportUnavailable::class, 'journal could not be read: table is missing');
 });

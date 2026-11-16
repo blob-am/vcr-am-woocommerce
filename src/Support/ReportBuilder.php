@@ -10,6 +10,7 @@ use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionSummary;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
 use BlobSolutions\WooCommerceVcrAm\Journal\Entry;
 use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
+use BlobSolutions\WooCommerceVcrAm\Journal\StoreException;
 use BlobSolutions\WooCommerceVcrAm\Logging\Logger;
 use BlobSolutions\WooCommerceVcrAm\Net\UrlCredentials;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
@@ -56,7 +57,7 @@ class ReportBuilder
      *
      * @return array<array-key, mixed>
      *
-     * @throws \BlobSolutions\WooCommerceVcrAm\Journal\StoreException When the journal cannot be read
+     * @throws StoreException When the journal cannot be read
      */
     public function build(?WC_Order $order = null): array
     {
@@ -79,6 +80,32 @@ class ReportBuilder
         );
 
         return $report;
+    }
+
+    /**
+     * The report as the text the merchant reads, copies, saves and sends.
+     *
+     * @throws ReportUnavailable
+     */
+    public function json(?WC_Order $order = null): string
+    {
+        try {
+            $report = $this->build($order);
+        } catch (StoreException $e) {
+            throw new ReportUnavailable(
+                sprintf('The plugin\'s journal could not be read: %s', $e->getMessage()),
+                0,
+                $e,
+            );
+        }
+
+        $json = wp_json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        if (! is_string($json)) {
+            throw new ReportUnavailable('The report could not be encoded as JSON: ' . json_last_error_msg());
+        }
+
+        return $json;
     }
 
     private function freeText(?string $text): ?string
