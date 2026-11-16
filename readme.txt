@@ -88,7 +88,7 @@ Yes — declared compatible.
 
 Open the order and follow **Something wrong? Build a problem report** in the fiscal receipt box, or use **Report a problem** on the plugin's row on the Plugins screen. The page shows a report: plugin, WordPress, WooCommerce and PHP versions, the plugin's settings without the API key, the state of the order and of its receipt, and the plugin's own journal of what happened. It holds nothing about your customer — no name, address, phone number or email.
 
-Nothing is sent from that page. Read the report, then **Copy** it or **Download as a file** and send it to support@vcr.am with a description of what you saw. From a shell, `wp vcr report` and `wp vcr report --order=<id>` print the same report.
+Opening that page sends nothing. Read the report, describe what you saw, and press **Send to VCR.AM support**; you get a reference to quote. Or **Copy** the report or **Download as a file** and email it to support@vcr.am yourself. From a shell, `wp vcr report` and `wp vcr report --order=<id>` print the same report, and adding `--send --message="..."` sends it.
 
 = An order is paid at the bank but still "Pending payment", and there is no receipt. Why? =
 
@@ -108,6 +108,8 @@ For a multi-currency store the plugin also asks this same gateway for the AMD ra
 
 **Why it is sent:** to fulfil the merchant's obligation under Armenian Tax Code Article 380.1 (HO-280-N) and Government Decision 1976-N to issue a fiscal receipt for every taxable sale through a registered electronic Cash Register (e-HDM).
 
+**Problem reports, only when you send one:** the **VCR problem report** screen (and `wp vcr report --send`) can send a diagnostic report to this same gateway. It is sent only when an administrator presses **Send to VCR.AM support** on that screen, after the full report has been shown to them, or runs the command with `--send`. The plugin never sends one on its own, on a schedule, or on an error. What is sent: the text the administrator typed, the contact they entered, plugin, WordPress, WooCommerce and PHP versions, the site address, the plugin's settings without the API key, the state of the order and its receipt, and the plugin's journal of events. No customer name, email, phone number, billing address, or IP address is in it.
+
 **Where data is sent:** `https://vcr.am/api/v1/` (default; configurable in plugin settings).
 
 **Service Terms of Use:** https://vcr.am/terms
@@ -115,7 +117,7 @@ For a multi-currency store the plugin also asks this same gateway for the AMD ra
 
 = What the plugin keeps on your own site =
 
-The plugin keeps a journal in a table of its own in your WordPress database (`{prefix}vcr_journal`): which order events it saw, whether it queued a receipt and why not when it did not, and how each attempt ended. It is what a problem report is built from. Lines hold order and refund ids, statuses and error messages; email addresses and phone numbers inside an error message are masked before the line is written. A line is deleted after 365 days, and the table is dropped when the plugin is uninstalled. The journal never leaves your site unless you copy a report out of it yourself.
+The plugin keeps a journal in a table of its own in your WordPress database (`{prefix}vcr_journal`): which order events it saw, whether it queued a receipt and why not when it did not, and how each attempt ended, and each call it made to VCR.AM (method, path, result, and the server's id of the call; never its contents). It is what a problem report is built from. Lines hold order and refund ids, statuses and error messages; email addresses and phone numbers inside an error message are masked before the line is written. A line is deleted after 365 days, and the table is dropped when the plugin is uninstalled. The journal never leaves your site unless you send or copy a report out of it yourself.
 
 = GDPR / data-transfer notes =
 

@@ -12,10 +12,10 @@ if (! defined('ABSPATH')) {
 
 /**
  * The "Report a problem" screen: shows the merchant the exact report, and lets
- * them copy it or save it as a file.
+ * them send it to VCR.AM support, copy it or save it as a file.
  *
- * Nothing leaves the site from here. The merchant decides what to do with the
- * text, having read it.
+ * Showing it sends nothing. {@see SendForm} is the only way out of the site,
+ * and it takes a press of its button.
  */
 final class ReportPage
 {
@@ -33,6 +33,7 @@ final class ReportPage
 
     public function __construct(
         private readonly ReportBuilder $builder,
+        private readonly SendForm $sendForm,
         private readonly string $pluginFile,
         private readonly string $version,
     ) {
@@ -126,6 +127,8 @@ final class ReportPage
         echo '<div class="wrap">';
         echo '<h1>' . esc_html(__('VCR problem report', 'vcr-am-fiscal-receipts')) . '</h1>';
 
+        $this->sendForm->renderNotice();
+
         if ($orderId !== null && ! $order instanceof WC_Order) {
             echo '<div class="notice notice-error inline"><p>'
                 . esc_html(__('This order does not exist. The report below is about the store as a whole.', 'vcr-am-fiscal-receipts'))
@@ -153,12 +156,16 @@ final class ReportPage
                 : __('This is everything the plugin knows about this order: its state, the receipt\'s state, and the plugin\'s own journal of what happened to it.', 'vcr-am-fiscal-receipts'),
         ) . '</p>';
         echo '<p>' . esc_html(__(
-            'It holds nothing about your customer: no name, address, phone number or email. Nothing is sent anywhere from this page. Read it, then copy it or save it and send it to support@vcr.am together with a description of what went wrong.',
+            'It holds nothing about your customer: no name, address, phone number or email. Nothing leaves this site unless you send it yourself: read the report first.',
             'vcr-am-fiscal-receipts',
         )) . '</p>';
 
+        $this->sendForm->render($orderId);
+
+        echo '<h2>' . esc_html(__('The report', 'vcr-am-fiscal-receipts')) . '</h2>';
+
         printf(
-            '<p><button type="button" class="button button-primary" id="vcr-report-copy">%s</button> '
+            '<p><button type="button" class="button" id="vcr-report-copy">%s</button> '
             . '<a class="button" href="%s">%s</a> '
             . '<span id="vcr-report-status" role="status" aria-live="polite"></span></p>',
             esc_html(__('Copy', 'vcr-am-fiscal-receipts')),

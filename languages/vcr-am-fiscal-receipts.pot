@@ -910,7 +910,10 @@ msgstr ""
 msgid "This is everything the plugin knows about this order: its state, the receipt's state, and the plugin's own journal of what happened to it."
 msgstr ""
 
-msgid "It holds nothing about your customer: no name, address, phone number or email. Nothing is sent anywhere from this page. Read it, then copy it or save it and send it to support@vcr.am together with a description of what went wrong."
+msgid "It holds nothing about your customer: no name, address, phone number or email. Nothing leaves this site unless you send it yourself: read the report first."
+msgstr ""
+
+msgid "The report"
 msgstr ""
 
 msgid "Copy"
@@ -919,5 +922,52 @@ msgstr ""
 msgid "Download as a file"
 msgstr ""
 
-msgid "The report"
+#. translators: %s: the report's reference, e.g. 7K4M-2QXD.
+#, php-format
+msgid "The report was sent to VCR.AM support. Its reference is %s: quote it if you write to us about this."
+msgstr ""
+
+msgid "Nothing was sent. You can still copy the report below and email it to support@vcr.am."
+msgstr ""
+
+msgid "Send it to VCR.AM support"
+msgstr ""
+
+msgid "This store is not connected to a register yet, so the report cannot be sent from here. Copy it or download it, and email it to support@vcr.am with a description of what went wrong."
+msgstr ""
+
+msgid "Pressing the button sends the report below, together with what you write here, to VCR.AM (vcr.am), under this store's register. Nothing is sent until you press it."
+msgstr ""
+
+msgid "What happened, and what did you expect?"
+msgstr ""
+
+msgid "Where should we answer? (email, phone or Telegram)"
+msgstr ""
+
+msgid "Send to VCR.AM support"
+msgstr ""
+
+msgid "Describe what happened before sending."
+msgstr ""
+
+msgid "This store is not connected to a register."
+msgstr ""
+
+msgid "The report could not be built."
+msgstr ""
+
+msgid "This register has sent too many reports in the last hour."
+msgstr ""
+
+msgid "The report is too large for VCR.AM to accept."
+msgstr ""
+
+msgid "VCR.AM did not accept the report. The reason is in the journal below."
+msgstr ""
+
+msgid "VCR.AM could not be reached from this server."
+msgstr ""
+
+msgid "You do not have permission to send this report."
 msgstr ""

@@ -78,6 +78,10 @@ use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\SettingsPage;
 use BlobSolutions\WooCommerceVcrAm\Support\ReportBuilder;
 use BlobSolutions\WooCommerceVcrAm\Support\ReportPage;
+use BlobSolutions\WooCommerceVcrAm\Support\ReportSender;
+use BlobSolutions\WooCommerceVcrAm\Support\ReportSubmitterFactory;
+use BlobSolutions\WooCommerceVcrAm\Support\SendForm;
+use BlobSolutions\WooCommerceVcrAm\Support\SendHandler;
 use BlobSolutions\WooCommerceVcrAm\Update\UpdateChecker;
 
 /**
@@ -319,8 +323,16 @@ final class Plugin
         // after refund meta is constructed so the per-refund block has data.
         (new OrderMetaBox($meta, $refundMeta))->register();
         $reportBuilder = new ReportBuilder($this->version, $config, $probe, $meta, $refundMeta, $journal);
+        $reportSender = new ReportSender(
+            $config,
+            $reportBuilder,
+            new ReportSubmitterFactory($config, $clientFactory),
+            $journal,
+        );
+        (new SendHandler($reportSender))->register();
         (new ReportPage(
             $reportBuilder,
+            new SendForm($config),
             $this->pluginFile,
             $this->version,
         ))->register();
@@ -363,7 +375,7 @@ final class Plugin
                 new StoreSkuReader($config),
             );
             (new CliCommands($config, $probe, $meta, $queue, $refundMeta, $refundQueue, $coverage))->register();
-            (new ReportCommand($reportBuilder))->register();
+            (new ReportCommand($reportBuilder, $reportSender))->register();
         }
 
         $receiptUrlBuilder = new ReceiptUrlBuilder($config, $meta);

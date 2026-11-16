@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Cli;
 
 use BlobSolutions\WooCommerceVcrAm\Support\ReportBuilder;
+use BlobSolutions\WooCommerceVcrAm\Support\ReportSender;
 use BlobSolutions\WooCommerceVcrAm\Support\ReportUnavailable;
 use WC_Order;
 use WP_CLI;
@@ -23,6 +24,7 @@ final class ReportCommand
 {
     public function __construct(
         private readonly ReportBuilder $builder,
+        private readonly ReportSender $sender,
     ) {
     }
 
@@ -36,7 +38,9 @@ final class ReportCommand
     }
 
     /**
-     * Print a problem report as JSON. Nothing is sent anywhere.
+     * Print a problem report as JSON, or send it to VCR.AM support.
+     *
+     * Without --send nothing leaves the site.
      *
      * The report describes the plugin, the site, the settings and the
      * plugin's own journal. It holds nothing about customers.
@@ -47,10 +51,21 @@ final class ReportCommand
      * : Report on this order: its state, its receipt's state, and the
      * journal lines that belong to it.
      *
+     * [--send]
+     * : Send the report to VCR.AM support instead of printing it. Needs
+     * --message.
+     *
+     * [--message=<text>]
+     * : What happened and what you expected. Sent with the report.
+     *
+     * [--contact=<text>]
+     * : Where support should answer: an email, a phone or a Telegram name.
+     *
      * ## EXAMPLES
      *
      *     wp vcr report > vcr-report.json
      *     wp vcr report --order=8402
+     *     wp vcr report --order=8402 --send --message="Paid at the bank, no receipt"
      *
      * @param array<int, string>    $args
      * @param array<string, string> $assoc
@@ -79,6 +94,12 @@ final class ReportCommand
             $order = $found;
         }
 
+        if (isset($assoc['send'])) {
+            $this->send($order, $assoc['message'] ?? '', $assoc['contact'] ?? null);
+
+            return;
+        }
+
         try {
             $json = $this->builder->json($order);
         } catch (ReportUnavailable $e) {
@@ -88,5 +109,28 @@ final class ReportCommand
         }
 
         WP_CLI::line($json);
+    }
+
+    private function send(?WC_Order $order, string $message, ?string $contact): void
+    {
+        if (trim($message) === '') {
+            WP_CLI::error('--send needs --message="what happened and what you expected".');
+
+            return;
+        }
+
+        $outcome = $this->sender->send($order, $message, $contact);
+
+        if ($outcome->reference === null) {
+            WP_CLI::error(sprintf(
+                'The report was not sent (%s)%s',
+                $outcome->problem->value ?? 'unknown',
+                $outcome->detail === null ? '.' : ': ' . $outcome->detail,
+            ));
+
+            return;
+        }
+
+        WP_CLI::success(sprintf('Sent to VCR.AM support. Reference: %s', $outcome->reference));
     }
 }

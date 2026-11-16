@@ -8,7 +8,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "POT-Creation-Date: 2026-11-13T00:00:00+00:00\n"
-"PO-Revision-Date: 2026-11-16T13:38:55+00:00\n"
+"PO-Revision-Date: 2026-11-16T14:34:16+00:00\n"
 "Language: ru_RU\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
 "X-Generator: WP-CLI 2.12.0\n"
@@ -914,8 +914,11 @@ msgstr "Здесь всё, что плагин знает о состоянии 
 msgid "This is everything the plugin knows about this order: its state, the receipt's state, and the plugin's own journal of what happened to it."
 msgstr "Здесь всё, что плагин знает об этом заказе: его состояние, состояние чека и журнал плагина о том, что с заказом происходило."
 
-msgid "It holds nothing about your customer: no name, address, phone number or email. Nothing is sent anywhere from this page. Read it, then copy it or save it and send it to support@vcr.am together with a description of what went wrong."
-msgstr "В отчёте нет ничего о вашем покупателе: ни имени, ни адреса, ни телефона, ни почты. С этой страницы никуда ничего не отправляется. Прочитайте отчёт, затем скопируйте или сохраните его и пришлите на support@vcr.am вместе с описанием того, что пошло не так."
+msgid "It holds nothing about your customer: no name, address, phone number or email. Nothing leaves this site unless you send it yourself: read the report first."
+msgstr "В отчёте нет ничего о вашем покупателе: ни имени, ни адреса, ни телефона, ни почты. С сайта ничего не уходит, пока вы сами не отправите отчёт: сначала прочитайте его."
+
+msgid "The report"
+msgstr "Отчёт"
 
 msgid "Copy"
 msgstr "Скопировать"
@@ -923,5 +926,52 @@ msgstr "Скопировать"
 msgid "Download as a file"
 msgstr "Скачать файлом"
 
-msgid "The report"
-msgstr "Отчёт"
+#. translators: %s: the report's reference, e.g. 7K4M-2QXD.
+#, php-format
+msgid "The report was sent to VCR.AM support. Its reference is %s: quote it if you write to us about this."
+msgstr "Отчёт отправлен в поддержку VCR.AM. Его номер — %s: назовите его, если будете писать нам об этом."
+
+msgid "Nothing was sent. You can still copy the report below and email it to support@vcr.am."
+msgstr "Ничего не отправлено. Отчёт ниже можно скопировать и прислать на support@vcr.am."
+
+msgid "Send it to VCR.AM support"
+msgstr "Отправить в поддержку VCR.AM"
+
+msgid "This store is not connected to a register yet, so the report cannot be sent from here. Copy it or download it, and email it to support@vcr.am with a description of what went wrong."
+msgstr "Магазин ещё не подключён к кассе, поэтому отправить отчёт отсюда нельзя. Скопируйте или скачайте его и пришлите на support@vcr.am с описанием того, что пошло не так."
+
+msgid "Pressing the button sends the report below, together with what you write here, to VCR.AM (vcr.am), under this store's register. Nothing is sent until you press it."
+msgstr "Кнопка отправляет в VCR.AM (vcr.am) отчёт ниже и то, что вы напишете здесь, от имени кассы этого магазина. Пока вы её не нажали, ничего не отправляется."
+
+msgid "What happened, and what did you expect?"
+msgstr "Что произошло и чего вы ожидали?"
+
+msgid "Where should we answer? (email, phone or Telegram)"
+msgstr "Куда вам ответить? (почта, телефон или Telegram)"
+
+msgid "Send to VCR.AM support"
+msgstr "Отправить в поддержку VCR.AM"
+
+msgid "Describe what happened before sending."
+msgstr "Перед отправкой опишите, что произошло."
+
+msgid "This store is not connected to a register."
+msgstr "Магазин не подключён к кассе."
+
+msgid "The report could not be built."
+msgstr "Отчёт не удалось собрать."
+
+msgid "This register has sent too many reports in the last hour."
+msgstr "С этой кассы за последний час отправлено слишком много отчётов."
+
+msgid "The report is too large for VCR.AM to accept."
+msgstr "Отчёт слишком велик, VCR.AM его не примет."
+
+msgid "VCR.AM did not accept the report. The reason is in the journal below."
+msgstr "VCR.AM не принял отчёт. Причина записана в журнале ниже."
+
+msgid "VCR.AM could not be reached from this server."
+msgstr "С этого сервера не удалось связаться с VCR.AM."
+
+msgid "You do not have permission to send this report."
+msgstr "У вас нет прав на отправку этого отчёта."

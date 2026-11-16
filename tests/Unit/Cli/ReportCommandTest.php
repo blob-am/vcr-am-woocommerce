@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 use BlobSolutions\WooCommerceVcrAm\Cli\ReportCommand;
 use BlobSolutions\WooCommerceVcrAm\Support\ReportBuilder;
+use BlobSolutions\WooCommerceVcrAm\Support\ReportSender;
 use BlobSolutions\WooCommerceVcrAm\Support\ReportUnavailable;
+use BlobSolutions\WooCommerceVcrAm\Support\SendOutcome;
+use BlobSolutions\WooCommerceVcrAm\Support\SendProblem;
 use Brain\Monkey\Functions;
 
 beforeEach(function (): void {
     $this->builder = Mockery::mock(ReportBuilder::class);
-    $this->command = new ReportCommand($this->builder);
+    $this->sender = Mockery::mock(ReportSender::class);
+    $this->command = new ReportCommand($this->builder, $this->sender);
 });
 
 function runReportCommand(ReportCommand $command, array $assoc): string
@@ -59,4 +63,38 @@ it('fails with the reason when the report cannot be built', function (): void {
 
     expect(fn () => runReportCommand($this->command, []))
         ->toThrow(RuntimeException::class, 'journal could not be read: gone');
+});
+
+it('sends nothing unless asked to', function (): void {
+    $this->builder->allows('json')->andReturn('{}');
+    $this->sender->expects('send')->never();
+
+    runReportCommand($this->command, ['message' => 'no receipt']);
+});
+
+it('sends the report with the message and prints the reference', function (): void {
+    $this->sender->expects('send')->with(null, 'Paid, no receipt', 'owner@shop.example')
+        ->andReturn(SendOutcome::sent('7K4M-2QXD'));
+
+    $output = runReportCommand($this->command, [
+        'send' => true,
+        'message' => 'Paid, no receipt',
+        'contact' => 'owner@shop.example',
+    ]);
+
+    expect($output)->toContain('Reference: 7K4M-2QXD');
+});
+
+it('refuses to send without a message', function (): void {
+    $this->sender->expects('send')->never();
+
+    expect(fn () => runReportCommand($this->command, ['send' => true]))
+        ->toThrow(RuntimeException::class, '--send needs --message');
+});
+
+it('fails with the reason when the report was not accepted', function (): void {
+    $this->sender->allows('send')->andReturn(SendOutcome::failed(SendProblem::TooManyReports, 'Too many reports'));
+
+    expect(fn () => runReportCommand($this->command, ['send' => true, 'message' => 'x']))
+        ->toThrow(RuntimeException::class, 'not sent (too_many_reports): Too many reports');
 });

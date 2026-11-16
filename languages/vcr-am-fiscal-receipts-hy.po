@@ -8,7 +8,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "POT-Creation-Date: 2026-11-13T00:00:00+00:00\n"
-"PO-Revision-Date: 2026-11-16T13:38:55+00:00\n"
+"PO-Revision-Date: 2026-11-16T14:34:16+00:00\n"
 "Language: hy\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: WP-CLI 2.12.0\n"
@@ -911,8 +911,11 @@ msgstr "Այստեղ այն ամենն է, ինչ խրվակը գիտի խանո
 msgid "This is everything the plugin knows about this order: its state, the receipt's state, and the plugin's own journal of what happened to it."
 msgstr "Այստեղ այն ամենն է, ինչ խրվակը գիտի այս պատվերի մասին՝ դրա վիճակը, կտրոնի վիճակը և խրվակի մատյանը՝ պատվերի հետ կատարվածի մասին։"
 
-msgid "It holds nothing about your customer: no name, address, phone number or email. Nothing is sent anywhere from this page. Read it, then copy it or save it and send it to support@vcr.am together with a description of what went wrong."
-msgstr "Հաշվետվությունը ձեր գնորդի մասին ոչինչ չի պարունակում՝ ո՛չ անուն, ո՛չ հասցե, ո՛չ հեռախոսահամար, ո՛չ էլ. փոստ։ Այս էջից ոչինչ ոչ մի տեղ չի ուղարկվում։ Կարդացեք այն, ապա պատճենեք կամ պահպանեք և ուղարկեք support@vcr.am հասցեին՝ նկարագրելով, թե ինչն է սխալ գնացել։"
+msgid "It holds nothing about your customer: no name, address, phone number or email. Nothing leaves this site unless you send it yourself: read the report first."
+msgstr "Հաշվետվությունը ձեր գնորդի մասին ոչինչ չի պարունակում՝ ո՛չ անուն, ո՛չ հասցե, ո՛չ հեռախոսահամար, ո՛չ էլ. փոստ։ Կայքից ոչինչ դուրս չի գալիս, քանի դեռ ինքներդ չեք ուղարկել հաշվետվությունը. նախ կարդացեք այն։"
+
+msgid "The report"
+msgstr "Հաշվետվություն"
 
 msgid "Copy"
 msgstr "Պատճենել"
@@ -920,5 +923,52 @@ msgstr "Պատճենել"
 msgid "Download as a file"
 msgstr "Ներբեռնել որպես ֆայլ"
 
-msgid "The report"
-msgstr "Հաշվետվություն"
+#. translators: %s: the report's reference, e.g. 7K4M-2QXD.
+#, php-format
+msgid "The report was sent to VCR.AM support. Its reference is %s: quote it if you write to us about this."
+msgstr "Հաշվետվությունն ուղարկվեց VCR.AM-ի աջակցությանը։ Դրա համարն է %s. նշեք այն, եթե այս հարցով գրեք մեզ։"
+
+msgid "Nothing was sent. You can still copy the report below and email it to support@vcr.am."
+msgstr "Ոչինչ չի ուղարկվել։ Ստորև բերված հաշվետվությունը կարող եք պատճենել և ուղարկել support@vcr.am հասցեին։"
+
+msgid "Send it to VCR.AM support"
+msgstr "Ուղարկել VCR.AM-ի աջակցությանը"
+
+msgid "This store is not connected to a register yet, so the report cannot be sent from here. Copy it or download it, and email it to support@vcr.am with a description of what went wrong."
+msgstr "Խանութը դեռ միացված չէ դրամարկղին, ուստի հաշվետվությունն այստեղից հնարավոր չէ ուղարկել։ Պատճենեք կամ ներբեռնեք այն և ուղարկեք support@vcr.am հասցեին՝ նկարագրելով, թե ինչն է սխալ գնացել։"
+
+msgid "Pressing the button sends the report below, together with what you write here, to VCR.AM (vcr.am), under this store's register. Nothing is sent until you press it."
+msgstr "Կոճակը VCR.AM-ին (vcr.am) ուղարկում է ստորև բերված հաշվետվությունը և այն, ինչ կգրեք այստեղ՝ այս խանութի դրամարկղի անունից։ Քանի դեռ չեք սեղմել այն, ոչինչ չի ուղարկվում։"
+
+msgid "What happened, and what did you expect?"
+msgstr "Ի՞նչ է տեղի ունեցել և ի՞նչ էիք ակնկալում։"
+
+msgid "Where should we answer? (email, phone or Telegram)"
+msgstr "Որտե՞ղ պատասխանենք ձեզ (էլ. փոստ, հեռախոս կամ Telegram)"
+
+msgid "Send to VCR.AM support"
+msgstr "Ուղարկել VCR.AM-ի աջակցությանը"
+
+msgid "Describe what happened before sending."
+msgstr "Ուղարկելուց առաջ նկարագրեք, թե ինչ է տեղի ունեցել։"
+
+msgid "This store is not connected to a register."
+msgstr "Խանութը միացված չէ դրամարկղին։"
+
+msgid "The report could not be built."
+msgstr "Հաշվետվությունը չհաջողվեց կազմել։"
+
+msgid "This register has sent too many reports in the last hour."
+msgstr "Այս դրամարկղից վերջին մեկ ժամում չափազանց շատ հաշվետվություն է ուղարկվել։"
+
+msgid "The report is too large for VCR.AM to accept."
+msgstr "Հաշվետվությունը չափազանց մեծ է, VCR.AM-ը այն չի ընդունի։"
+
+msgid "VCR.AM did not accept the report. The reason is in the journal below."
+msgstr "VCR.AM-ը չընդունեց հաշվետվությունը։ Պատճառը գրանցված է ստորև բերված մատյանում։"
+
+msgid "VCR.AM could not be reached from this server."
+msgstr "Այս սերվերից չհաջողվեց կապվել VCR.AM-ի հետ։"
+
+msgid "You do not have permission to send this report."
+msgstr "Դուք այս հաշվետվությունն ուղարկելու թույլտվություն չունեք։"

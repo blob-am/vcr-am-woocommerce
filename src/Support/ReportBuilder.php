@@ -55,7 +55,7 @@ class ReportBuilder
     /**
      * @param ?WC_Order $order The order the report is about; null for a report about the store
      *
-     * @return array<array-key, mixed>
+     * @return array<string, mixed>
      *
      * @throws StoreException When the journal cannot be read
      */
