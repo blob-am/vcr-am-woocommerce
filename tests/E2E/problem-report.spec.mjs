@@ -51,7 +51,7 @@ test.describe('VCR problem report', () => {
 
         await box.getByRole('link', { name: 'Something wrong? Build a problem report' }).click();
         await expect(page.getByRole('heading', { name: 'VCR problem report' })).toBeVisible();
-        await expect(page.locator('body')).toContainText('Nothing is sent anywhere from this page');
+        await expect(page.locator('body')).toContainText('Nothing is sent until you press it');
 
         const { text, report } = await readReport(page, orderId);
 
@@ -126,5 +126,47 @@ test.describe('VCR problem report', () => {
         const printed = JSON.parse(await wpCli(['vcr', 'report', `--order=${orderId}`]));
 
         expect({ ...printed, generatedAt: null }).toEqual({ ...report, generatedAt: null });
+    });
+
+    test('sending takes a press, and what is sent has no buyer in it', async ({ page }) => {
+        const orderId = await evalFile('create-unpaid-order.php');
+        await wpCli(['wc', 'shop_order', 'update', orderId, '--status=processing', '--user=admin']);
+        await wpCli(['action-scheduler', 'run', '--hooks=vcr_fiscalize_order', '--force']);
+
+        const { report } = await readReport(page, orderId);
+        const reportsSent = async () =>
+            (await getMockLog()).filter((entry) => entry.url === '/api/v1/support/reports');
+
+        // Reading the report has sent nothing.
+        expect(await reportsSent()).toHaveLength(0);
+
+        await page.fill('#vcr-report-message', 'The customer paid at the bank and no receipt came out.');
+        await page.fill('#vcr-report-contact', 'owner@shop.example');
+        await page.click('#vcr-report-send');
+
+        await expect(page.locator('.notice-success')).toContainText('7K4M-2QXD');
+
+        const sent = await reportsSent();
+        expect(sent).toHaveLength(1);
+
+        const body = sent[0].body;
+        expect(body.message).toBe('The customer paid at the bank and no receipt came out.');
+        expect(body.contact).toBe('owner@shop.example');
+        expect(body.context.order.id).toBe(Number(orderId));
+        expect(body.context.plugin).toEqual(report.plugin);
+
+        // The sale call's id is handed over, so support starts from it.
+        const saleCall = report.journal.find((line) => line.event === 'api.call' && line.data.path === '/sales');
+        expect(body.traceIds).toContain(saleCall.traceId);
+
+        const raw = JSON.stringify(body);
+        for (const detail of BUYER_DETAILS) {
+            expect(raw).not.toContain(detail);
+        }
+
+        // And the order's journal now says a report went out.
+        const after = await readReport(page, orderId);
+        const line = after.report.journal.find((entry) => entry.event === 'report.sent');
+        expect(line.data.reference).toBe('7K4M-2QXD');
     });
 });

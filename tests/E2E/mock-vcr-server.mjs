@@ -423,6 +423,10 @@ async function handleRequest(req, res) {
         return res.end();
     }
 
+    if (req.url === '/api/v1/support/reports' && req.method === 'POST') {
+        return jsonResponse(res, 201, { reference: '7K4M-2QXD', createdAt: new Date().toISOString() });
+    }
+
     if (req.url === '/api/v1/sales' && req.method === 'POST') {
         const plan = responsePlan.registerSale;
         return jsonResponse(res, plan.status, plan.body);
