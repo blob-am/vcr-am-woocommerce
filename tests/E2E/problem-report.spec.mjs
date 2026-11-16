@@ -86,6 +86,14 @@ test.describe('VCR problem report', () => {
         expect(report.journal.find((line) => line.event === 'order.attempt').data.fiscal_status).toBe('success');
         expect(report.journal.every((line) => line.orderId === Number(orderId))).toBe(true);
 
+        // The call that registered the sale is in the order's journal, under
+        // the id the server answered with: that id is what support looks up.
+        const saleCall = report.journal.find(
+            (line) => line.event === 'api.call' && line.data.path === '/sales',
+        );
+        expect(saleCall.data).toMatchObject({ method: 'POST', status: 200, failure: null });
+        expect(saleCall.traceId).toMatch(/^[0-9a-f]{32}$/);
+
         for (const detail of BUYER_DETAILS) {
             expect(text).not.toContain(detail);
         }

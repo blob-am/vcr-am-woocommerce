@@ -18,6 +18,7 @@
  * Not exposed beyond localhost. Don't run in production.
  */
 
+import { randomBytes } from 'node:crypto';
 import http from 'node:http';
 
 const PORT = Number(process.env.MOCK_VCR_PORT ?? 9876);
@@ -211,6 +212,8 @@ const pairingRequests = new Map();
 function jsonResponse(res, status, body) {
     res.statusCode = status;
     res.setHeader('Content-Type', 'application/json');
+    // The real API names every response; the plugin journals the name.
+    res.setHeader('VCR-Trace-Id', randomBytes(16).toString('hex'));
     res.end(JSON.stringify(body));
 }
 

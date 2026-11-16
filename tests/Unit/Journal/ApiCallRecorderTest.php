@@ -38,7 +38,7 @@ function attempt(?int $status, ?string $traceId, ?string $failure = null): Reque
     return new RequestAttempt(
         startedAt: new DateTimeImmutable('2026-11-16T14:00:00Z'),
         method: 'POST',
-        path: '/api/v1/sales',
+        path: '/sales',
         durationMs: 412,
         statusCode: $status,
         traceId: $traceId,
@@ -57,7 +57,7 @@ it('writes a call as one line carrying the trace id', function (): void {
         'event' => 'api.call',
         'orderId' => null,
         'traceId' => '640e22a83ff5df99b8bda3c661e781cd',
-        'data' => ['method' => 'POST', 'path' => '/api/v1/sales', 'status' => 200, 'duration_ms' => 412, 'failure' => null],
+        'data' => ['method' => 'POST', 'path' => '/sales', 'status' => 200, 'duration_ms' => 412, 'failure' => null],
     ]]);
 });
 
