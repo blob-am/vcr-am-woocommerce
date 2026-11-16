@@ -8,7 +8,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "POT-Creation-Date: 2026-11-13T00:00:00+00:00\n"
-"PO-Revision-Date: 2026-11-13T11:46:10+00:00\n"
+"PO-Revision-Date: 2026-11-16T13:14:26+00:00\n"
 "Language: ru_RU\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
 "X-Generator: WP-CLI 2.12.0\n"
@@ -101,6 +101,9 @@ msgstr "Заказ недоступен."
 
 msgid "Not yet fiscalised. The plugin will queue this order automatically once payment completes."
 msgstr "Ещё не фискализирован. Плагин поставит заказ в очередь автоматически, как только пройдёт оплата."
+
+msgid "WooCommerce has not been told that this order is paid, so no receipt was requested. If the customer has in fact paid, the payment gateway did not report it back to the store: change the order status to \"Processing\" and the receipt will be registered."
+msgstr "WooCommerce не получил сообщения об оплате этого заказа, поэтому чек не запрашивался. Если покупатель на самом деле заплатил, значит, платёжный шлюз не сообщил об этом магазину: переведите заказ в статус «Обработка», и чек будет зарегистрирован."
 
 msgid "Status:"
 msgstr "Статус:"

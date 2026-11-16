@@ -100,6 +100,9 @@ msgstr ""
 msgid "Not yet fiscalised. The plugin will queue this order automatically once payment completes."
 msgstr ""
 
+msgid "WooCommerce has not been told that this order is paid, so no receipt was requested. If the customer has in fact paid, the payment gateway did not report it back to the store: change the order status to \"Processing\" and the receipt will be registered."
+msgstr ""
+
 msgid "Status:"
 msgstr ""
 
