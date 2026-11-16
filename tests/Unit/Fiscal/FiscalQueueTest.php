@@ -9,6 +9,7 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJobOutcome;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
+use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
 use Mockery;
@@ -17,7 +18,8 @@ use WC_Order;
 beforeEach(function (): void {
     $this->job = Mockery::mock(FiscalJob::class);
     $this->meta = Mockery::mock(FiscalStatusMeta::class);
-    $this->queue = new FiscalQueue($this->job, $this->meta);
+    $this->journal = Mockery::spy(Journal::class);
+    $this->queue = new FiscalQueue($this->job, $this->meta, $this->journal);
 });
 
 it('register hooks the action handler on the right hook', function (): void {
@@ -36,6 +38,8 @@ it('enqueue is a no-op when wc_get_order returns null', function (): void {
 it('enqueue skips orders already in a terminal state', function (): void {
     $order = Mockery::mock(WC_Order::class);
     $order->allows('get_type')->andReturn('shop_order');
+    $order->allows('get_status')->andReturn('processing');
+    $order->allows('get_payment_method')->andReturn('vtbam');
     Functions\when('wc_get_order')->justReturn($order);
 
     $this->meta->allows('status')->with($order)->andReturn(FiscalStatus::Success);
@@ -49,6 +53,8 @@ it('enqueue skips orders already in a terminal state', function (): void {
 it('enqueue skips when a pending action is already scheduled (dedup)', function (): void {
     $order = Mockery::mock(WC_Order::class);
     $order->allows('get_type')->andReturn('shop_order');
+    $order->allows('get_status')->andReturn('processing');
+    $order->allows('get_payment_method')->andReturn('vtbam');
     Functions\when('wc_get_order')->justReturn($order);
 
     $this->meta->allows('status')->with($order)->andReturn(null);
@@ -74,6 +80,8 @@ it('enqueue skips when an action is already in-progress — race fix', function 
     // in-progress action present at lookup time.
     $order = Mockery::mock(WC_Order::class);
     $order->allows('get_type')->andReturn('shop_order');
+    $order->allows('get_status')->andReturn('processing');
+    $order->allows('get_payment_method')->andReturn('vtbam');
     Functions\when('wc_get_order')->justReturn($order);
 
     $this->meta->allows('status')->with($order)->andReturn(FiscalStatus::Pending);
@@ -102,6 +110,8 @@ it('enqueue skips when an action is already in-progress — race fix', function 
 it('enqueue initialises meta and schedules the action on a fresh order', function (): void {
     $order = Mockery::mock(WC_Order::class);
     $order->allows('get_type')->andReturn('shop_order');
+    $order->allows('get_status')->andReturn('processing');
+    $order->allows('get_payment_method')->andReturn('vtbam');
     Functions\when('wc_get_order')->justReturn($order);
 
     $this->meta->allows('status')->with($order)->andReturn(null);
@@ -121,6 +131,8 @@ it('hasScheduledAction tolerates a non-array AS return (defensive)', function ()
     // back an unexpected falsy non-array.
     $order = Mockery::mock(WC_Order::class);
     $order->allows('get_type')->andReturn('shop_order');
+    $order->allows('get_status')->andReturn('processing');
+    $order->allows('get_payment_method')->andReturn('vtbam');
     Functions\when('wc_get_order')->justReturn($order);
 
     $this->meta->allows('status')->with($order)->andReturn(null);
@@ -148,6 +160,8 @@ it('handle does not reschedule on a terminal outcome', function (): void {
 it('handle schedules the next attempt with the configured delay on a retriable outcome', function (): void {
     $order = Mockery::mock(WC_Order::class);
     $order->allows('get_type')->andReturn('shop_order');
+    $order->allows('get_status')->andReturn('processing');
+    $order->allows('get_payment_method')->andReturn('vtbam');
 
     $this->job->expects('run')->with(123)->andReturn(FiscalJobOutcome::retriable('try again'));
 
@@ -172,6 +186,8 @@ it('handle does not reschedule when the attempt index is out of bounds', functio
     // returns retriable beyond the budget, the queue must NOT loop.
     $order = Mockery::mock(WC_Order::class);
     $order->allows('get_type')->andReturn('shop_order');
+    $order->allows('get_status')->andReturn('processing');
+    $order->allows('get_payment_method')->andReturn('vtbam');
 
     $this->job->expects('run')->with(123)->andReturn(FiscalJobOutcome::retriable('odd'));
 
@@ -181,4 +197,52 @@ it('handle does not reschedule when the attempt index is out of bounds', functio
     Functions\expect('as_schedule_single_action')->never();
 
     $this->queue->handle(123);
+});
+
+describe('journal', function (): void {
+    it('records why an already settled order was not queued again', function (): void {
+        $order = Mockery::mock(WC_Order::class);
+        $order->allows('get_type')->andReturn('shop_order');
+        $order->allows('get_status')->andReturn('completed');
+        $order->allows('get_payment_method')->andReturn('vtbam');
+        Functions\when('wc_get_order')->justReturn($order);
+        $this->meta->allows('status')->with($order)->andReturn(FiscalStatus::Success);
+
+        $this->queue->enqueue(8402);
+
+        $this->journal->shouldHaveReceived('record')->once()->with('order.skipped', 8402, [
+            'order_status' => 'completed',
+            'payment_method' => 'vtbam',
+            'reason' => 'already_settled',
+            'fiscal_status' => 'success',
+        ]);
+    });
+
+    it('records a queued order with the state it was seen in', function (): void {
+        $order = Mockery::mock(WC_Order::class);
+        $order->allows('get_type')->andReturn('shop_order');
+        $order->allows('get_status')->andReturn('processing');
+        $order->allows('get_payment_method')->andReturn('vtbam');
+        Functions\when('wc_get_order')->justReturn($order);
+        Functions\when('as_get_scheduled_actions')->justReturn([]);
+        Functions\when('as_enqueue_async_action')->justReturn(1);
+        $this->meta->allows('status')->with($order)->andReturn(null);
+        $this->meta->allows('initialize');
+
+        $this->queue->enqueue(8402);
+
+        $this->journal->shouldHaveReceived('record')->once()
+            ->with('order.queued', 8402, ['order_status' => 'processing', 'payment_method' => 'vtbam']);
+    });
+
+    it('records the outcome of every attempt', function (): void {
+        $this->job->allows('run')->with(8402)->andReturn(FiscalJobOutcome::failed('Cashier 3 does not exist'));
+
+        $this->queue->handle(8402);
+
+        $this->journal->shouldHaveReceived('record')->once()->with('order.attempt', 8402, [
+            'fiscal_status' => 'failed',
+            'reason' => 'Cashier 3 does not exist',
+        ]);
+    });
 });

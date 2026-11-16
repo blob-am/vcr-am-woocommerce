@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Journal\DatabaseStore;
+use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -64,6 +66,7 @@ final class OrderListener
         private readonly FiscalQueue $queue,
         private readonly Configuration $configuration,
         private readonly CashPaymentResolver $cashResolver,
+        private readonly Journal $journal = new Journal(new DatabaseStore()),
     ) {
     }
 
@@ -78,21 +81,26 @@ final class OrderListener
     {
         // A gateway calling payment_complete() has the money, whatever the
         // tender is nominally called. Never deferred.
-        $this->dispatch($orderId);
+        $this->dispatch('woocommerce_payment_complete', $orderId);
     }
 
     public function onProcessing(mixed $orderId): void
     {
         if ($this->shouldDeferCashOrder($orderId)) {
+            $this->journal->record('order.skipped', self::toOrderId($orderId), [
+                'hook' => 'woocommerce_order_status_processing',
+                'reason' => 'cash_waits_for_completed',
+            ]);
+
             return;
         }
 
-        $this->dispatch($orderId);
+        $this->dispatch('woocommerce_order_status_processing', $orderId);
     }
 
     public function onCompleted(mixed $orderId): void
     {
-        $this->dispatch($orderId);
+        $this->dispatch('woocommerce_order_status_completed', $orderId);
     }
 
     /**
@@ -124,13 +132,23 @@ final class OrderListener
         return $this->cashResolver->isCash($order->get_payment_method());
     }
 
-    private function dispatch(mixed $orderId): void
+    /**
+     * The journal line written here is the one a "paid, but no receipt"
+     * report is read for: its absence means WooCommerce never announced the
+     * payment, which is the gateway's to fix and not this plugin's.
+     */
+    private function dispatch(string $hook, mixed $orderId): void
     {
         $id = self::toOrderId($orderId);
 
-        if ($id !== null) {
-            $this->queue->enqueue($id);
+        if ($id === null) {
+            $this->journal->record('order.skipped', null, ['hook' => $hook, 'reason' => 'order_id_unreadable']);
+
+            return;
         }
+
+        $this->journal->record('order.hook', $id, ['hook' => $hook]);
+        $this->queue->enqueue($id);
     }
 
     /**

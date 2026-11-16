@@ -47,6 +47,9 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\ItemBuilder;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\OrderListener;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\PaymentMapper;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\SaleRegistrarFactory;
+use BlobSolutions\WooCommerceVcrAm\Journal\DatabaseStore;
+use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
+use BlobSolutions\WooCommerceVcrAm\Journal\Maintenance as JournalMaintenance;
 use BlobSolutions\WooCommerceVcrAm\Migration\Migrator;
 use BlobSolutions\WooCommerceVcrAm\Pairing\FailureDetail;
 use BlobSolutions\WooCommerceVcrAm\Pairing\PairingClientFactory;
@@ -279,10 +282,13 @@ final class Plugin
             commentBuilder: new CommentBuilder(),
             meta: $meta,
         );
-        $queue = new FiscalQueue($job, $meta);
+        $journal = new Journal(new DatabaseStore());
+        (new JournalMaintenance($journal))->register();
+
+        $queue = new FiscalQueue($job, $meta, $journal);
         $queue->register();
 
-        (new OrderListener($queue, $config, new CashPaymentResolver()))->register();
+        (new OrderListener($queue, $config, new CashPaymentResolver(), $journal))->register();
         (new FiscalizeNowHandler($meta, $queue))->register();
 
         // Refund flow (Phase 3e) — separate but parallel pipeline.
@@ -413,5 +419,6 @@ final class Plugin
         // drained on deactivation has to be added explicitly.
         as_unschedule_all_actions(FiscalQueue::ACTION_HOOK, [], FiscalQueue::ACTION_GROUP);
         as_unschedule_all_actions(RefundQueue::ACTION_HOOK, [], RefundQueue::ACTION_GROUP);
+        as_unschedule_all_actions(JournalMaintenance::PRUNE_HOOK, [], JournalMaintenance::ACTION_GROUP);
     }
 }

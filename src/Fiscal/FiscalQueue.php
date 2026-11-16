@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Fiscal;
 
+use BlobSolutions\WooCommerceVcrAm\Journal\DatabaseStore;
+use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use WC_Order;
 
 if (! defined('ABSPATH')) {
@@ -95,6 +97,7 @@ class FiscalQueue
     public function __construct(
         private readonly FiscalJob $job,
         private readonly FiscalStatusMeta $meta,
+        private readonly Journal $journal = new Journal(new DatabaseStore()),
     ) {
     }
 
@@ -117,25 +120,40 @@ class FiscalQueue
         // orders are fiscalisable here (refunds get their own listener
         // and SDK call in Phase 3e).
         if (! $order instanceof WC_Order || $order->get_type() !== 'shop_order') {
+            $this->journal->record('order.skipped', $orderId, ['reason' => 'not_a_shop_order']);
+
             return;
         }
 
         $status = $this->meta->status($order);
+        $seen = [
+            'order_status' => $order->get_status(),
+            'payment_method' => $order->get_payment_method(),
+        ];
 
         // Terminal states require explicit admin intervention to re-enqueue
         // (Phase 3c "Fiscalize now" button). Auto-enqueue from WC hooks
         // never overrides that decision.
         if ($status !== null && $status->isTerminal()) {
+            $this->journal->record('order.skipped', $orderId, $seen + [
+                'reason' => 'already_settled',
+                'fiscal_status' => $status->value,
+            ]);
+
             return;
         }
 
         if ($this->hasScheduledAction($orderId)) {
+            $this->journal->record('order.skipped', $orderId, $seen + ['reason' => 'already_queued']);
+
             return;
         }
 
         $this->meta->initialize($order);
 
         as_enqueue_async_action(self::ACTION_HOOK, [$orderId], self::ACTION_GROUP);
+
+        $this->journal->record('order.queued', $orderId, $seen);
     }
 
     /**
@@ -153,6 +171,11 @@ class FiscalQueue
         }
 
         $outcome = $this->job->run($orderId);
+
+        $this->journal->record('order.attempt', $orderId, [
+            'fiscal_status' => $outcome->status->value,
+            'reason' => $outcome->reason,
+        ]);
 
         if (! $outcome->shouldRetry()) {
             return;
@@ -183,6 +206,8 @@ class FiscalQueue
         $slot = $attempt - 1;
 
         if (! isset(self::RETRY_DELAYS_SECONDS[$slot])) {
+            $this->journal->record('order.retries_exhausted', $orderId, ['attempts' => $attempt]);
+
             return;
         }
 
@@ -192,6 +217,11 @@ class FiscalQueue
             [$orderId],
             self::ACTION_GROUP,
         );
+
+        $this->journal->record('order.retry_scheduled', $orderId, [
+            'attempts' => $attempt,
+            'delay_seconds' => self::RETRY_DELAYS_SECONDS[$slot],
+        ]);
     }
 
     private function hasScheduledAction(int $orderId): bool

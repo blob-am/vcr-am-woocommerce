@@ -8,12 +8,14 @@ use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\CashPaymentResolver;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\OrderListener;
+use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
 use Mockery;
 
 beforeEach(function (): void {
     $this->queue = Mockery::mock(FiscalQueue::class);
+    $this->journal = Mockery::spy(Journal::class);
     $this->config = Mockery::mock(Configuration::class);
     $this->cashResolver = Mockery::mock(CashPaymentResolver::class);
 
@@ -22,7 +24,7 @@ beforeEach(function (): void {
     $this->config->allows('cashFiscalizeOn')
         ->andReturn(Configuration::CASH_FISCALIZE_ON_PROCESSING);
 
-    $this->listener = new OrderListener($this->queue, $this->config, $this->cashResolver);
+    $this->listener = new OrderListener($this->queue, $this->config, $this->cashResolver, $this->journal);
 });
 
 it('register hooks all three WC order-state events', function (): void {
@@ -76,7 +78,7 @@ describe('cash-on-delivery timing', function (): void {
         $this->cashResolver = Mockery::mock(CashPaymentResolver::class);
         $this->config->allows('cashFiscalizeOn')
             ->andReturn(Configuration::CASH_FISCALIZE_ON_COMPLETED);
-        $this->listener = new OrderListener($this->queue, $this->config, $this->cashResolver);
+        $this->listener = new OrderListener($this->queue, $this->config, $this->cashResolver, $this->journal);
     });
 
     it('defers a cash order at processing when the shop waits for completion', function (): void {
@@ -129,5 +131,28 @@ describe('cash-on-delivery timing', function (): void {
         $this->queue->expects('enqueue')->never();
 
         $this->listener->onProcessing('not a number');
+    });
+});
+
+describe('journal', function (): void {
+    it('records which hook announced the payment before queueing', function (): void {
+        $this->queue->expects('enqueue')->once()->with(8402);
+
+        $this->listener->onPaymentComplete(8402);
+
+        $this->journal->shouldHaveReceived('record')->once()
+            ->with('order.hook', 8402, ['hook' => 'woocommerce_payment_complete']);
+    });
+
+    it('records a hook fired with an id it cannot read', function (): void {
+        $this->queue->expects('enqueue')->never();
+
+        $this->listener->onCompleted(['not', 'an', 'id']);
+
+        $this->journal->shouldHaveReceived('record')->once()->with(
+            'order.skipped',
+            null,
+            ['hook' => 'woocommerce_order_status_completed', 'reason' => 'order_id_unreadable'],
+        );
     });
 });

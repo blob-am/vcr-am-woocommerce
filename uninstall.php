@@ -44,6 +44,7 @@ $vcr_options = [
     // from the last-recorded version and re-fire applicable migration
     // callbacks against a fresh database.
     'vcr_plugin_version',
+    'vcr_journal_schema',
 ];
 
 foreach ($vcr_options as $vcr_option) {
@@ -69,6 +70,16 @@ foreach (['USD', 'EUR', 'RUB', 'GBP', 'JPY', 'AMD'] as $vcr_iso) {
 if (function_exists('as_unschedule_all_actions')) {
     as_unschedule_all_actions('vcr_fiscalize_order', [], 'vcr');
     as_unschedule_all_actions('vcr_register_refund', [], 'vcr');
+    as_unschedule_all_actions('vcr_prune_journal', [], 'vcr');
+}
+
+// The journal is diagnostics, not a fiscal record: nothing obliges anyone to
+// keep it, and it is of no use without the plugin that reads it.
+global $wpdb;
+
+if ($wpdb instanceof wpdb) {
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- dropping the plugin's own table on uninstall.
+    $wpdb->query($wpdb->prepare('DROP TABLE IF EXISTS %i', $wpdb->prefix . 'vcr_journal'));
 }
 
 // NOTE: We deliberately do NOT delete `_vcr_*` postmeta / order meta.
