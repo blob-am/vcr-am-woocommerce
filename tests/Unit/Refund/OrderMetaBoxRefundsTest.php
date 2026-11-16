@@ -11,6 +11,7 @@ use Brain\Monkey\Functions;
 
 beforeEach(function (): void {
     Functions\when('admin_url')->alias(fn (string $path = '') => 'https://example.test/wp-admin/' . $path);
+    Functions\when('add_query_arg')->alias(fn (array $args, string $url) => $url . '?' . http_build_query($args));
     Functions\when('wp_nonce_field')->alias(function (string $action): string {
         echo '<input type="hidden" name="_wpnonce" value="nonce-' . $action . '">';
 
@@ -35,6 +36,7 @@ afterEach(function (): void {
 function orderWithRefunds(array $refunds): WC_Order
 {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_id')->andReturn(8402)->byDefault();
     $order->allows('get_refunds')->andReturn($refunds);
 
     return $order;

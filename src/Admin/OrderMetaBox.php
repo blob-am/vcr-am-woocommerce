@@ -8,6 +8,7 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundFiscalizeNowHandler;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
+use BlobSolutions\WooCommerceVcrAm\Support\ReportPage;
 use WC_Order;
 use WC_Order_Refund;
 use WP_Post;
@@ -92,6 +93,7 @@ class OrderMetaBox
             // A refund can exist on an order this plugin never registered a
             // sale for, and its state belongs on screen all the same.
             $this->renderRefundsSection($order);
+            $this->renderReportLink($order);
 
             return;
         }
@@ -104,6 +106,16 @@ class OrderMetaBox
         };
 
         $this->renderRefundsSection($order);
+        $this->renderReportLink($order);
+    }
+
+    private function renderReportLink(WC_Order $order): void
+    {
+        printf(
+            '<p><a href="%s">%s</a></p>',
+            esc_url(ReportPage::url($order->get_id())),
+            esc_html(__('Something wrong? Build a problem report', 'vcr-am-fiscal-receipts')),
+        );
     }
 
     /**

@@ -8,7 +8,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "POT-Creation-Date: 2026-11-13T00:00:00+00:00\n"
-"PO-Revision-Date: 2026-11-16T13:14:26+00:00\n"
+"PO-Revision-Date: 2026-11-16T13:32:24+00:00\n"
 "Language: ru_RU\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
 "X-Generator: WP-CLI 2.12.0\n"
@@ -98,6 +98,9 @@ msgstr "Фискальный чек VCR"
 
 msgid "Order not available."
 msgstr "Заказ недоступен."
+
+msgid "Something wrong? Build a problem report"
+msgstr "Что-то не так? Соберите отчёт о проблеме"
 
 msgid "Not yet fiscalised. The plugin will queue this order automatically once payment completes."
 msgstr "Ещё не фискализирован. Плагин поставит заказ в очередь автоматически, как только пройдёт оплата."
@@ -234,6 +237,9 @@ msgstr "Настройки"
 
 msgid "Docs"
 msgstr "Документация"
+
+msgid "Report a problem"
+msgstr "Сообщить о проблеме"
 
 #. translators: 1: business name, 2: TIN, 3: register id, 4: register name.
 #, php-format
@@ -881,3 +887,41 @@ msgstr "Основные"
 
 msgid "VCR base URL rejected:"
 msgstr "Базовый URL VCR отклонён:"
+
+msgid "VCR problem report"
+msgstr "Отчёт о проблеме VCR"
+
+msgid "Copied."
+msgstr "Скопировано."
+
+msgid "Could not copy. Select the text and copy it by hand."
+msgstr "Не удалось скопировать. Выделите текст и скопируйте его вручную."
+
+msgid "You do not have permission to view this report."
+msgstr "У вас нет прав на просмотр этого отчёта."
+
+msgid "This order does not exist. The report below is about the store as a whole."
+msgstr "Такого заказа нет. Ниже отчёт о магазине в целом."
+
+#. translators: %s: the database error.
+#, php-format
+msgid "The report could not be built because the plugin's journal could not be read: %s"
+msgstr "Отчёт не удалось собрать: журнал плагина не читается: %s"
+
+msgid "This is everything the plugin knows about the state of this store: versions, settings, the register it is connected to, and its own journal of recent events."
+msgstr "Здесь всё, что плагин знает о состоянии магазина: версии, настройки, касса, к которой он подключён, и его собственный журнал последних событий."
+
+msgid "This is everything the plugin knows about this order: its state, the receipt's state, and the plugin's own journal of what happened to it."
+msgstr "Здесь всё, что плагин знает об этом заказе: его состояние, состояние чека и журнал плагина о том, что с заказом происходило."
+
+msgid "It holds nothing about your customer: no name, address, phone number or email. Nothing is sent anywhere from this page. Read it, then copy it or save it and send it to support@vcr.am together with a description of what went wrong."
+msgstr "В отчёте нет ничего о вашем покупателе: ни имени, ни адреса, ни телефона, ни почты. С этой страницы никуда ничего не отправляется. Прочитайте отчёт, затем скопируйте или сохраните его и пришлите на support@vcr.am вместе с описанием того, что пошло не так."
+
+msgid "Copy"
+msgstr "Скопировать"
+
+msgid "Download as a file"
+msgstr "Скачать файлом"
+
+msgid "The report"
+msgstr "Отчёт"

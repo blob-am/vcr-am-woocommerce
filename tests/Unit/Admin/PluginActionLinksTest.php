@@ -9,6 +9,7 @@ use Brain\Monkey\Functions;
 beforeEach(function (): void {
     Functions\when('plugin_basename')->alias(fn (string $file): string => 'vcr-am-woocommerce/' . basename($file));
     Functions\when('admin_url')->alias(fn (string $path = '') => 'https://example.test/wp-admin/' . $path);
+    Functions\when('add_query_arg')->alias(fn (array $args, string $url) => $url . '?' . http_build_query($args));
 });
 
 it('registers the per-plugin action_links filter using the plugin basename', function (): void {
@@ -34,8 +35,7 @@ it('appends a Docs link after WP\'s built-in actions', function (): void {
         'deactivate' => '<a href="#">Deactivate</a>',
     ]);
 
-    $last = end($links);
-    expect($last)
+    expect($links['docs'])
         ->toContain('Docs')
         ->toContain('target="_blank"')
         ->toContain('rel="noopener noreferrer"');
@@ -47,12 +47,21 @@ it('preserves WP-supplied links between Settings and Docs', function (): void {
         'activate' => '<a href="#act">Activate</a>',
     ]);
 
-    expect(array_keys($links))->toBe(['settings', 'deactivate', 'activate', 'docs']);
+    expect(array_keys($links))->toBe(['settings', 'deactivate', 'activate', 'docs', 'report']);
 });
 
 it('is defensive when WP passes a non-array (theoretical legacy callers)', function (): void {
     /** @phpstan-ignore-next-line — verifying defensive narrowing */
     $links = (new PluginActionLinks('/path/to/vcr-am-fiscal-receipts.php'))->addLinks(null);
 
-    expect(array_keys($links))->toBe(['settings', 'docs']);
+    expect(array_keys($links))->toBe(['settings', 'docs', 'report']);
+});
+
+it('ends with a link to the problem report, which stays inside the admin', function (): void {
+    $links = (new PluginActionLinks('/path/to/vcr-am-fiscal-receipts.php'))->addLinks([]);
+
+    expect($links['report'])
+        ->toContain('Report a problem')
+        ->toContain('admin.php?page=vcr-problem-report')
+        ->not->toContain('target="_blank"');
 });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Admin;
 
 use BlobSolutions\WooCommerceVcrAm\Pairing\SettingsUrl;
+use BlobSolutions\WooCommerceVcrAm\Support\ReportPage;
 
 /**
  * Adds the "Settings" shortcut to our plugin row on `/wp-admin/plugins.php`,
@@ -87,10 +88,16 @@ class PluginActionLinks
             esc_html(__('Docs', 'vcr-am-fiscal-receipts')),
         );
 
+        $reportLink = sprintf(
+            '<a href="%s">%s</a>',
+            esc_url(ReportPage::url()),
+            esc_html(__('Report a problem', 'vcr-am-fiscal-receipts')),
+        );
+
         return array_merge(
             ['settings' => $settingsLink],
             $normalised,
-            ['docs' => $docsLink],
+            ['docs' => $docsLink, 'report' => $reportLink],
         );
     }
 }

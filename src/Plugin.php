@@ -74,6 +74,8 @@ use BlobSolutions\WooCommerceVcrAm\Settings\AdvancedFields;
 use BlobSolutions\WooCommerceVcrAm\Settings\GeneralFields;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\SettingsPage;
+use BlobSolutions\WooCommerceVcrAm\Support\ReportBuilder;
+use BlobSolutions\WooCommerceVcrAm\Support\ReportPage;
 use BlobSolutions\WooCommerceVcrAm\Update\UpdateChecker;
 
 /**
@@ -311,6 +313,11 @@ final class Plugin
         // OrderMetaBox renders BOTH sale and refund fiscal status — wired
         // after refund meta is constructed so the per-refund block has data.
         (new OrderMetaBox($meta, $refundMeta))->register();
+        (new ReportPage(
+            new ReportBuilder($this->version, $config, $probe, $meta, $refundMeta, $journal),
+            $this->pluginFile,
+            $this->version,
+        ))->register();
 
         // The receipt-name box on a product and on each of its variations,
         // plus the sync that carries an edit to it through to the catalog item

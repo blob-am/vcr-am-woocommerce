@@ -97,6 +97,9 @@ msgstr ""
 msgid "Order not available."
 msgstr ""
 
+msgid "Something wrong? Build a problem report"
+msgstr ""
+
 msgid "Not yet fiscalised. The plugin will queue this order automatically once payment completes."
 msgstr ""
 
@@ -229,6 +232,9 @@ msgid "Settings"
 msgstr ""
 
 msgid "Docs"
+msgstr ""
+
+msgid "Report a problem"
 msgstr ""
 
 #. translators: 1: business name, 2: TIN, 3: register id, 4: register name.
@@ -876,4 +882,42 @@ msgid "General"
 msgstr ""
 
 msgid "VCR base URL rejected:"
+msgstr ""
+
+msgid "VCR problem report"
+msgstr ""
+
+msgid "Copied."
+msgstr ""
+
+msgid "Could not copy. Select the text and copy it by hand."
+msgstr ""
+
+msgid "You do not have permission to view this report."
+msgstr ""
+
+msgid "This order does not exist. The report below is about the store as a whole."
+msgstr ""
+
+#. translators: %s: the database error.
+#, php-format
+msgid "The report could not be built because the plugin's journal could not be read: %s"
+msgstr ""
+
+msgid "This is everything the plugin knows about the state of this store: versions, settings, the register it is connected to, and its own journal of recent events."
+msgstr ""
+
+msgid "This is everything the plugin knows about this order: its state, the receipt's state, and the plugin's own journal of what happened to it."
+msgstr ""
+
+msgid "It holds nothing about your customer: no name, address, phone number or email. Nothing is sent anywhere from this page. Read it, then copy it or save it and send it to support@vcr.am together with a description of what went wrong."
+msgstr ""
+
+msgid "Copy"
+msgstr ""
+
+msgid "Download as a file"
+msgstr ""
+
+msgid "The report"
 msgstr ""

@@ -8,7 +8,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "POT-Creation-Date: 2026-11-13T00:00:00+00:00\n"
-"PO-Revision-Date: 2026-11-16T13:14:26+00:00\n"
+"PO-Revision-Date: 2026-11-16T13:32:24+00:00\n"
 "Language: hy\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: WP-CLI 2.12.0\n"
@@ -97,6 +97,9 @@ msgstr "VCR ֆիսկալ կտրոն"
 
 msgid "Order not available."
 msgstr "Պատվերը հասանելի չէ։"
+
+msgid "Something wrong? Build a problem report"
+msgstr "Ինչ-որ բան այն չէ՞։ Կազմեք խնդրի հաշվետվություն"
 
 msgid "Not yet fiscalised. The plugin will queue this order automatically once payment completes."
 msgstr "Դեռ ֆիսկալացված չէ։ Խրվակը պատվերն ինքնաշխատ կհերթագրի, հենց որ վճարումն ավարտվի։"
@@ -231,6 +234,9 @@ msgstr "Կարգավորումներ"
 
 msgid "Docs"
 msgstr "Փաստաթղթեր"
+
+msgid "Report a problem"
+msgstr "Հայտնել խնդրի մասին"
 
 #. translators: 1: business name, 2: TIN, 3: register id, 4: register name.
 #, php-format
@@ -878,3 +884,41 @@ msgstr "Ընդհանուր"
 
 msgid "VCR base URL rejected:"
 msgstr "VCR-ի հիմնական URL-ը մերժվել է՝"
+
+msgid "VCR problem report"
+msgstr "VCR խնդրի հաշվետվություն"
+
+msgid "Copied."
+msgstr "Պատճենվեց։"
+
+msgid "Could not copy. Select the text and copy it by hand."
+msgstr "Չհաջողվեց պատճենել։ Նշեք տեքստը և պատճենեք ձեռքով։"
+
+msgid "You do not have permission to view this report."
+msgstr "Դուք այս հաշվետվությունը դիտելու թույլտվություն չունեք։"
+
+msgid "This order does not exist. The report below is about the store as a whole."
+msgstr "Նման պատվեր չկա։ Ստորև հաշվետվությունն է ամբողջ խանութի մասին։"
+
+#. translators: %s: the database error.
+#, php-format
+msgid "The report could not be built because the plugin's journal could not be read: %s"
+msgstr "Հաշվետվությունը չհաջողվեց կազմել, քանի որ խրվակի մատյանը չի կարդացվում՝ %s"
+
+msgid "This is everything the plugin knows about the state of this store: versions, settings, the register it is connected to, and its own journal of recent events."
+msgstr "Այստեղ այն ամենն է, ինչ խրվակը գիտի խանութի վիճակի մասին՝ տարբերակները, կարգավորումները, դրամարկղը, որին այն միացված է, և վերջին իրադարձությունների սեփական մատյանը։"
+
+msgid "This is everything the plugin knows about this order: its state, the receipt's state, and the plugin's own journal of what happened to it."
+msgstr "Այստեղ այն ամենն է, ինչ խրվակը գիտի այս պատվերի մասին՝ դրա վիճակը, կտրոնի վիճակը և խրվակի մատյանը՝ պատվերի հետ կատարվածի մասին։"
+
+msgid "It holds nothing about your customer: no name, address, phone number or email. Nothing is sent anywhere from this page. Read it, then copy it or save it and send it to support@vcr.am together with a description of what went wrong."
+msgstr "Հաշվետվությունը ձեր գնորդի մասին ոչինչ չի պարունակում՝ ո՛չ անուն, ո՛չ հասցե, ո՛չ հեռախոսահամար, ո՛չ էլ. փոստ։ Այս էջից ոչինչ ոչ մի տեղ չի ուղարկվում։ Կարդացեք այն, ապա պատճենեք կամ պահպանեք և ուղարկեք support@vcr.am հասցեին՝ նկարագրելով, թե ինչն է սխալ գնացել։"
+
+msgid "Copy"
+msgstr "Պատճենել"
+
+msgid "Download as a file"
+msgstr "Ներբեռնել որպես ֆայլ"
+
+msgid "The report"
+msgstr "Հաշվետվություն"
