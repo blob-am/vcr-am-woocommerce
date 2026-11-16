@@ -8,6 +8,8 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
+use BlobSolutions\WooCommerceVcrAm\Journal\DatabaseStore;
+use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use BlobSolutions\WooCommerceVcrAm\Logging\Logger;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
@@ -40,6 +42,7 @@ class ReturnHandler
         private readonly DepartmentCatalog $departmentCatalog,
         private readonly FailureDetail $failureDetail = new FailureDetail(),
         private readonly Logger $logger = new Logger(),
+        private readonly Journal $journal = new Journal(new DatabaseStore()),
     ) {
     }
 
@@ -69,7 +72,7 @@ class ReturnHandler
         if ($error !== null) {
             // The merchant declined, or vcr.am refused. Either way there is
             // nothing to exchange, and the session is already cleared.
-            $this->finish(SettingsUrl::NOTICE_DENIED);
+            $this->finish(SettingsUrl::NOTICE_DENIED, ['error' => $error]);
         }
 
         $code = $this->queryValue('code');
@@ -82,7 +85,7 @@ class ReturnHandler
             // spent either way; say so rather than leaving a blank screen.
             $this->logger->error('Pairing returned without both a code and a state');
 
-            $this->finish(SettingsUrl::NOTICE_FAILED);
+            $this->finish(SettingsUrl::NOTICE_FAILED, ['reason' => 'code_or_state_missing']);
         }
 
         if ($pending === null) {
@@ -95,7 +98,7 @@ class ReturnHandler
         if (! hash_equals($pending['state'], $state)) {
             $this->logger->error('Pairing returned with a state that does not match the pending one');
 
-            $this->finish(SettingsUrl::NOTICE_FAILED);
+            $this->finish(SettingsUrl::NOTICE_FAILED, ['reason' => 'state_mismatch']);
         }
 
         try {
@@ -109,7 +112,7 @@ class ReturnHandler
                 $this->failureDetail->remember($userId, $e->apiErrorMessage);
             }
 
-            $this->finish(SettingsUrl::NOTICE_FAILED);
+            $this->finish(SettingsUrl::NOTICE_FAILED, ['reason' => 'exchange_failed', 'error' => $e->getMessage()]);
         }
 
         try {
@@ -120,7 +123,7 @@ class ReturnHandler
             // to pair a second time, and the first key is now orphaned.
             $this->logger->error('Paired but could not store the key', ['error' => $e->getMessage()]);
 
-            $this->finish(SettingsUrl::NOTICE_FAILED);
+            $this->finish(SettingsUrl::NOTICE_FAILED, ['reason' => 'key_not_stored', 'error' => $e->getMessage()]);
         }
 
         // The probe caches "no API key" and both catalogs cached their own
@@ -135,7 +138,7 @@ class ReturnHandler
             'registerName' => $paired->registerName,
         ]);
 
-        $this->finish(SettingsUrl::NOTICE_CONNECTED);
+        $this->finish(SettingsUrl::NOTICE_CONNECTED, ['vcr_id' => $paired->vcrId]);
     }
 
     /**
@@ -173,9 +176,13 @@ class ReturnHandler
      * Back to the settings screen with `code` and `state` stripped from the
      * address bar, so a refresh cannot replay a spent code and the secrets do
      * not sit in browser history.
+     *
+     * @param array<string, mixed> $seen What the journal keeps about how it ended
      */
-    private function finish(string $notice): never
+    private function finish(string $notice, array $seen = []): never
     {
+        $this->journal->record('pairing.finished', null, ['outcome' => $notice] + $seen);
+
         wp_safe_redirect(SettingsUrl::withNotice($notice));
         exit;
     }

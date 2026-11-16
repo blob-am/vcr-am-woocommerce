@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use BlobSolutions\WooCommerceVcrAm\Pairing\FailureDetail;
 use BlobSolutions\WooCommerceVcrAm\Pairing\PairingClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Pairing\PairingGateway;
@@ -93,6 +94,7 @@ function makeStartHandler(
     ?PairingSession $session = null,
     string $baseUrl = 'https://vcr.am/api/v1',
     ?FailureDetail $failureDetail = null,
+    ?Journal $journal = null,
 ): StartHandler {
     $config = Mockery::mock(Configuration::class);
     $config->allows('baseUrl')->andReturn($baseUrl);
@@ -106,7 +108,13 @@ function makeStartHandler(
         $session->allows('forget');
     }
 
-    return new StartHandler($config, $session, $factory, $failureDetail ?? new FailureDetail());
+    return new StartHandler(
+        $config,
+        $session,
+        $factory,
+        $failureDetail ?? new FailureDetail(),
+        journal: $journal ?? Mockery::spy(Journal::class),
+    );
 }
 
 function registeredAt(string $connectUrl): PairingRequest
@@ -333,4 +341,22 @@ it('keeps no reason when the failure was not the API refusing', function (): voi
 
     expect(fn () => makeStartHandler($client, null, 'https://vcr.am/api/v1', $failureDetail)->handle())
         ->toThrow(SentTo::class);
+});
+
+it('journals a handshake that started, and one that could not', function (): void {
+    $journal = Mockery::spy(Journal::class);
+    $client = Mockery::mock(PairingGateway::class);
+    $client->allows('registerRequest')->andReturn(registeredAt('https://vcr.am/connect?request=req_1'));
+
+    expect(fn () => makeStartHandler($client, journal: $journal)->handle())->toThrow(SentTo::class);
+
+    $journal->shouldHaveReceived('record')->once()->with('pairing.started', null, ['approval_host' => 'vcr.am']);
+
+    $failing = Mockery::mock(PairingGateway::class);
+    $failing->allows('registerRequest')->andThrow(new RuntimeException('network down'));
+    $second = Mockery::spy(Journal::class);
+
+    expect(fn () => makeStartHandler($failing, journal: $second)->handle())->toThrow(SentTo::class);
+
+    $second->shouldHaveReceived('record')->once()->with('pairing.start_failed', null, ['error' => 'network down']);
 });

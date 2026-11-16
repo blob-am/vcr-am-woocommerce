@@ -6,6 +6,7 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
+use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use BlobSolutions\WooCommerceVcrAm\Pairing\PairingClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Pairing\PairingGateway;
 use BlobSolutions\WooCommerceVcrAm\Pairing\PairingSession;
@@ -57,6 +58,7 @@ function makeReturnHandler(
     ?array $pending,
     ?PairingGateway $client = null,
     ?KeyStore $keyStore = null,
+    ?Journal $journal = null,
 ): ReturnHandler {
     $config = Mockery::mock(Configuration::class);
     $config->allows('baseUrl')->andReturn('https://vcr.am/api/v1');
@@ -85,6 +87,7 @@ function makeReturnHandler(
         $probe,
         $cashiers,
         $departments,
+        journal: $journal ?? Mockery::spy(Journal::class),
     );
 }
 
@@ -238,4 +241,31 @@ it('refuses a return from a user who may not manage WooCommerce', function (): v
     )->handle();
 
     expect(true)->toBeTrue();
+});
+
+it('journals how the handshake ended, with the reason when it failed', function (): void {
+    $_GET = ['page' => 'wc-settings', 'tab' => 'vcr', 'code' => 'a-code', 'state' => 'another-state'];
+    $journal = Mockery::spy(Journal::class);
+
+    $handler = makeReturnHandler(
+        pending: ['state' => 'the-state', 'codeVerifier' => 'the-verifier'],
+        journal: $journal,
+    );
+
+    expect(fn () => $handler->handle())->toThrow(RedirectedAway::class);
+
+    $journal->shouldHaveReceived('record')->once()->with('pairing.finished', null, [
+        'outcome' => SettingsUrl::NOTICE_FAILED,
+        'reason' => 'state_mismatch',
+    ]);
+});
+
+it('journals an expired attempt', function (): void {
+    $_GET = ['page' => 'wc-settings', 'tab' => 'vcr', 'code' => 'a-code', 'state' => 'a-state'];
+    $journal = Mockery::spy(Journal::class);
+
+    expect(fn () => makeReturnHandler(pending: null, journal: $journal)->handle())->toThrow(RedirectedAway::class);
+
+    $journal->shouldHaveReceived('record')->once()
+        ->with('pairing.finished', null, ['outcome' => SettingsUrl::NOTICE_EXPIRED]);
 });

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Pairing;
 
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Journal\DatabaseStore;
+use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use BlobSolutions\WooCommerceVcrAm\Logging\Logger;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterPairingRequestInput;
@@ -47,6 +49,7 @@ class StartHandler
         private readonly PairingClientFactory $clientFactory,
         private readonly FailureDetail $failureDetail = new FailureDetail(),
         private readonly Logger $logger = new Logger(),
+        private readonly Journal $journal = new Journal(new DatabaseStore()),
     ) {
     }
 
@@ -87,6 +90,7 @@ class StartHandler
         } catch (Throwable $e) {
             $this->session->forget(get_current_user_id());
             $this->logger->error('Could not start pairing with VCR.AM', ['error' => $e->getMessage()]);
+            $this->journal->record('pairing.start_failed', null, ['error' => $e->getMessage()]);
 
             // A refusal from VCR.AM names the field that was wrong, and the
             // likeliest one by far is a shop on plain http: the API will not
@@ -144,11 +148,13 @@ class StartHandler
                 'Refused a pairing redirect to an unexpected host',
                 ['url' => $connectUrl],
             );
+            $this->journal->record('pairing.start_failed', null, ['error' => 'unexpected_redirect_host']);
 
             $this->backToSettings(SettingsUrl::NOTICE_FAILED);
         }
 
         $this->approvalHost = $host;
+        $this->journal->record('pairing.started', null, ['approval_host' => $host]);
 
         add_filter('allowed_redirect_hosts', [$this, 'allowApprovalHost']);
         wp_safe_redirect($connectUrl);

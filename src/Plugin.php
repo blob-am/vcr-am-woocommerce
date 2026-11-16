@@ -237,12 +237,15 @@ final class Plugin
         // two ends, one testing a key the merchant typed and one fetching a
         // key so they do not have to.
         $pairingSession = new PairingSession();
+        $journal = new Journal(new DatabaseStore());
+        (new JournalMaintenance($journal))->register();
+
         $pairingClientFactory = new PairingClientFactory(IntegrationToken::forPlugin($this->version));
         // One instance across all three: whichever half of the handshake fails
         // writes the reason, and the notice is what reads it back.
         $pairingFailure = new FailureDetail();
 
-        (new StartHandler($config, $pairingSession, $pairingClientFactory, $pairingFailure))->register();
+        (new StartHandler($config, $pairingSession, $pairingClientFactory, $pairingFailure, journal: $journal))->register();
         (new ReturnHandler(
             $config,
             $keyStore,
@@ -252,6 +255,7 @@ final class Plugin
             $cashierCatalog,
             $departmentCatalog,
             $pairingFailure,
+            journal: $journal,
         ))->register();
         (new PairingNotices($pairingFailure))->register();
 
@@ -285,8 +289,6 @@ final class Plugin
             commentBuilder: new CommentBuilder(),
             meta: $meta,
         );
-        $journal = new Journal(new DatabaseStore());
-        (new JournalMaintenance($journal))->register();
 
         $queue = new FiscalQueue($job, $meta, $journal);
         $queue->register();
