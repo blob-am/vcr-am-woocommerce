@@ -306,9 +306,9 @@ final class Plugin
             refundMeta: $refundMeta,
             fiscalMeta: $meta,
         );
-        $refundQueue = new RefundQueue($refundJob, $refundMeta);
+        $refundQueue = new RefundQueue($refundJob, $refundMeta, $journal);
         $refundQueue->register();
-        (new OrderRefundedListener($refundQueue))->register();
+        (new OrderRefundedListener($refundQueue, $journal))->register();
         (new RefundFiscalizeNowHandler($refundMeta, $refundQueue))->register();
 
         // OrderMetaBox renders BOTH sale and refund fiscal status — wired

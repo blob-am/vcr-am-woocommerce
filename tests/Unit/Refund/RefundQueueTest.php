@@ -6,6 +6,7 @@ namespace BlobSolutions\WooCommerceVcrAm\Tests\Unit\Refund;
 
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalJobOutcome;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
+use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundJob;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundQueue;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
@@ -18,7 +19,8 @@ use WC_Order_Refund;
 beforeEach(function (): void {
     $this->job = Mockery::mock(RefundJob::class);
     $this->meta = Mockery::mock(RefundStatusMeta::class);
-    $this->queue = new RefundQueue($this->job, $this->meta);
+    $this->journal = Mockery::spy(Journal::class);
+    $this->queue = new RefundQueue($this->job, $this->meta, $this->journal);
 });
 
 it('register hooks the action handler on the right hook', function (): void {
@@ -51,6 +53,7 @@ it('enqueue rejects WC_Order (not refund) — type filter prevents cross-pipelin
 
 it('enqueue skips refunds already in a terminal state (Success)', function (): void {
     $refund = Mockery::mock(WC_Order_Refund::class);
+    $refund->allows(['get_parent_id' => 8402, 'get_id' => 123]);
     Functions\when('wc_get_order')->justReturn($refund);
 
     $this->meta->allows('status')->with($refund)->andReturn(FiscalStatus::Success);
@@ -63,6 +66,7 @@ it('enqueue skips refunds already in a terminal state (Success)', function (): v
 
 it('enqueue skips refunds in Failed terminal state (admin must press Register Refund Now)', function (): void {
     $refund = Mockery::mock(WC_Order_Refund::class);
+    $refund->allows(['get_parent_id' => 8402, 'get_id' => 123]);
     Functions\when('wc_get_order')->justReturn($refund);
 
     $this->meta->allows('status')->with($refund)->andReturn(FiscalStatus::Failed);
@@ -75,6 +79,7 @@ it('enqueue skips refunds in Failed terminal state (admin must press Register Re
 
 it('enqueue skips when a pending action is already scheduled (dedup)', function (): void {
     $refund = Mockery::mock(WC_Order_Refund::class);
+    $refund->allows(['get_parent_id' => 8402, 'get_id' => 123]);
     Functions\when('wc_get_order')->justReturn($refund);
 
     $this->meta->allows('status')->with($refund)->andReturn(null);
@@ -92,6 +97,7 @@ it('enqueue skips when an action is in-progress — race fix mirror of FiscalQue
     // moved the first attempt off in-progress. Without dedup on the
     // in-progress status we'd hit SRC twice with the same refund.
     $refund = Mockery::mock(WC_Order_Refund::class);
+    $refund->allows(['get_parent_id' => 8402, 'get_id' => 123]);
     Functions\when('wc_get_order')->justReturn($refund);
 
     $this->meta->allows('status')->with($refund)->andReturn(FiscalStatus::Pending);
@@ -114,6 +120,7 @@ it('enqueue skips when an action is in-progress — race fix mirror of FiscalQue
 
 it('enqueue initialises meta and schedules the action on a fresh refund', function (): void {
     $refund = Mockery::mock(WC_Order_Refund::class);
+    $refund->allows(['get_parent_id' => 8402, 'get_id' => 123]);
     Functions\when('wc_get_order')->justReturn($refund);
 
     $this->meta->allows('status')->with($refund)->andReturn(null);
@@ -135,6 +142,7 @@ it('handle ignores non-int args', function (): void {
 
 it('handle does not reschedule on a terminal outcome', function (): void {
     $this->job->expects('run')->with(123)->andReturn(FiscalJobOutcome::success());
+    Functions\when('wc_get_order')->justReturn(false);
     Functions\expect('as_schedule_single_action')->never();
 
     $this->queue->handle(123);
@@ -142,6 +150,7 @@ it('handle does not reschedule on a terminal outcome', function (): void {
 
 it('handle schedules the next attempt on a retriable outcome', function (): void {
     $refund = Mockery::mock(WC_Order_Refund::class);
+    $refund->allows(['get_parent_id' => 8402, 'get_id' => 123]);
 
     $this->job->expects('run')->with(123)->andReturn(FiscalJobOutcome::retriable('5xx'));
 
@@ -163,6 +172,7 @@ it('handle schedules the next attempt on a retriable outcome', function (): void
 
 it('handle does not reschedule when the slot is out of range (last attempt already used)', function (): void {
     $refund = Mockery::mock(WC_Order_Refund::class);
+    $refund->allows(['get_parent_id' => 8402, 'get_id' => 123]);
 
     $this->job->expects('run')->with(123)->andReturn(FiscalJobOutcome::retriable('5xx'));
 
@@ -173,4 +183,90 @@ it('handle does not reschedule when the slot is out of range (last attempt alrea
     Functions\expect('as_schedule_single_action')->never();
 
     $this->queue->handle(123);
+});
+
+describe('journal', function (): void {
+    it('files a queued refund under the order it belongs to', function (): void {
+        $refund = Mockery::mock(WC_Order_Refund::class);
+        $refund->allows(['get_parent_id' => 8402]);
+        Functions\when('wc_get_order')->justReturn($refund);
+        $this->meta->allows('status')->andReturn(null);
+        $this->meta->allows('initialize');
+        Functions\when('as_get_scheduled_actions')->justReturn([]);
+        Functions\when('as_enqueue_async_action')->justReturn(1);
+
+        $this->queue->enqueue(123);
+
+        $this->journal->shouldHaveReceived('record')->once()->with('refund.queued', 8402, ['refund_id' => 123]);
+    });
+
+    it('says why a refund was not queued', function (string $reason, ?FiscalStatus $status, array $scheduled, array $extra): void {
+        $refund = Mockery::mock(WC_Order_Refund::class);
+        $refund->allows(['get_parent_id' => 8402]);
+        Functions\when('wc_get_order')->justReturn($refund);
+        $this->meta->allows('status')->andReturn($status);
+        Functions\when('as_get_scheduled_actions')->justReturn($scheduled);
+
+        $this->queue->enqueue(123);
+
+        $this->journal->shouldHaveReceived('record')->once()
+            ->with('refund.skipped', 8402, ['refund_id' => 123, 'reason' => $reason] + $extra);
+    })->with([
+        'settled' => ['already_settled', FiscalStatus::Success, [], ['fiscal_status' => 'success']],
+        'queued' => ['already_queued', null, [42], []],
+    ]);
+
+    it('records an id that is not a refund, under no order', function (): void {
+        Functions\when('wc_get_order')->justReturn(Mockery::mock(WC_Order::class));
+
+        $this->queue->enqueue(123);
+
+        $this->journal->shouldHaveReceived('record')->once()
+            ->with('refund.skipped', null, ['refund_id' => 123, 'reason' => 'not_a_refund']);
+    });
+
+    it('records the outcome of an attempt and the retry that follows', function (): void {
+        $refund = Mockery::mock(WC_Order_Refund::class);
+        $refund->allows(['get_parent_id' => 8402, 'get_id' => 123]);
+        Functions\when('wc_get_order')->justReturn($refund);
+        $this->job->allows('run')->andReturn(FiscalJobOutcome::retriable('HTTP 503'));
+        $this->meta->allows('attemptCount')->andReturn(1);
+        Functions\when('as_schedule_single_action')->justReturn(1);
+
+        $this->queue->handle(123);
+
+        $this->journal->shouldHaveReceived('record')->with('refund.attempt', 8402, [
+            'refund_id' => 123,
+            'fiscal_status' => 'pending',
+            'reason' => 'HTTP 503',
+        ]);
+        $this->journal->shouldHaveReceived('record')->with('refund.retry_scheduled', 8402, [
+            'refund_id' => 123,
+            'attempts' => 1,
+            'delay_seconds' => 15,
+        ]);
+    });
+
+    it('records that retries ran out', function (): void {
+        $refund = Mockery::mock(WC_Order_Refund::class);
+        $refund->allows(['get_parent_id' => 8402, 'get_id' => 123]);
+        Functions\when('wc_get_order')->justReturn($refund);
+        $this->job->allows('run')->andReturn(FiscalJobOutcome::retriable('HTTP 503'));
+        $this->meta->allows('attemptCount')->andReturn(7);
+
+        $this->queue->handle(123);
+
+        $this->journal->shouldHaveReceived('record')
+            ->with('refund.retries_exhausted', 8402, ['refund_id' => 123, 'attempts' => 7]);
+    });
+
+    it('still records an attempt whose refund has since been deleted', function (): void {
+        Functions\when('wc_get_order')->justReturn(false);
+        $this->job->allows('run')->andReturn(FiscalJobOutcome::retriable('HTTP 503'));
+        Functions\expect('as_schedule_single_action')->never();
+
+        $this->queue->handle(123);
+
+        $this->journal->shouldHaveReceived('record')->once()->with('refund.attempt', null, Mockery::subset(['refund_id' => 123]));
+    });
 });

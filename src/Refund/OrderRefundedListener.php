@@ -29,6 +29,9 @@ namespace BlobSolutions\WooCommerceVcrAm\Refund;
  * authoritative.
  */
 
+use BlobSolutions\WooCommerceVcrAm\Journal\DatabaseStore;
+use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
+
 if (! defined('ABSPATH')) {
     exit;
 }
@@ -37,6 +40,7 @@ class OrderRefundedListener
 {
     public function __construct(
         private readonly RefundQueue $queue,
+        private readonly Journal $journal = new Journal(new DatabaseStore()),
     ) {
     }
 
@@ -51,11 +55,18 @@ class OrderRefundedListener
      */
     public function onRefunded($orderId, $refundId): void
     {
+        $parentId = is_int($orderId) ? $orderId : null;
+
         if (! is_int($refundId)) {
-            // WC always passes int; defensive against custom callers
-            // that hand-fire the action with garbage args.
+            $this->journal->record('refund.skipped', $parentId, ['reason' => 'refund_id_unreadable']);
+
             return;
         }
+
+        $this->journal->record('refund.hook', $parentId, [
+            'refund_id' => $refundId,
+            'hook' => 'woocommerce_order_refunded',
+        ]);
 
         $this->queue->enqueue($refundId);
     }

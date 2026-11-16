@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Refund;
 
+use BlobSolutions\WooCommerceVcrAm\Journal\DatabaseStore;
+use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use WC_Order_Refund;
 
 if (! defined('ABSPATH')) {
@@ -53,6 +55,7 @@ class RefundQueue
     public function __construct(
         private readonly RefundJob $job,
         private readonly RefundStatusMeta $meta,
+        private readonly Journal $journal = new Journal(new DatabaseStore()),
     ) {
     }
 
@@ -71,24 +74,37 @@ class RefundQueue
         $refund = wc_get_order($refundId);
 
         if (! $refund instanceof WC_Order_Refund) {
+            $this->journal->record('refund.skipped', null, ['refund_id' => $refundId, 'reason' => 'not_a_refund']);
+
             return;
         }
 
+        $orderId = $refund->get_parent_id();
         $status = $this->meta->status($refund);
 
         if ($status !== null && $status->isTerminal()) {
             // Terminal — admin's job to retry via "Register refund now"
             // (Phase 3e UI). Don't auto-re-enqueue.
+            $this->journal->record('refund.skipped', $orderId, [
+                'refund_id' => $refundId,
+                'reason' => 'already_settled',
+                'fiscal_status' => $status->value,
+            ]);
+
             return;
         }
 
         if ($this->hasScheduledAction($refundId)) {
+            $this->journal->record('refund.skipped', $orderId, ['refund_id' => $refundId, 'reason' => 'already_queued']);
+
             return;
         }
 
         $this->meta->initialize($refund);
 
         as_enqueue_async_action(self::ACTION_HOOK, [$refundId], self::ACTION_GROUP);
+
+        $this->journal->record('refund.queued', $orderId, ['refund_id' => $refundId]);
     }
 
     /**
@@ -102,25 +118,38 @@ class RefundQueue
 
         $outcome = $this->job->run($refundId);
 
-        if (! $outcome->shouldRetry()) {
+        $refund = wc_get_order($refundId);
+        // Journal lines are filed under the order the refund belongs to, so
+        // that an order's report tells the whole story. A refund deleted
+        // while its job ran has no order left to file under.
+        $orderId = $refund instanceof WC_Order_Refund ? $refund->get_parent_id() : null;
+
+        $this->journal->record('refund.attempt', $orderId, [
+            'refund_id' => $refundId,
+            'fiscal_status' => $outcome->status->value,
+            'reason' => $outcome->reason,
+        ]);
+
+        if (! $outcome->shouldRetry() || ! $refund instanceof WC_Order_Refund) {
             return;
         }
 
-        $this->scheduleNextRetry($refundId);
+        $this->scheduleNextRetry($refund);
     }
 
-    private function scheduleNextRetry(int $refundId): void
+    private function scheduleNextRetry(WC_Order_Refund $refund): void
     {
-        $refund = wc_get_order($refundId);
-
-        if (! $refund instanceof WC_Order_Refund) {
-            return;
-        }
-
+        $refundId = $refund->get_id();
+        $orderId = $refund->get_parent_id();
         $attempt = $this->meta->attemptCount($refund);
         $slot = $attempt - 1;
 
         if (! isset(self::RETRY_DELAYS_SECONDS[$slot])) {
+            $this->journal->record('refund.retries_exhausted', $orderId, [
+                'refund_id' => $refundId,
+                'attempts' => $attempt,
+            ]);
+
             return;
         }
 
@@ -130,6 +159,12 @@ class RefundQueue
             [$refundId],
             self::ACTION_GROUP,
         );
+
+        $this->journal->record('refund.retry_scheduled', $orderId, [
+            'refund_id' => $refundId,
+            'attempts' => $attempt,
+            'delay_seconds' => self::RETRY_DELAYS_SECONDS[$slot],
+        ]);
     }
 
     private function hasScheduledAction(int $refundId): bool
