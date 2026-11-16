@@ -113,6 +113,8 @@ it('renders an "order not available" message when given a non-order argument', f
 
 it('resolves a WP_Post via wc_get_order on the legacy edit screen', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_status')->andReturn('processing');
+    $order->allows('get_refunds')->andReturn([]);
     $meta = Mockery::mock(FiscalStatusMeta::class);
     $meta->expects('status')->with($order)->andReturn(null);
 
@@ -126,6 +128,8 @@ it('resolves a WP_Post via wc_get_order on the legacy edit screen', function ():
 
 it('renders the "not yet fiscalised" placeholder when meta status is null', function (): void {
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_status')->andReturn('processing');
+    $order->allows('get_refunds')->andReturn([]);
     $meta = Mockery::mock(FiscalStatusMeta::class);
     $meta->expects('status')->with($order)->andReturn(null);
 
@@ -134,6 +138,42 @@ it('renders the "not yet fiscalised" placeholder when meta status is null', func
     expect($html)
         ->toContain('Not yet fiscalised')
         ->not->toContain('Fiscalize now');  // no button until terminal-failure
+});
+
+it('says the gateway never reported the payment when an unfiscalised order is still unpaid', function (string $status): void {
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_status')->andReturn($status);
+    $order->allows('get_refunds')->andReturn([]);
+    $meta = Mockery::mock(FiscalStatusMeta::class);
+    $meta->allows('status')->with($order)->andReturn(null);
+
+    $html = captureRender(makeBox($meta), $order);
+
+    expect($html)
+        ->toContain('WooCommerce has not been told that this order is paid')
+        ->toContain('change the order status to &quot;Processing&quot;');
+})->with(['pending', 'failed']);
+
+it('does not blame the gateway for an unfiscalised order that is not waiting for payment', function (string $status): void {
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_status')->andReturn($status);
+    $order->allows('get_refunds')->andReturn([]);
+    $meta = Mockery::mock(FiscalStatusMeta::class);
+    $meta->allows('status')->with($order)->andReturn(null);
+
+    $html = captureRender(makeBox($meta), $order);
+
+    expect($html)->not->toContain('has not been told');
+})->with(['processing', 'completed', 'on-hold', 'cancelled']);
+
+it('shows refunds on an order that has no fiscal status', function (): void {
+    $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_status')->andReturn('completed');
+    $order->expects('get_refunds')->once()->andReturn([]);
+    $meta = Mockery::mock(FiscalStatusMeta::class);
+    $meta->allows('status')->with($order)->andReturn(null);
+
+    captureRender(makeBox($meta), $order);
 });
 
 it('renders pending status with attempt count and last error', function (): void {
@@ -207,6 +247,8 @@ it('renders the success notice when the redirect query param is present', functi
     $_GET[OrderMetaBox::NOTICE_QUERY_PARAM] = 'fiscalize_enqueued';
 
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_status')->andReturn('processing');
+    $order->allows('get_refunds')->andReturn([]);
     $meta = Mockery::mock(FiscalStatusMeta::class);
     $meta->allows('status')->with($order)->andReturn(null);
 
@@ -238,6 +280,8 @@ it('ignores unknown notice values silently', function (): void {
     $_GET[OrderMetaBox::NOTICE_QUERY_PARAM] = 'utterly_unknown_notice';
 
     $order = Mockery::mock(WC_Order::class);
+    $order->allows('get_status')->andReturn('processing');
+    $order->allows('get_refunds')->andReturn([]);
     $meta = Mockery::mock(FiscalStatusMeta::class);
     $meta->allows('status')->with($order)->andReturn(null);
 

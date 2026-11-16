@@ -88,7 +88,10 @@ class OrderMetaBox
         $status = $this->meta->status($order);
 
         if ($status === null) {
-            $this->renderNotEnqueued();
+            $this->renderNotEnqueued($order);
+            // A refund can exist on an order this plugin never registered a
+            // sale for, and its state belongs on screen all the same.
+            $this->renderRefundsSection($order);
 
             return;
         }
@@ -121,10 +124,23 @@ class OrderMetaBox
         return null;
     }
 
-    private function renderNotEnqueued(): void
+    private function renderNotEnqueued(WC_Order $order): void
     {
         echo '<p>' . esc_html(__(
             'Not yet fiscalised. The plugin will queue this order automatically once payment completes.',
+            'vcr-am-fiscal-receipts',
+        )) . '</p>';
+
+        // WooCommerce has not announced a payment for an order in one of
+        // these statuses, so the plugin has sent nothing. When the customer's
+        // bank says otherwise, the gateway never reported back, and the only
+        // person who can tell is the one reading this box.
+        if (! in_array($order->get_status(), ['pending', 'failed'], true)) {
+            return;
+        }
+
+        echo '<p>' . esc_html(__(
+            'WooCommerce has not been told that this order is paid, so no receipt was requested. If the customer has in fact paid, the payment gateway did not report it back to the store: change the order status to "Processing" and the receipt will be registered.',
             'vcr-am-fiscal-receipts',
         )) . '</p>';
     }
