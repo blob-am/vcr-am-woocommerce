@@ -6,6 +6,9 @@ use BlobSolutions\WooCommerceVcrAm\Admin\ReadinessPanel;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogListing;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogPolicy;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Directory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Entry;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Verdict;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionFailure;
@@ -59,6 +62,7 @@ function makePanel(
     ?int $departmentOverride = null,
     ?string $shippingSku = 'shipping',
     ?CatalogPolicy $policy = null,
+    ?Verdict $classifierVerdict = null,
 ): ReadinessPanel {
     $probe = Mockery::mock(ConnectionProbe::class);
     $probe->allows('state')->andReturn($state);
@@ -77,7 +81,13 @@ function makePanel(
         $policy ?? new CatalogPolicy(classifierCode: '56.10', departmentInternalId: 1),
     );
 
-    return new ReadinessPanel($probe, $cashierCatalog, $departmentCatalog, $config);
+    $classifiers = Mockery::mock(Directory::class);
+    // By default every code is one the tax service accepts, named by itself.
+    $classifiers->allows('check')->andReturnUsing(
+        static fn (string $code): Verdict => $classifierVerdict ?? Verdict::known(new Entry($code)),
+    );
+
+    return new ReadinessPanel($probe, $cashierCatalog, $departmentCatalog, $config, $classifiers);
 }
 
 it('reads green, and names the register, when everything is in place', function (): void {
@@ -372,4 +382,31 @@ it('escapes what the API gave it', function (): void {
 
     expect($html)->not->toContain('<script>')
         ->not->toContain('<img onerror');
+});
+
+it('turns red when the stored classifier code is one the tax service refuses', function (): void {
+    // Up to 0.1.14 the field took any text, so a store can hold "47" and be
+    // told it is ready until its first order with a new product fails.
+    $html = makePanel(
+        ConnectionState::connected(panelIdentity()),
+        selectedCashier: 1,
+        policy: new CatalogPolicy(classifierCode: '47', departmentInternalId: 1),
+        classifierVerdict: Verdict::unknown([new Entry('47.00', 'Retail trade services')]),
+    )->render();
+
+    expect($html)->toContain('notice-error')
+        ->and($html)->toContain('<code>47</code>')
+        ->and($html)->toContain('<code>47.00 — Retail trade services</code>');
+});
+
+it('does not call a code bad when VCR could not be asked', function (): void {
+    $html = makePanel(
+        ConnectionState::connected(panelIdentity()),
+        selectedCashier: 1,
+        policy: new CatalogPolicy(classifierCode: '6109', departmentInternalId: 1),
+        classifierVerdict: Verdict::unavailable(new ConnectionFailure(ConnectionProblem::Unreachable)),
+    )->render();
+
+    expect($html)->toContain('notice-success')
+        ->and($html)->toContain('<code>6109</code>');
 });

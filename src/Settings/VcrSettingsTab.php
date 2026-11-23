@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Settings;
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Directory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Entry;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
@@ -41,6 +43,9 @@ final class VcrSettingsTab extends WC_Settings_Page
 
     public const SECTION_ADVANCED = 'advanced';
 
+    /** Why the classifier code just submitted was not stored, for the notice. */
+    private ?string $classifierNotice = null;
+
     public function __construct(
         private readonly KeyStore $keyStore,
         private readonly CashierCatalog $cashierCatalog,
@@ -48,6 +53,7 @@ final class VcrSettingsTab extends WC_Settings_Page
         private readonly ConnectionProbe $probe,
         private readonly GeneralFields $general,
         private readonly AdvancedFields $advanced,
+        private readonly Directory $classifiers,
         private readonly SafeUrlValidator $urlValidator = new SafeUrlValidator(),
     ) {
         $this->id = self::ID;
@@ -73,6 +79,33 @@ final class VcrSettingsTab extends WC_Settings_Page
             10,
             3,
         );
+
+        // The classifier field is a select whose options hold only the stored
+        // code, so WooCommerce's own select handling would throw away every
+        // newly picked one. This filter sees the raw value and decides.
+        add_filter(
+            'woocommerce_admin_settings_sanitize_option_' . Configuration::OPT_CATALOG_CLASSIFIER_CODE,
+            [$this, 'sanitizeClassifierCodeSave'],
+            10,
+            3,
+        );
+
+        // The three API-fed dropdowns render disabled when their list could
+        // not be loaded, and a browser does not submit a disabled field.
+        // WooCommerce then falls back to the select's default, '', and an
+        // unrelated save wipes the chosen cashier or department.
+        foreach ([
+            Configuration::OPT_DEFAULT_CASHIER_ID,
+            Configuration::OPT_CATALOG_DEPARTMENT_ID,
+            Configuration::OPT_DEFAULT_DEPARTMENT_ID,
+        ] as $optionId) {
+            add_filter(
+                'woocommerce_admin_settings_sanitize_option_' . $optionId,
+                [$this, 'keepUnsubmittedSelect'],
+                10,
+                3,
+            );
+        }
 
         // Settings save flow: WC fires `woocommerce_update_options_<id>`
         // after persisting fields — for every section, since it is fired by
@@ -193,6 +226,89 @@ final class VcrSettingsTab extends WC_Settings_Page
     }
 
     /**
+     * Stores a classifier code only when VCR says the tax service accepts it.
+     *
+     * Empty clears it, which is a real choice: the plugin then stops creating
+     * catalog items. Anything else is checked, and a code that fails is not
+     * stored — null makes WooCommerce keep the previous value — with a notice
+     * that says why and offers the nearest real codes. When VCR cannot be
+     * asked the previous value is kept too: an unchecked code is how "47"
+     * reached a live store.
+     *
+     * @param  mixed                $value
+     * @param  array<string, mixed> $option
+     * @param  mixed                $rawValue
+     */
+    public function sanitizeClassifierCodeSave($value, array $option, $rawValue): ?string
+    {
+        if (! is_string($rawValue)) {
+            return null;
+        }
+
+        $code = trim(sanitize_text_field($rawValue));
+        if ($code === '') {
+            return '';
+        }
+
+        $verdict = $this->classifiers->check($code);
+        if ($verdict->entry !== null) {
+            return $verdict->entry->code;
+        }
+
+        if ($verdict->isUnknown()) {
+            $nearest = array_map(static fn (Entry $entry): string => $entry->label(), $verdict->suggestions);
+            $message = $nearest === []
+                ? sprintf(
+                    /* translators: %s: the classifier code that was entered. */
+                    __('Classifier code %s is not one the tax service accepts, so it was not saved. Pick a code from the list.', 'vcr-am-fiscal-receipts'),
+                    $code,
+                )
+                : sprintf(
+                    /* translators: 1: the classifier code that was entered, 2: the nearest accepted codes with their names. */
+                    __('Classifier code %1$s is not one the tax service accepts, so it was not saved. Nearest codes: %2$s.', 'vcr-am-fiscal-receipts'),
+                    $code,
+                    implode('; ', $nearest),
+                );
+        } else {
+            $message = sprintf(
+                /* translators: %s: the classifier code that was entered. */
+                __('Could not check classifier code %s with VCR, so the previous code was kept. Check the connection in the checklist and save again.', 'vcr-am-fiscal-receipts'),
+                $code,
+            );
+        }
+
+        $this->classifierNotice = $message;
+        add_action('admin_notices', [$this, 'renderClassifierNotice']);
+
+        return null;
+    }
+
+    /**
+     * Null tells WooCommerce to leave the stored value alone; see the
+     * constructor for why a missing field must not become ''.
+     *
+     * @param  mixed                $value
+     * @param  array<string, mixed> $option
+     * @param  mixed                $rawValue
+     */
+    public function keepUnsubmittedSelect($value, array $option, $rawValue): mixed
+    {
+        return $rawValue === null ? null : $value;
+    }
+
+    public function renderClassifierNotice(): void
+    {
+        if ($this->classifierNotice === null) {
+            return;
+        }
+
+        printf(
+            '<div class="notice notice-error is-dismissible"><p>%s</p></div>',
+            esc_html($this->classifierNotice),
+        );
+    }
+
+    /**
      * Diverts the API key away from `wp_options` and into KeyStore. Called
      * by WC's settings save flow via the
      * `woocommerce_admin_settings_sanitize_option_<id>` filter.
@@ -241,6 +357,7 @@ final class VcrSettingsTab extends WC_Settings_Page
     {
         $this->cashierCatalog->refresh();
         $this->departmentCatalog->refresh();
+        $this->classifiers->refresh();
         $this->probe->refresh();
     }
 }

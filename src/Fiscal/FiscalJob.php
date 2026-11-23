@@ -367,10 +367,49 @@ class FiscalJob
                 return $this->describeIdempotencyConflict($detail);
             }
 
+            $classifierCode = $this->configuration->catalogPolicy()->classifierCode;
+            if ($error->statusCode === 400 && $classifierCode !== null && $this->rejectsClassifierCode($error)) {
+                return $this->describeRejectedClassifierCode($classifierCode, $detail);
+            }
+
             return $detail;
         }
 
         return $error->getMessage();
+    }
+
+    /**
+     * Whether VCR refused the classifier code on a catalog item the plugin was
+     * creating. The code comes from one store-wide setting, so this is never
+     * about the order: it is the setting, and every new product fails alike.
+     */
+    private function rejectsClassifierCode(VcrApiException $error): bool
+    {
+        foreach ($error->issues as $issue) {
+            if (preg_match('/^items\.\d+\.offer\.classifierCode$/', $issue->pointer()) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * "Validation failed" is what 0630 CLUB saw when the setting held "47",
+     * and it sent them looking at the department. Say which setting, and that
+     * the order itself is fine to retry once it is fixed.
+     */
+    private function describeRejectedClassifierCode(string $code, string $detail): string
+    {
+        return sprintf(
+            /* translators: 1: the configured classifier code, 2: technical detail — HTTP status, API request id, server message. */
+            __(
+                'The tax service does not accept classifier code %1$s, set under WooCommerce → Settings → VCR → "Classifier code for new catalog items", so no catalog item could be created for this order\'s products. Pick a code from that list, then use "Fiscalize now" on this order; it will not be charged again. (%2$s)',
+                'vcr-am-fiscal-receipts',
+            ),
+            $code,
+            $detail,
+        );
     }
 
     /**

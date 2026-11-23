@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Settings;
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Directory;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
 
@@ -30,6 +31,7 @@ final class SettingsPage
         private readonly ConnectionProbe $probe,
         private readonly GeneralFields $general,
         private readonly AdvancedFields $advanced,
+        private readonly Directory $classifiers,
     ) {
     }
 
@@ -64,6 +66,7 @@ final class SettingsPage
             $this->probe,
             $this->general,
             $this->advanced,
+            $this->classifiers,
         );
 
         return $pages;

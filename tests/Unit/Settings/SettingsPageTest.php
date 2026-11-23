@@ -5,6 +5,8 @@ declare(strict_types=1);
 use BlobSolutions\WooCommerceVcrAm\Admin\ReadinessPanel;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Directory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\SearcherFactory;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
@@ -41,13 +43,16 @@ it('hooks into woocommerce_get_settings_pages on register', function (): void {
         new IdentityReaderFactory($config, new VcrClientFactory()),
     );
 
+    $classifiers = new Directory($config, new SearcherFactory($config, new VcrClientFactory()));
+
     (new SettingsPage(
         $keyStore,
         $catalog,
         $departments,
         $probe,
-        new GeneralFields($keyStore, $catalog, $departments, new ReadinessPanel($probe, $catalog, $departments, $config)),
+        new GeneralFields($keyStore, $catalog, $departments, new ReadinessPanel($probe, $catalog, $departments, $config, $classifiers), $classifiers),
         new AdvancedFields($departments),
+        $classifiers,
     ))->register();
 });
 

@@ -25,6 +25,7 @@ use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Department;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\Offer;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\RegisterSaleInput;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Input\SaleItem;
+use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\ApiErrorIssue;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\PendingResource;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Model\RegisterSaleResponse;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Unit;
@@ -97,7 +98,10 @@ function makeOrderMockReturnedByWcGetOrder(int $orderId = 123): WC_Order
     return $order;
 }
 
-function makeApiException(int $statusCode, ?PendingResource $pending = null): VcrApiException
+/**
+ * @param list<ApiErrorIssue> $issues
+ */
+function makeApiException(int $statusCode, ?PendingResource $pending = null, array $issues = []): VcrApiException
 {
     return new VcrApiException(
         statusCode: $statusCode,
@@ -105,6 +109,7 @@ function makeApiException(int $statusCode, ?PendingResource $pending = null): Vc
         rawBody: '{}',
         request: Mockery::mock(RequestInterface::class),
         response: Mockery::mock(ResponseInterface::class),
+        issues: $issues,
         requestId: 'req-test',
         pending: $pending,
     );
@@ -148,7 +153,7 @@ function stubSaleItems(): array
  * mapping and reach the registrar. Caller still controls what the
  * registrar returns / throws.
  */
-function primeBuildable(?string $comment = null): void
+function primeBuildable(?string $comment = null, ?CatalogPolicy $policy = null): void
 {
     /** @var \Mockery\MockInterface $config */
     $config = test()->config;
@@ -156,7 +161,7 @@ function primeBuildable(?string $comment = null): void
     $config->allows('apiKey')->andReturn('test-key');
     $config->allows('defaultCashierId')->andReturn(5);
     $config->allows('defaultDepartmentId')->andReturn(7);
-    $config->allows('catalogPolicy')->andReturn(new CatalogPolicy());
+    $config->allows('catalogPolicy')->andReturn($policy ?? new CatalogPolicy());
     $config->allows('commentSource')->andReturn(Configuration::COMMENT_SOURCE_ORDER_NUMBER);
 
     /** @var \Mockery\MockInterface $itemBuilder */
@@ -659,4 +664,57 @@ it('explains a 422 in shop-owner terms and keeps the technical detail', function
     expect($outcome->status)->toBe(FiscalStatus::Failed)
         ->and($captured)->toContain('Fiscalize now')
         ->and($captured)->toContain('HTTP 422 [request req-test]');
+});
+
+it('names the classifier setting when VCR refuses the code a new catalog item was given', function (): void {
+    // 0630 CLUB, order #8412: the setting held "47", the API answered 400
+    // "Validation failed", and the merchant went looking at the department.
+    $order = makeOrderMockReturnedByWcGetOrder();
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    primeBuildable(policy: new CatalogPolicy(classifierCode: '47', departmentInternalId: 1));
+
+    $this->meta->expects('recordAttempt')->with($order);
+    $this->meta->allows('attemptCount')->with($order)->andReturn(1);
+
+    $registrar = Mockery::mock(SaleRegistrar::class);
+    $registrar->expects('registerSale')->andThrow(makeApiException(400, issues: [
+        new ApiErrorIssue(['items', 0, 'offer', 'classifierCode'], 'Code 47 not found in the goods or activity classifier', 'custom'),
+        new ApiErrorIssue(['items', 0, 'offer'], 'Unrecognized keys: "title"', 'unrecognized_keys'),
+    ]));
+    $this->registrarFactory->expects('create')->andReturn($registrar);
+
+    $captured = null;
+    $this->meta->expects('markFailed')
+        ->with($order, Mockery::on(function ($message) use (&$captured): bool {
+            $captured = $message;
+
+            return true;
+        }));
+
+    $outcome = $this->job->run(123);
+
+    expect($outcome->status)->toBe(FiscalStatus::Failed)
+        ->and($captured)->toContain('classifier code 47')
+        ->and($captured)->toContain('Classifier code for new catalog items')
+        ->and($captured)->toContain('Fiscalize now')
+        ->and($captured)->toContain('HTTP 400 [request req-test]');
+});
+
+it('leaves a 400 about another field in its technical wording', function (): void {
+    $order = makeOrderMockReturnedByWcGetOrder();
+    $this->meta->allows('status')->with($order)->andReturn(null);
+    primeBuildable(policy: new CatalogPolicy(classifierCode: '6109', departmentInternalId: 1));
+
+    $this->meta->expects('recordAttempt')->with($order);
+    $this->meta->allows('attemptCount')->with($order)->andReturn(1);
+
+    $registrar = Mockery::mock(SaleRegistrar::class);
+    $registrar->expects('registerSale')->andThrow(makeApiException(400, issues: [
+        new ApiErrorIssue(['items', 0, 'price'], 'Too small', 'too_small'),
+    ]));
+    $this->registrarFactory->expects('create')->andReturn($registrar);
+
+    $this->meta->expects('markFailed')->with($order, 'VCR API HTTP 400 [request req-test]: simulated');
+
+    $this->job->run(123);
 });

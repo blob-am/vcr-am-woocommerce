@@ -8,7 +8,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "POT-Creation-Date: 2026-11-13T00:00:00+00:00\n"
-"PO-Revision-Date: 2026-11-16T14:34:16+00:00\n"
+"PO-Revision-Date: 2026-11-23T15:44:22+00:00\n"
 "Language: hy\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: WP-CLI 2.12.0\n"
@@ -33,6 +33,24 @@ msgstr "Blob Solutions"
 #. Author URI of the plugin
 msgid "https://blob.am"
 msgstr "https://blob.am"
+
+msgid "Search by code or name"
+msgstr "Որոնել կոդով կամ անվանմամբ"
+
+msgid "Type at least 2 characters of a code or a name"
+msgstr "Մուտքագրեք կոդի կամ անվանման առնվազն 2 նիշ"
+
+msgid "Searching…"
+msgstr "Որոնվում է…"
+
+msgid "No code matches. Try a shorter code or another word."
+msgstr "Համապատասխան կոդ չկա։ Փորձեք ավելի կարճ կոդ կամ այլ բառ։"
+
+msgid "Could not reach VCR to search. Check the checklist above and try again."
+msgstr "Չհաջողվեց կապ հաստատել VCR-ի հետ որոնման համար։ Ստուգեք վերևի ստուգացանկը և փորձեք կրկին։"
+
+msgid "You do not have permission to change VCR settings."
+msgstr "Դուք VCR-ի կարգավորումները փոխելու թույլտվություն չունեք։"
 
 msgid "Test connection"
 msgstr "Ստուգել կապը"
@@ -334,6 +352,16 @@ msgstr "Կատալոգ"
 msgid "A product your register has no catalog item for cannot be fiscalised: that order is held for manual review until you add the item in VCR. Set a classifier code below and the plugin creates the item itself, as it issues the receipt."
 msgstr "Ապրանքը, որի համար դրամարկղի կատալոգում գրառում չկա, հնարավոր չէ ֆիսկալացնել. այդ պատվերը հետաձգվում է ձեռքով ստուգման, մինչև գրառումը չավելացնեք VCR-ում։ Ստորև նշեք դասակարգչի կոդը, և խրվակն ինքը կստեղծի գրառումը կտրոնը թողարկելիս։"
 
+#. translators: 1: the configured classifier code, 2: the nearest accepted codes, or nothing.
+#, php-format
+msgid "Classifier code %1$s is not one the tax service accepts, so every order with a product new to the register is refused. Pick a code from the list below. %2$s"
+msgstr "ՊԵԿ-ը չի ընդունում դասակարգչի %1$s կոդը, ուստի դրամարկղի կատալոգում դեռ չեղած ապրանքով յուրաքանչյուր պատվեր կմերժվի։ Ընտրեք կոդ ստորև ցանկից։ %2$s"
+
+#. translators: %s: the nearest accepted codes with their names.
+#, php-format
+msgid "Nearest codes: %s."
+msgstr "Մոտակա կոդերը՝ %s։"
+
 msgid "This register has more than one department, so the plugin cannot tell which tax regime a new catalog item belongs to. Pick one under \"Department for new catalog items\" below; until then a product not already in the catalog holds its order."
 msgstr "Այս դրամարկղն ունի մեկից ավելի բաժին, ուստի խրվակը չի կարող որոշել, թե որ հարկային ռեժիմին է պատկանում կատալոգի նոր գրառումը։ Ընտրեք բաժինը ստորև՝ «Բաժին կատալոգի նոր գրառումների համար» դաշտում. մինչ այդ կատալոգում դեռ չգրանցված ապրանքով պատվերը կհետաձգվի։"
 
@@ -528,6 +556,11 @@ msgstr "VCR ֆիսկալ կտրոնը գրանցված է։ Ֆիսկալ համ�
 #, php-format
 msgid "Gave up after %1$d attempts. Last error: %2$s"
 msgstr "Փորձերը սպառվեցին (%1$d)։ Վերջին սխալը՝ %2$s"
+
+#. translators: 1: the configured classifier code, 2: technical detail — HTTP status, API request id, server message.
+#, php-format
+msgid "The tax service does not accept classifier code %1$s, set under WooCommerce → Settings → VCR → \"Classifier code for new catalog items\", so no catalog item could be created for this order's products. Pick a code from that list, then use \"Fiscalize now\" on this order; it will not be charged again. (%2$s)"
+msgstr "ՊԵԿ-ը չի ընդունում դասակարգչի %1$s կոդը, որը նշված է WooCommerce → Settings → VCR → «Դասակարգչի կոդ կատալոգի նոր գրառումների համար» դաշտում, ուստի այս պատվերի ապրանքների համար կատալոգի գրառումներ ստեղծել չհաջողվեց։ Ընտրեք կոդ այդ ցանկից, ապա պատվերում սեղմեք «Ֆիսկալացնել հիմա»․ գումարը կրկին չի գանձվի։ (%2$s)"
 
 #. translators: 1: technical detail — HTTP status, API request id, server message.
 #, php-format
@@ -776,20 +809,6 @@ msgstr "Առանց դրա ոչ մի կտրոն թողարկել հնարավոր
 msgid "Every receipt line names a catalog item, and a fiscal receipt has to say what kind of thing was sold and under which tax regime. Fill these two in and the plugin creates the catalog item for any product your register has not seen yet, as it files that receipt — nothing to prepare, and nothing to keep in step by hand. Leave them empty and it only references items you onboarded in VCR yourself, refusing orders for anything else. Either way it never rewrites an item that already exists, so a code you refine in VCR stays yours."
 msgstr "Կտրոնի յուրաքանչյուր տող հղվում է կատալոգի գրառման, իսկ ֆիսկալ կտրոնում պետք է նշված լինի, թե ինչ է վաճառվել և որ հարկային ռեժիմով։ Լրացրեք այս երկու դաշտերը, և խրվակն ինքը կստեղծի կատալոգի գրառում ցանկացած ապրանքի համար, որը դրամարկղը դեռ չի տեսել՝ հենց կտրոնը գրանցելիս. նախապես ոչինչ պատրաստել կամ ձեռքով համաժամեցնել պետք չէ։ Եթե դրանք թողնեք դատարկ, խրվակը կհղվի միայն այն գրառումներին, որոնք ինքներդ եք ստեղծել VCR-ում, և կմերժի մնացած ամեն ինչով պատվերները։ Երկու դեպքում էլ այն երբեք չի վերագրում արդեն գոյություն ունեցող գրառումը, ուստի VCR-ում ձեր ճշգրտած կոդը կմնա անփոփոխ։"
 
-msgid "Classifier code for new catalog items"
-msgstr "Դասակարգչի կոդ կատալոգի նոր գրառումների համար"
-
-#. translators: %s: link to the classifier search page, already wrapped in an anchor.
-#, php-format
-msgid "One code for everything this store sells. %s"
-msgstr "Մեկ կոդ այն ամենի համար, ինչ վաճառում է խանութը։ %s"
-
-msgid "Look one up"
-msgstr "Գտնել կոդը"
-
-msgid "A goods code (ТН ВЭД, digits) or an activity code (КВЭД, like 56.10) — the tax service accepts either on a receipt line. Refine it per item in VCR afterwards if you need to; the plugin will not overwrite what you set there."
-msgstr "Ապրանքի կոդ (ԱՏԳ ԱԱ, թվանշաններ) կամ գործունեության տեսակի կոդ (ԱԴԳՏ, օրինակ՝ 56.10) — ՊԵԿ-ը կտրոնի տողում ընդունում է երկուսն էլ։ Անհրաժեշտության դեպքում հետո ճշգրտեք այն առանձին գրառումների համար VCR-ում. խրվակը չի վերագրի այնտեղ ձեր նշածը։"
-
 msgid "Department for new catalog items"
 msgstr "Բաժին կատալոգի նոր գրառումների համար"
 
@@ -856,6 +875,18 @@ msgstr "Առանց մեկնաբանության"
 msgid "The transaction ID is your payment gateway's own reference (e.g. a Stripe pi_… id) and is only available once the payment has cleared."
 msgstr "Գործարքի ID-ն ձեր վճարային համակարգի սեփական նույնացուցիչն է (օրինակ՝ Stripe-ի pi_… ID-ն) և հասանելի է դառնում միայն վճարումը հաստատվելուց հետո։"
 
+msgid "— search for a code —"
+msgstr "— գտեք կոդը —"
+
+msgid "Classifier code for new catalog items"
+msgstr "Դասակարգչի կոդ կատալոգի նոր գրառումների համար"
+
+msgid "One code for everything this store sells. Type a code (6109) or a word from its name, and pick from the list: only codes the tax service accepts are offered."
+msgstr "Մեկ կոդ այն ամենի համար, ինչ վաճառում է խանութը։ Մուտքագրեք կոդը (6109) կամ անվանման որևէ բառ և ընտրեք ցանկից․ այնտեղ միայն ՊԵԿ-ի ընդունած կոդերն են։"
+
+msgid "A goods code (four digits) or an activity code (like 56.10) — the tax service accepts either on a receipt line. Refine it per item in VCR afterwards if you need to; the plugin will not overwrite what you set there."
+msgstr "Ապրանքի կոդ (չորս թվանշան) կամ գործունեության տեսակի կոդ (օրինակ՝ 56.10) — ՊԵԿ-ը կտրոնի տողում ընդունում է երկուսն էլ։ Անհրաժեշտության դեպքում առանձին գրառման կոդը ճշգրտեք VCR-ում․ խրվակը չի վերագրի այնտեղ ձեր նշածը։"
+
 msgid "Connect your store to the VCR.AM gateway. Fiscal receipts (e-HDM) are issued directly to the Armenian State Revenue Committee (SRC) on every paid order."
 msgstr "Միացրեք ձեր խանութը VCR.AM դարպասին։ Յուրաքանչյուր վճարված պատվերի համար ֆիսկալ կտրոնը (e-HDM) ուղղակիորեն գրանցվում է Հայաստանի ՊԵԿ-ում։"
 
@@ -884,6 +915,21 @@ msgstr "Ընդհանուր"
 
 msgid "VCR base URL rejected:"
 msgstr "VCR-ի հիմնական URL-ը մերժվել է՝"
+
+#. translators: %s: the classifier code that was entered.
+#, php-format
+msgid "Classifier code %s is not one the tax service accepts, so it was not saved. Pick a code from the list."
+msgstr "ՊԵԿ-ը չի ընդունում դասակարգչի %s կոդը, ուստի այն չի պահպանվել։ Ընտրեք կոդ ցանկից։"
+
+#. translators: 1: the classifier code that was entered, 2: the nearest accepted codes with their names.
+#, php-format
+msgid "Classifier code %1$s is not one the tax service accepts, so it was not saved. Nearest codes: %2$s."
+msgstr "ՊԵԿ-ը չի ընդունում դասակարգչի %1$s կոդը, ուստի այն չի պահպանվել։ Մոտակա կոդերը՝ %2$s։"
+
+#. translators: %s: the classifier code that was entered.
+#, php-format
+msgid "Could not check classifier code %s with VCR, so the previous code was kept. Check the connection in the checklist and save again."
+msgstr "Չհաջողվեց VCR-ում ստուգել դասակարգչի %s կոդը, ուստի պահպանվել է նախորդ կոդը։ Ստուգեք կապը ստուգացանկում և պահպանեք կրկին։"
 
 msgid "VCR problem report"
 msgstr "VCR խնդրի հաշվետվություն"

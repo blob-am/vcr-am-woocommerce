@@ -6,6 +6,8 @@ namespace BlobSolutions\WooCommerceVcrAm\Admin;
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogListing;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Directory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Entry;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
@@ -41,6 +43,7 @@ final class ReadinessPanel
         private readonly CashierCatalog $cashierCatalog,
         private readonly DepartmentCatalog $departmentCatalog,
         private readonly Configuration $configuration,
+        private readonly Directory $classifiers,
     ) {
     }
 
@@ -359,8 +362,9 @@ final class ReadinessPanel
     {
         $label = __('Catalog', 'vcr-am-fiscal-receipts');
         $policy = $this->configuration->catalogPolicy();
+        $code = $policy->classifierCode;
 
-        if (! $policy->armed()) {
+        if ($code === null) {
             return new ReadinessStep(
                 $label,
                 __(
@@ -368,6 +372,37 @@ final class ReadinessPanel
                     'vcr-am-fiscal-receipts',
                 ),
                 ReadinessLevel::Attention,
+            );
+        }
+
+        $verdict = $this->classifiers->check($code);
+
+        // Versions up to 0.1.14 stored whatever was typed, so a store can
+        // carry a code the tax service has never accepted. Every order with a
+        // new product then fails, and this line is the only warning before it.
+        // It goes before the department question: an unset department holds
+        // an order, a refused code fails it.
+        if ($verdict->isUnknown()) {
+            $nearest = array_map(
+                static fn (Entry $entry): string => '<code>' . esc_html($entry->label()) . '</code>',
+                $verdict->suggestions,
+            );
+
+            return new ReadinessStep(
+                $label,
+                sprintf(
+                    /* translators: 1: the configured classifier code, 2: the nearest accepted codes, or nothing. */
+                    __('Classifier code %1$s is not one the tax service accepts, so every order with a product new to the register is refused. Pick a code from the list below. %2$s', 'vcr-am-fiscal-receipts'),
+                    '<code>' . esc_html($code) . '</code>',
+                    $nearest === []
+                        ? ''
+                        : sprintf(
+                            /* translators: %s: the nearest accepted codes with their names. */
+                            __('Nearest codes: %s.', 'vcr-am-fiscal-receipts'),
+                            implode(', ', $nearest),
+                        ),
+                ),
+                ReadinessLevel::Blocked,
             );
         }
 
@@ -382,12 +417,17 @@ final class ReadinessPanel
             );
         }
 
+        // Unchecked (VCR did not answer) shows the bare code: the connection
+        // line above already says what is wrong, and this one must not claim
+        // the code is bad when nobody asked.
+        $shown = $verdict->entry?->label() ?? $code;
+
         return new ReadinessStep(
             $label,
             sprintf(
                 /* translators: %s: the configured classifier code. */
                 __('New products are added to the register\'s catalog under code %s as their first receipt is issued. Change a code per item in VCR any time — the plugin never overwrites one.', 'vcr-am-fiscal-receipts'),
-                '<code>' . esc_html($policy->classifierCode ?? '') . '</code>',
+                '<code>' . esc_html($shown) . '</code>',
             ),
             ReadinessLevel::Ready,
         );

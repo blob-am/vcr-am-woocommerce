@@ -8,7 +8,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "POT-Creation-Date: 2026-11-13T00:00:00+00:00\n"
-"PO-Revision-Date: 2026-11-16T14:34:16+00:00\n"
+"PO-Revision-Date: 2026-11-23T15:44:22+00:00\n"
 "Language: ru_RU\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
 "X-Generator: WP-CLI 2.12.0\n"
@@ -33,6 +33,24 @@ msgstr "Blob Solutions"
 #. Author URI of the plugin
 msgid "https://blob.am"
 msgstr "https://blob.am"
+
+msgid "Search by code or name"
+msgstr "Поиск по коду или названию"
+
+msgid "Type at least 2 characters of a code or a name"
+msgstr "Введите хотя бы 2 символа кода или названия"
+
+msgid "Searching…"
+msgstr "Ищем…"
+
+msgid "No code matches. Try a shorter code or another word."
+msgstr "Подходящих кодов нет. Попробуйте код покороче или другое слово."
+
+msgid "Could not reach VCR to search. Check the checklist above and try again."
+msgstr "Не удалось связаться с VCR для поиска. Проверьте чек-лист выше и попробуйте снова."
+
+msgid "You do not have permission to change VCR settings."
+msgstr "У вас нет прав на изменение настроек VCR."
 
 msgid "Test connection"
 msgstr "Проверить подключение"
@@ -337,6 +355,16 @@ msgstr "Каталог"
 msgid "A product your register has no catalog item for cannot be fiscalised: that order is held for manual review until you add the item in VCR. Set a classifier code below and the plugin creates the item itself, as it issues the receipt."
 msgstr "Товар, для которого в каталоге кассы нет позиции, фискализировать нельзя: такой заказ откладывается на ручную проверку, пока вы не добавите позицию в VCR. Укажите ниже код классификатора — и плагин будет создавать позицию сам при выдаче чека."
 
+#. translators: 1: the configured classifier code, 2: the nearest accepted codes, or nothing.
+#, php-format
+msgid "Classifier code %1$s is not one the tax service accepts, so every order with a product new to the register is refused. Pick a code from the list below. %2$s"
+msgstr "Налоговая не принимает код классификатора %1$s, поэтому каждый заказ с товаром, которого ещё нет в каталоге кассы, будет отклонён. Выберите код из списка ниже. %2$s"
+
+#. translators: %s: the nearest accepted codes with their names.
+#, php-format
+msgid "Nearest codes: %s."
+msgstr "Ближайшие коды: %s."
+
 msgid "This register has more than one department, so the plugin cannot tell which tax regime a new catalog item belongs to. Pick one under \"Department for new catalog items\" below; until then a product not already in the catalog holds its order."
 msgstr "В этой кассе больше одного отдела, поэтому плагин не может определить, к какому режиму налогообложения относится новая позиция каталога. Выберите отдел ниже, в поле «Отдел для новых позиций каталога»; до тех пор заказ с товаром, которого ещё нет в каталоге, будет отложен."
 
@@ -531,6 +559,11 @@ msgstr "Фискальный чек VCR зарегистрирован. Фиск
 #, php-format
 msgid "Gave up after %1$d attempts. Last error: %2$s"
 msgstr "Попытки исчерпаны (%1$d). Последняя ошибка: %2$s"
+
+#. translators: 1: the configured classifier code, 2: technical detail — HTTP status, API request id, server message.
+#, php-format
+msgid "The tax service does not accept classifier code %1$s, set under WooCommerce → Settings → VCR → \"Classifier code for new catalog items\", so no catalog item could be created for this order's products. Pick a code from that list, then use \"Fiscalize now\" on this order; it will not be charged again. (%2$s)"
+msgstr "Налоговая не принимает код классификатора %1$s, указанный в WooCommerce → Настройки → VCR → «Код классификатора для новых позиций каталога», поэтому для товаров этого заказа не удалось создать позиции каталога. Выберите код из этого списка, затем нажмите «Фискализировать сейчас» в заказе: повторно оплата не списывается. (%2$s)"
 
 #. translators: 1: technical detail — HTTP status, API request id, server message.
 #, php-format
@@ -779,20 +812,6 @@ msgstr "Без этого нельзя выдать ни одного чека."
 msgid "Every receipt line names a catalog item, and a fiscal receipt has to say what kind of thing was sold and under which tax regime. Fill these two in and the plugin creates the catalog item for any product your register has not seen yet, as it files that receipt — nothing to prepare, and nothing to keep in step by hand. Leave them empty and it only references items you onboarded in VCR yourself, refusing orders for anything else. Either way it never rewrites an item that already exists, so a code you refine in VCR stays yours."
 msgstr "Каждая строка чека ссылается на позицию каталога, а в фискальном чеке должно быть указано, что именно продано и под каким режимом налогообложения. Заполните эти два поля — и плагин сам создаст позицию каталога для любого товара, которого касса ещё не видела, прямо при регистрации чека: ничего не нужно готовить заранее и синхронизировать вручную. Если оставить их пустыми, плагин будет ссылаться только на позиции, которые вы сами завели в VCR, и отклонять заказы со всем остальным. В обоих случаях он не переписывает существующие позиции, так что код, уточнённый вами в VCR, останется вашим."
 
-msgid "Classifier code for new catalog items"
-msgstr "Код классификатора для новых позиций каталога"
-
-#. translators: %s: link to the classifier search page, already wrapped in an anchor.
-#, php-format
-msgid "One code for everything this store sells. %s"
-msgstr "Один код на всё, что продаёт магазин. %s"
-
-msgid "Look one up"
-msgstr "Найти код"
-
-msgid "A goods code (ТН ВЭД, digits) or an activity code (КВЭД, like 56.10) — the tax service accepts either on a receipt line. Refine it per item in VCR afterwards if you need to; the plugin will not overwrite what you set there."
-msgstr "Код товара (ТН ВЭД, цифры) или код вида деятельности (КВЭД, например 56.10) — налоговая принимает в строке чека любой из них. При необходимости уточните его для отдельных позиций в VCR; плагин не перезапишет то, что вы там указали."
-
 msgid "Department for new catalog items"
 msgstr "Отдел для новых позиций каталога"
 
@@ -859,6 +878,18 @@ msgstr "Без комментария"
 msgid "The transaction ID is your payment gateway's own reference (e.g. a Stripe pi_… id) and is only available once the payment has cleared."
 msgstr "ID транзакции — это собственный идентификатор вашего платёжного шлюза (например, pi_… у Stripe); он появляется только после поступления оплаты."
 
+msgid "— search for a code —"
+msgstr "— найдите код —"
+
+msgid "Classifier code for new catalog items"
+msgstr "Код классификатора для новых позиций каталога"
+
+msgid "One code for everything this store sells. Type a code (6109) or a word from its name, and pick from the list: only codes the tax service accepts are offered."
+msgstr "Один код для всего, что продаёт магазин. Введите код (6109) или слово из названия и выберите из списка: в нём только коды, которые принимает налоговая."
+
+msgid "A goods code (four digits) or an activity code (like 56.10) — the tax service accepts either on a receipt line. Refine it per item in VCR afterwards if you need to; the plugin will not overwrite what you set there."
+msgstr "Код товара (четыре цифры) или код вида деятельности (например, 56.10) — налоговая принимает в строке чека любой из них. При необходимости уточните код отдельной позиции в VCR; плагин не перезапишет то, что вы там укажете."
+
 msgid "Connect your store to the VCR.AM gateway. Fiscal receipts (e-HDM) are issued directly to the Armenian State Revenue Committee (SRC) on every paid order."
 msgstr "Подключите магазин к шлюзу VCR.AM. По каждому оплаченному заказу фискальный чек (e-HDM) регистрируется напрямую в налоговой Армении."
 
@@ -887,6 +918,21 @@ msgstr "Основные"
 
 msgid "VCR base URL rejected:"
 msgstr "Базовый URL VCR отклонён:"
+
+#. translators: %s: the classifier code that was entered.
+#, php-format
+msgid "Classifier code %s is not one the tax service accepts, so it was not saved. Pick a code from the list."
+msgstr "Налоговая не принимает код классификатора %s, поэтому он не сохранён. Выберите код из списка."
+
+#. translators: 1: the classifier code that was entered, 2: the nearest accepted codes with their names.
+#, php-format
+msgid "Classifier code %1$s is not one the tax service accepts, so it was not saved. Nearest codes: %2$s."
+msgstr "Налоговая не принимает код классификатора %1$s, поэтому он не сохранён. Ближайшие коды: %2$s."
+
+#. translators: %s: the classifier code that was entered.
+#, php-format
+msgid "Could not check classifier code %s with VCR, so the previous code was kept. Check the connection in the checklist and save again."
+msgstr "Не удалось проверить код классификатора %s в VCR, поэтому оставлен прежний код. Проверьте подключение в чек-листе и сохраните ещё раз."
 
 msgid "VCR problem report"
 msgstr "Отчёт о проблеме VCR"

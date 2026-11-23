@@ -21,6 +21,14 @@
 import { randomBytes } from 'node:crypto';
 import http from 'node:http';
 
+const CLASSIFIER_DICTIONARY = [
+    { code: '4701', title: 'Mechanical wood pulp' },
+    { code: '6109', title: 'T-shirts, singlets and other vests, knitted' },
+    { code: '6110', title: 'Jerseys, pullovers, cardigans, knitted' },
+    { code: '47.00', title: 'Retail trade services' },
+    { code: '56.10', title: 'Restaurant services' },
+];
+
 const PORT = Number(process.env.MOCK_VCR_PORT ?? 9876);
 // Bind to 0.0.0.0 so the wp-env Docker container can reach us via
 // host.docker.internal — which on macOS resolves to an IPv6 address
@@ -301,6 +309,21 @@ async function handleRequest(req, res) {
                 changelog: '<h4>9.9.9</h4><ul><li>A line only the feed could have put on this screen.</li></ul>',
             },
         });
+    }
+
+    // GET /searchByClassifier — a stand-in for the server's fuzzy search, over
+    // a handful of real codes. Goods codes are four digits, activity codes
+    // carry a dot, and `type` picks the dictionary, as it does on vcr.am. "47"
+    // finds 4701 and 47.00 and is itself neither: the code 0630 CLUB typed.
+    if (req.url.startsWith('/api/v1/searchByClassifier') && req.method === 'GET') {
+        const params = new URL(req.url, 'http://mock').searchParams;
+        const query = (params.get('query') ?? '').toLowerCase();
+        const wantsGoods = params.get('type') === 'product';
+        const results = CLASSIFIER_DICTIONARY
+            .filter((entry) => entry.code.includes('.') !== wantsGoods)
+            .filter((entry) => entry.code.startsWith(query) || entry.title.toLowerCase().includes(query));
+
+        return jsonResponse(res, 200, results);
     }
 
     if (req.url.startsWith('/api/v1/whoami') && req.method === 'GET') {

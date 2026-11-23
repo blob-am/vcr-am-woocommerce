@@ -6,9 +6,14 @@ use BlobSolutions\WooCommerceVcrAm\Admin\ReadinessPanel;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogListing;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CatalogPolicy;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Directory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Entry;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Verdict;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionFailure;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
+use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProblem;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionState;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\RegisterIdentity;
 use BlobSolutions\WooCommerceVcrAm\Settings\AdvancedFields;
@@ -33,6 +38,8 @@ beforeEach(function (): void {
     );
     Functions\when('esc_url')->returnArg(1);
     Functions\when('esc_html')->returnArg(1);
+    // The classifier field reads the stored code to label its one option.
+    Functions\when('get_option')->justReturn('');
 });
 
 /**
@@ -100,13 +107,27 @@ function stubTabConfig(?int $cashierId = null, ?int $departmentId = null): Confi
     return $config;
 }
 
+function stubTabClassifiers(?Verdict $verdict = null): Directory
+{
+    $classifiers = Mockery::mock(Directory::class);
+    // By default every code is one the tax service accepts, named by itself.
+    $classifiers->allows('check')->andReturnUsing(
+        static fn (string $code): Verdict => $verdict ?? Verdict::known(new Entry($code)),
+    );
+    $classifiers->allows('refresh');
+
+    return $classifiers;
+}
+
 function makeSettingsTab(
     ?KeyStore $keyStore = null,
     ?CashierCatalog $cashiers = null,
     ?DepartmentCatalog $departments = null,
     ?ConnectionProbe $probe = null,
     ?Configuration $config = null,
+    ?Directory $classifiers = null,
 ): VcrSettingsTab {
+    $classifiers ??= stubTabClassifiers();
     $keyStore ??= stubTabKeyStore();
     $cashiers ??= stubTabCashiers();
     $departments ??= stubTabDepartments();
@@ -122,9 +143,11 @@ function makeSettingsTab(
             $keyStore,
             $cashiers,
             $departments,
-            new ReadinessPanel($probe, $cashiers, $departments, $config),
+            new ReadinessPanel($probe, $cashiers, $departments, $config, $classifiers),
+            $classifiers,
         ),
         new AdvancedFields($departments),
+        $classifiers,
     );
 }
 
@@ -397,4 +420,84 @@ it('points an empty dropdown at the checklist instead of guessing why it is empt
     expect($field['custom_attributes'])->toBe(['disabled' => 'disabled'])
         ->and($field['options'][''])->toContain('see the checklist above')
         ->and($field['options'][''])->not->toContain('API key permissions');
+});
+
+it('renders the classifier code as a search over accepted codes, not a text box', function (): void {
+    // 0.1.14 had a text box, and a store typed "47". The only option the
+    // markup carries is the stored code; the rest come from the search.
+    Functions\when('get_option')->alias(
+        static fn (string $name, mixed $default = false): mixed => $name === Configuration::OPT_CATALOG_CLASSIFIER_CODE ? '6109' : $default,
+    );
+
+    $tab = makeSettingsTab(
+        keyStore: stubTabKeyStore(isSet: true),
+        classifiers: stubTabClassifiers(Verdict::known(new Entry('6109', 'T-shirts'))),
+    );
+    $field = fieldById($tab->get_settings(), Configuration::OPT_CATALOG_CLASSIFIER_CODE);
+
+    expect($field['type'])->toBe('select')
+        ->and($field['class'])->toBe('vcr-classifier-select')
+        // PHP turns the numeric key into an int; WooCommerce compares strval()s.
+        ->and(array_map('strval', array_keys($field['options'])))->toBe(['', '6109'])
+        ->and($field['options']['6109'])->toBe('6109 — T-shirts');
+});
+
+it('stores a classifier code the tax service accepts', function (): void {
+    Functions\when('sanitize_text_field')->returnArg();
+    $tab = makeSettingsTab(classifiers: stubTabClassifiers(Verdict::known(new Entry('6109', 'T-shirts'))));
+
+    expect($tab->sanitizeClassifierCodeSave('', [], ' 6109 '))->toBe('6109');
+});
+
+it('clears the classifier code when the merchant empties it', function (): void {
+    Functions\when('sanitize_text_field')->returnArg();
+    $classifiers = Mockery::mock(Directory::class);
+    $classifiers->expects('check')->never();
+    $classifiers->allows('refresh');
+
+    expect(makeSettingsTab(classifiers: $classifiers)->sanitizeClassifierCodeSave('', [], ''))->toBe('');
+});
+
+it('keeps the previous classifier code and says why when the new one is not accepted', function (): void {
+    Functions\when('sanitize_text_field')->returnArg();
+    \Brain\Monkey\Actions\expectAdded('admin_notices')->once();
+
+    $tab = makeSettingsTab(classifiers: stubTabClassifiers(
+        Verdict::unknown([new Entry('47.00', 'Retail trade services')]),
+    ));
+
+    expect($tab->sanitizeClassifierCodeSave('', [], '47'))->toBeNull();
+});
+
+it('keeps the previous classifier code when VCR cannot be asked', function (): void {
+    // An unchecked code is how "47" reached a live store.
+    Functions\when('sanitize_text_field')->returnArg();
+    \Brain\Monkey\Actions\expectAdded('admin_notices')->once();
+
+    $tab = makeSettingsTab(classifiers: stubTabClassifiers(
+        Verdict::unavailable(new ConnectionFailure(ConnectionProblem::Unreachable)),
+    ));
+
+    expect($tab->sanitizeClassifierCodeSave('', [], '6109'))->toBeNull();
+});
+
+it('leaves the classifier code alone when the field never reached the server', function (): void {
+    expect(makeSettingsTab()->sanitizeClassifierCodeSave(null, [], null))->toBeNull();
+});
+
+it('invalidateCaches forgets classifier verdicts too', function (): void {
+    $classifiers = Mockery::mock(Directory::class);
+    $classifiers->expects('refresh')->once();
+
+    makeSettingsTab(classifiers: $classifiers)->invalidateCaches();
+});
+
+it('keeps a cashier or department whose dropdown was disabled and so never submitted', function (): void {
+    // A dropdown whose list failed to load renders disabled; WooCommerce
+    // would store its default, '', and wipe the merchant's choice.
+    $tab = makeSettingsTab();
+
+    expect($tab->keepUnsubmittedSelect('', [], null))->toBeNull()
+        ->and($tab->keepUnsubmittedSelect('4', [], '4'))->toBe('4')
+        ->and($tab->keepUnsubmittedSelect('', [], ''))->toBe('');
 });

@@ -11,6 +11,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
+use BlobSolutions\WooCommerceVcrAm\Admin\ClassifierSearchEndpoint;
 use BlobSolutions\WooCommerceVcrAm\Admin\ConnectionTester;
 use BlobSolutions\WooCommerceVcrAm\Admin\FiscalizeNowHandler;
 use BlobSolutions\WooCommerceVcrAm\Admin\OrderMetaBox;
@@ -22,6 +23,8 @@ use BlobSolutions\WooCommerceVcrAm\Admin\ReadinessPanel;
 use BlobSolutions\WooCommerceVcrAm\Admin\SystemStatusReport;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Directory;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\SearcherFactory;
 use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\Checker;
 use BlobSolutions\WooCommerceVcrAm\Catalog\Coverage\StoreSkuReader;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
@@ -220,7 +223,8 @@ final class Plugin
         // single admin page costs at most one /whoami call.
         $identityFactory = new IdentityReaderFactory($config, $clientFactory);
         $probe = new ConnectionProbe($config, $identityFactory);
-        $panel = new ReadinessPanel($probe, $cashierCatalog, $departmentCatalog, $config);
+        $classifiers = new Directory($config, new SearcherFactory($config, $clientFactory));
+        $panel = new ReadinessPanel($probe, $cashierCatalog, $departmentCatalog, $config, $classifiers);
 
         (new PluginActionLinks($this->pluginFile))->register();
 
@@ -229,9 +233,11 @@ final class Plugin
             $cashierCatalog,
             $departmentCatalog,
             $probe,
-            new GeneralFields($keyStore, $cashierCatalog, $departmentCatalog, $panel),
+            new GeneralFields($keyStore, $cashierCatalog, $departmentCatalog, $panel, $classifiers),
             new AdvancedFields($departmentCatalog),
+            $classifiers,
         ))->register();
+        (new ClassifierSearchEndpoint($classifiers, $this->pluginFile, $this->version))->register();
         (new ConnectionTester(
             $keyStore,
             $listerFactory,

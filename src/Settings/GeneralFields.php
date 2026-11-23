@@ -6,6 +6,7 @@ namespace BlobSolutions\WooCommerceVcrAm\Settings;
 
 use BlobSolutions\WooCommerceVcrAm\Admin\ReadinessPanel;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierCatalog;
+use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Directory;
 use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 
@@ -28,14 +29,12 @@ if (! defined('ABSPATH')) {
  */
 final class GeneralFields
 {
-    /** Where a merchant finds a classifier code without asking us. */
-    private const CLASSIFIER_SEARCH_URL = 'https://vcr.am/classifier';
-
     public function __construct(
         private readonly KeyStore $keyStore,
         private readonly CashierCatalog $cashierCatalog,
         private readonly DepartmentCatalog $departmentCatalog,
         private readonly ReadinessPanel $panel,
+        private readonly Directory $classifiers,
         private readonly CatalogSelect $select = new CatalogSelect(),
         private readonly IntroDescription $intro = new IntroDescription(),
         private readonly ?ConnectButton $connect = null,
@@ -95,26 +94,7 @@ final class GeneralFields
                 ),
                 'id' => 'vcr_catalog_section',
             ],
-            [
-                'name' => __('Classifier code for new catalog items', 'vcr-am-fiscal-receipts'),
-                'type' => 'text',
-                'id' => Configuration::OPT_CATALOG_CLASSIFIER_CODE,
-                'desc' => sprintf(
-                    /* translators: %s: link to the classifier search page, already wrapped in an anchor. */
-                    __('One code for everything this store sells. %s', 'vcr-am-fiscal-receipts'),
-                    sprintf(
-                        '<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
-                        esc_url(self::CLASSIFIER_SEARCH_URL),
-                        esc_html__('Look one up', 'vcr-am-fiscal-receipts'),
-                    ),
-                ),
-                'desc_tip' => __(
-                    'A goods code (ТН ВЭД, digits) or an activity code (КВЭД, like 56.10) — the tax service accepts either on a receipt line. Refine it per item in VCR afterwards if you need to; the plugin will not overwrite what you set there.',
-                    'vcr-am-fiscal-receipts',
-                ),
-                'default' => '',
-                'placeholder' => '56.10',
-            ],
+            $this->classifierField(),
             $this->select->build(
                 name: __('Department for new catalog items', 'vcr-am-fiscal-receipts'),
                 optionId: Configuration::OPT_CATALOG_DEPARTMENT_ID,
@@ -205,6 +185,47 @@ final class GeneralFields
                 'type' => 'sectionend',
                 'id' => 'vcr_reconciliation_section',
             ],
+        ];
+    }
+
+    /**
+     * A search over the codes the tax service accepts, never a text box.
+     *
+     * It was a text box until 0.1.14, and a store typed "47" — the NACE
+     * division for retail, not a code — which the checklist then called
+     * ready. Now the only values the form can hold are the ones VCR offered:
+     * the options carry just the stored code, and the script fills the rest
+     * from {@see \BlobSolutions\WooCommerceVcrAm\Admin\ClassifierSearchEndpoint}
+     * as the merchant types. The save path checks the code again, because a
+     * POST does not have to come from this form.
+     *
+     * @return array<string, mixed>
+     */
+    private function classifierField(): array
+    {
+        $options = ['' => __('— search for a code —', 'vcr-am-fiscal-receipts')];
+
+        $stored = get_option(Configuration::OPT_CATALOG_CLASSIFIER_CODE, '');
+        if (is_string($stored) && $stored !== '') {
+            $verdict = $this->classifiers->check($stored);
+            $options[$stored] = $verdict->entry?->label() ?? $stored;
+        }
+
+        return [
+            'name' => __('Classifier code for new catalog items', 'vcr-am-fiscal-receipts'),
+            'type' => 'select',
+            'id' => Configuration::OPT_CATALOG_CLASSIFIER_CODE,
+            'class' => 'vcr-classifier-select',
+            'options' => $options,
+            'desc' => __(
+                'One code for everything this store sells. Type a code (6109) or a word from its name, and pick from the list: only codes the tax service accepts are offered.',
+                'vcr-am-fiscal-receipts',
+            ),
+            'desc_tip' => __(
+                'A goods code (four digits) or an activity code (like 56.10) — the tax service accepts either on a receipt line. Refine it per item in VCR afterwards if you need to; the plugin will not overwrite what you set there.',
+                'vcr-am-fiscal-receipts',
+            ),
+            'default' => '',
         ];
     }
 
