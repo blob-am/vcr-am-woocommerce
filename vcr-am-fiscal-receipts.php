@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Plugin URI:        https://vcr.am
  * Update URI:        https://vcr.am/plugins/vcr-am-fiscal-receipts
  * Description:       Issue Armenian fiscal receipts (eHDM) to the State Revenue Committee directly from WooCommerce orders. Multi-currency + refunds.
- * Version:           0.1.14
+ * Version:           0.1.15
  * Requires at least: 6.7
  * Tested up to:      7.1
  * Requires PHP:      8.3
@@ -35,7 +35,7 @@ if (defined(__NAMESPACE__ . '\\PLUGIN_FILE')) {
 }
 
 const PLUGIN_FILE    = __FILE__;
-const PLUGIN_VERSION = '0.1.14';
+const PLUGIN_VERSION = '0.1.15';
 
 // Both autoloaders are required for runtime. `vendor-prefixed/` carries
 // every production dependency (SDK + Guzzle + php-http/* + the PSR

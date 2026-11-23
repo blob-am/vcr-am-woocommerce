@@ -4,7 +4,7 @@ Tags: woocommerce, armenia, fiscal, receipts, ehdm
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.1.14
+Stable tag: 0.1.15
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -38,7 +38,7 @@ The official WooCommerce plugin for the [VCR.AM](https://vcr.am) Virtual Cash Re
 3. Go to **WooCommerce → Settings → VCR** and press **Connect to VCR.AM**. You sign in, choose which cash register this store should file its receipts to, and you are returned here connected — there is no key to find or copy. If you would rather use a key you already have, paste it into the **API Key** field instead and press **Save changes**.
 4. The screen then opens with a checklist of what is ready and what is not. It names the register the key belongs to — the business, the TIN, the register number — says whether its receipts are real or test, and lists anything still missing with the one next step that applies and who can take it. Work down the list.
 5. Pick the **default cashier**. The dropdown loads from your VCR account once the key is stored. If it is empty, the register has no cashier yet: add one in the VCR dashboard — owner, accountant and developer accounts can all do it — and for a one-person shop, opening the register's desk once is enough.
-6. Set a **classifier code for new catalog items**, under **Catalog**. It says what kind of thing your store sells, and it is the one answer the plugin cannot work out for you; there is a link next to the field for looking a code up. With it set, any product your register does not already have is added to its catalog as its first receipt is filed. Leave it empty and the plugin only sells what you have entered in VCR yourself, holding any other order for manual review. If your register has more than one department, pick the one new items belong to as well — that is the tax regime they will be filed under.
+6. Pick a **classifier code for new catalog items**, under **Catalog**. It says what kind of thing your store sells, and it is the one answer the plugin cannot work out for you. Type a code or a word from its name and choose from the list; only codes the tax service accepts are offered. With it set, any product your register does not already have is added to its catalog as its first receipt is filed. Leave it empty and the plugin only sells what you have entered in VCR yourself, holding any other order for manual review. If your register has more than one department, pick the one new items belong to as well — that is the tax regime they will be filed under.
 7. If you take cash on delivery, choose under **Cash on delivery** when its receipt is issued: when the order is placed (the default) or when you mark the order Completed. Orders paid online are always fiscalized the moment the payment clears.
 8. Leave the **Advanced** tab alone unless you know you need it. It holds the Base URL, for stores pointed at a staging VCR endpoint, and an **override department**, which books every line of every order under one department regardless of the department its offer was registered with. The department determines the tax regime (VAT, VAT-exempt, turnover tax, micro-enterprise) printed on the receipt, and a fiscal receipt can only be refunded and reissued, never corrected.
 
@@ -108,6 +108,8 @@ For a multi-currency store the plugin also asks this same gateway for the AMD ra
 
 **Why it is sent:** to fulfil the merchant's obligation under Armenian Tax Code Article 380.1 (HO-280-N) and Government Decision 1976-N to issue a fiscal receipt for every taxable sale through a registered electronic Cash Register (e-HDM).
 
+**Classifier search, on the settings screen:** while an administrator searches for a classifier code under **WooCommerce → Settings → VCR**, the plugin sends what they typed to this same gateway and shows the codes it answers with. Saving a code, and opening the settings screen with one saved, checks it the same way. Only the search text or the code is sent.
+
 **Problem reports, only when you send one:** the **VCR problem report** screen (and `wp vcr report --send`) can send a diagnostic report to this same gateway. It is sent only when an administrator presses **Send to VCR.AM support** on that screen, after the full report has been shown to them, or runs the command with `--send`. The plugin never sends one on its own, on a schedule, or on an error. What is sent: the text the administrator typed, the contact they entered, plugin, WordPress, WooCommerce and PHP versions, the site address, the plugin's settings without the API key, the state of the order and its receipt, and the plugin's journal of events. No customer name, email, phone number, billing address, or IP address is in it.
 
 **Where data is sent:** `https://vcr.am/api/v1/` (default; configurable in plugin settings).
@@ -125,6 +127,12 @@ The plugin keeps a journal in a table of its own in your WordPress database (`{p
 * Fiscal records issued to the SRC are subject to the statutory retention period in Armenian Tax Code Article 56 (typically 5 years). The plugin's GDPR Personal Data Eraser will retain these records on legal-obligation grounds (GDPR Article 17(3)(b)) and emit an explanatory message to the data-protection officer reviewing the request.
 
 == Changelog ==
+
+= 0.1.15 =
+* Changed: the **classifier code for new catalog items** is now picked from a list instead of typed. Type a code or a word from its name, and only codes the tax service accepts are offered. A store had typed "47", which is not a code, and its first order with a new product was refused.
+* New: the setup checklist turns red when the saved classifier code is one the tax service refuses, and names the nearest codes it accepts. A code saved by an earlier version is checked too.
+* New: an order refused because of the classifier code now says which setting to fix, and that **Fiscalize now** registers it without charging the customer again. Until now it said only "Validation failed".
+* Fixed: saving the settings while the cashier or department list could not be loaded no longer clears the cashier or department you had chosen.
 
 = 0.1.14 =
 * New: **Report a problem**. From the fiscal receipt box on an order, or from the plugin's row on the Plugins screen, the plugin shows a report of what it knows: versions, settings without the API key, the state of the order and its receipt, and its own journal of what happened. Describe what you saw and press **Send to VCR.AM support**, or copy the report or download it. Nothing is sent until you press the button, and the report holds nothing about your customer. `wp vcr report` does the same from a shell.
