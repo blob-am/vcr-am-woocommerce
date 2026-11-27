@@ -170,6 +170,7 @@ class CliCommands
         $orders = wc_get_orders([
             'limit' => $limit,
             'type' => 'shop_order',
+            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- the fiscal status lives only in order meta; an operator runs this by hand.
             'meta_query' => [
                 'relation' => 'OR',
                 ['key' => FiscalStatusMeta::META_STATUS, 'value' => FiscalStatus::Failed->value, 'compare' => '='],

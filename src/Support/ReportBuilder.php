@@ -92,16 +92,19 @@ class ReportBuilder
         try {
             $report = $this->build($order);
         } catch (StoreException $e) {
+            // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- not output: the message is logged, or escaped where it is shown (esc_html() in Support\ReportPage).
             throw new ReportUnavailable(
                 sprintf('The plugin\'s journal could not be read: %s', $e->getMessage()),
                 0,
                 $e,
             );
+            // phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
         }
 
         $json = wp_json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         if (! is_string($json)) {
+            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- not output: the message is logged, or escaped where it is shown (esc_html() in Support\ReportPage).
             throw new ReportUnavailable('The report could not be encoded as JSON: ' . json_last_error_msg());
         }
 

@@ -39,6 +39,7 @@ final class DatabaseStore implements Store
         );
 
         if ($inserted === false) {
+            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- not output: the message is logged, or escaped where it is shown (esc_html() in Support\ReportPage).
             throw new StoreException('Journal insert failed: ' . $wpdb->last_error);
         }
     }
@@ -56,6 +57,7 @@ final class DatabaseStore implements Store
         $rows = $wpdb->get_results($sql, ARRAY_A);
 
         if (! is_array($rows) || $wpdb->last_error !== '') {
+            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- not output: the message is logged, or escaped where it is shown (esc_html() in Support\ReportPage).
             throw new StoreException('Journal read failed: ' . $wpdb->last_error);
         }
 
@@ -84,6 +86,7 @@ final class DatabaseStore implements Store
         $deleted = $wpdb->query($sql);
 
         if (! is_int($deleted)) {
+            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- not output: the message is logged, or escaped where it is shown (esc_html() in Support\ReportPage).
             throw new StoreException('Journal prune failed: ' . $wpdb->last_error);
         }
 

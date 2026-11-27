@@ -7,6 +7,7 @@ namespace BlobSolutions\WooCommerceVcrAm\Admin;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\IdentityReaderFactory;
 use BlobSolutions\WooCommerceVcrAm\Net\SafeUrlValidator;
+use BlobSolutions\WooCommerceVcrAm\Request\QueryParameter;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Settings\VcrSettingsTab;
 use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
@@ -83,11 +84,7 @@ class ConnectionTester
             return;
         }
 
-        $tab = isset($_GET['tab']) && is_string($_GET['tab'])
-            ? sanitize_text_field(wp_unslash($_GET['tab']))
-            : '';
-
-        if ($tab !== VcrSettingsTab::ID) {
+        if (QueryParameter::text('tab') !== VcrSettingsTab::ID) {
             return;
         }
 

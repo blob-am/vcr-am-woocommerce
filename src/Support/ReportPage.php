@@ -234,7 +234,7 @@ final class ReportPage
     private function requestedOrderId(): ?int
     {
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only: picks which order a report is shown for; the download path verifies its nonce against this same id.
-        $raw = isset($_GET['order_id']) ? wp_unslash($_GET['order_id']) : null;
+        $raw = isset($_GET['order_id']) && is_string($_GET['order_id']) ? sanitize_text_field(wp_unslash($_GET['order_id'])) : null;
 
         return is_string($raw) && $raw !== '' && ctype_digit($raw) ? (int) $raw : null;
     }

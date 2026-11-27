@@ -11,6 +11,7 @@ use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
 use BlobSolutions\WooCommerceVcrAm\Journal\DatabaseStore;
 use BlobSolutions\WooCommerceVcrAm\Journal\Journal;
 use BlobSolutions\WooCommerceVcrAm\Logging\Logger;
+use BlobSolutions\WooCommerceVcrAm\Request\QueryParameter;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrApiException;
 use Throwable;
@@ -163,11 +164,12 @@ class ReturnHandler
      */
     private function queryValue(string $key): ?string
     {
-        if (! isset($_GET[$key]) || ! is_string($_GET[$key])) {
+        $value = QueryParameter::text($key);
+        if ($value === null) {
             return null;
         }
 
-        $value = trim(sanitize_text_field(wp_unslash($_GET[$key])));
+        $value = trim($value);
 
         return $value === '' ? null : $value;
     }

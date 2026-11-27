@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Pairing;
 
+use BlobSolutions\WooCommerceVcrAm\Request\QueryParameter;
+
 if (! defined('ABSPATH')) {
     exit;
 }
@@ -70,13 +72,10 @@ final class PairingNotices
         // No nonce to verify: this marker is put here by our own redirect and
         // decides nothing — it selects which sentence to print. Every value
         // that is not one of the four below prints nothing at all.
-        if (! isset($_GET[SettingsUrl::NOTICE_QUERY_PARAM])
-            || ! is_string($_GET[SettingsUrl::NOTICE_QUERY_PARAM])
-        ) {
+        $marker = QueryParameter::text(SettingsUrl::NOTICE_QUERY_PARAM);
+        if ($marker === null) {
             return null;
         }
-
-        $marker = sanitize_text_field(wp_unslash($_GET[SettingsUrl::NOTICE_QUERY_PARAM]));
 
         return match ($marker) {
             SettingsUrl::NOTICE_CONNECTED => [

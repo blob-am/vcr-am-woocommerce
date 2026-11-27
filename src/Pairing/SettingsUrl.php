@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BlobSolutions\WooCommerceVcrAm\Pairing;
 
+use BlobSolutions\WooCommerceVcrAm\Request\QueryParameter;
 use BlobSolutions\WooCommerceVcrAm\Settings\VcrSettingsTab;
 
 if (! defined('ABSPATH')) {
@@ -51,21 +52,12 @@ final class SettingsUrl
      */
     public static function isCurrentScreen(): bool
     {
-        return self::queryValue('page') === self::PAGE
-            && self::queryValue('tab') === self::TAB;
+        return QueryParameter::text('page') === self::PAGE
+            && QueryParameter::text('tab') === self::TAB;
     }
 
     public static function withNotice(string $notice): string
     {
         return add_query_arg(self::NOTICE_QUERY_PARAM, $notice, self::plain());
-    }
-
-    private static function queryValue(string $key): ?string
-    {
-        if (! isset($_GET[$key]) || ! is_string($_GET[$key])) {
-            return null;
-        }
-
-        return sanitize_text_field(wp_unslash($_GET[$key]));
     }
 }

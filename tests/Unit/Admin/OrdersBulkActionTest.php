@@ -11,6 +11,7 @@ use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
 
 beforeEach(function (): void {
+    Functions\when('sanitize_text_field')->returnArg();
     Functions\when('current_user_can')->justReturn(true);
     Functions\when('add_query_arg')->alias(function ($args, string $url): string {
         $sep = str_contains($url, '?') ? '&' : '?';

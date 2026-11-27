@@ -211,7 +211,7 @@ class SystemStatusReport
         // the data flow across the `is_string` narrowing, hence the
         // ignore. The cache-comment-style ignore is the documented
         // WPCS escape hatch for this exact pattern.
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is the literal output of $wpdb->prepare() above.
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- $sql is the literal output of $wpdb->prepare() above; a GROUP BY count has no WordPress API, and the status report wants the current figure.
         $results = $wpdb->get_results($sql, ARRAY_A);
         if (! is_array($results)) {
             return [];

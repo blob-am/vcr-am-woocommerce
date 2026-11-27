@@ -8,6 +8,7 @@ use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundFiscalizeNowHandler;
 use BlobSolutions\WooCommerceVcrAm\Refund\RefundStatusMeta;
+use BlobSolutions\WooCommerceVcrAm\Request\QueryParameter;
 use BlobSolutions\WooCommerceVcrAm\Support\ReportPage;
 use WC_Order;
 use WC_Order_Refund;
@@ -263,21 +264,10 @@ class OrderMetaBox
 
     private function renderNotice(): void
     {
-        if (! isset($_GET[self::NOTICE_QUERY_PARAM])) {
+        $notice = QueryParameter::text(self::NOTICE_QUERY_PARAM);
+        if ($notice === null) {
             return;
         }
-
-        // wp_unslash before any other access — WP's superglobal magic
-        // quotes are still active under some hosts. sanitize_key strips
-        // anything that isn't [A-Za-z0-9_-] so a stray slash is harmless,
-        // but the WPCS / Plugin Check rule expects unslash-then-sanitize
-        // as a uniform pattern.
-        $rawNotice = wp_unslash($_GET[self::NOTICE_QUERY_PARAM]);
-        if (! is_string($rawNotice)) {
-            return;
-        }
-
-        $notice = sanitize_key($rawNotice);
 
         $message = match ($notice) {
             'fiscalize_enqueued' => __('Fiscalisation re-queued. The next attempt will run shortly.', 'vcr-am-fiscal-receipts'),

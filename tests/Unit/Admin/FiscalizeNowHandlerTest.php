@@ -11,6 +11,7 @@ use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
 
 beforeEach(function (): void {
+    Functions\when('sanitize_text_field')->returnArg();
     Functions\when('current_user_can')->justReturn(true);
     Functions\when('check_admin_referer')->justReturn(1);
     Functions\when('admin_url')->alias(fn (string $path = '') => 'https://example.test/wp-admin/' . $path);

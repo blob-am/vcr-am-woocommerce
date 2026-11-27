@@ -50,8 +50,8 @@ class RefundFiscalizeNowHandler
     {
         // Order: nonce -> capability -> work. Mirrors FiscalizeNowHandler;
         // see that handler's comment for the rationale.
-        $refundIdRaw = isset($_POST['refund_id']) ? wp_unslash($_POST['refund_id']) : '';
-        $refundId = is_string($refundIdRaw) && $refundIdRaw !== '' && ctype_digit($refundIdRaw)
+        $refundIdRaw = isset($_POST['refund_id']) && is_string($_POST['refund_id']) ? sanitize_text_field(wp_unslash($_POST['refund_id'])) : '';
+        $refundId = $refundIdRaw !== '' && ctype_digit($refundIdRaw)
             ? (int) $refundIdRaw
             : 0;
 

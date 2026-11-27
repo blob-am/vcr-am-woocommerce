@@ -7,6 +7,7 @@ namespace BlobSolutions\WooCommerceVcrAm\Admin;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalQueue;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
+use BlobSolutions\WooCommerceVcrAm\Request\QueryParameter;
 use WC_Order;
 
 if (! defined('ABSPATH')) {
@@ -86,14 +87,12 @@ class OrdersBulkAction
             return;
         }
 
-        if (! isset($_GET['vcr_bulk_queued']) && ! isset($_GET['vcr_bulk_skipped'])) {
+        $rawQueued = QueryParameter::text('vcr_bulk_queued');
+        $rawSkipped = QueryParameter::text('vcr_bulk_skipped');
+        if ($rawQueued === null && $rawSkipped === null) {
             return;
         }
 
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended — read-only render
-        $rawQueued = isset($_GET['vcr_bulk_queued']) ? wp_unslash($_GET['vcr_bulk_queued']) : 0;
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        $rawSkipped = isset($_GET['vcr_bulk_skipped']) ? wp_unslash($_GET['vcr_bulk_skipped']) : 0;
         $queued = is_numeric($rawQueued) ? (int) $rawQueued : 0;
         $skipped = is_numeric($rawSkipped) ? (int) $rawSkipped : 0;
 

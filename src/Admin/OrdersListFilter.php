@@ -6,6 +6,7 @@ namespace BlobSolutions\WooCommerceVcrAm\Admin;
 
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatus;
 use BlobSolutions\WooCommerceVcrAm\Fiscal\FiscalStatusMeta;
+use BlobSolutions\WooCommerceVcrAm\Request\QueryParameter;
 use WP_Query;
 
 if (! defined('ABSPATH')) {
@@ -75,9 +76,7 @@ class OrdersListFilter
      */
     public function renderLegacyDropdown(): void
     {
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended — read-only screen routing
-        $postTypeRaw = isset($_GET['post_type']) ? wp_unslash($_GET['post_type']) : '';
-        if (! is_string($postTypeRaw) || $postTypeRaw !== 'shop_order') {
+        if (QueryParameter::text('post_type') !== 'shop_order') {
             return;
         }
 
@@ -115,6 +114,7 @@ class OrdersListFilter
             ? $argsCleaned['meta_query']
             : [];
 
+        // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- the filter is a fiscal status, which lives only in order meta.
         $argsCleaned['meta_query'] = $this->mergeMetaQuery($existingMq, $selection);
 
         return $argsCleaned;
@@ -158,10 +158,7 @@ class OrdersListFilter
      */
     private function currentSelection(): string
     {
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        $raw = isset($_GET[self::QUERY_PARAM]) && is_string($_GET[self::QUERY_PARAM])
-            ? sanitize_text_field(wp_unslash($_GET[self::QUERY_PARAM]))
-            : '';
+        $raw = QueryParameter::text(self::QUERY_PARAM) ?? '';
 
         if ($raw === '') {
             return '';

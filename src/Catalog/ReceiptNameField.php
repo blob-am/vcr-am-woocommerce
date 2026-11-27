@@ -79,7 +79,9 @@ final class ReceiptNameField
         // hook fires, and re-checking it here would be checking a nonce we did
         // not issue.
         // phpcs:ignore WordPress.Security.NonceVerification.Missing
-        $raw = $_POST[ReceiptName::META_KEY] ?? null;
+        $raw = isset($_POST[ReceiptName::META_KEY]) && is_string($_POST[ReceiptName::META_KEY])
+            ? sanitize_text_field(wp_unslash($_POST[ReceiptName::META_KEY])) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            : null;
 
         $this->store((int) $postId, $this->clean($raw));
     }
@@ -116,7 +118,12 @@ final class ReceiptNameField
         }
 
         // phpcs:ignore WordPress.Security.NonceVerification.Missing
-        $submitted = $_POST[ReceiptName::META_KEY] ?? null;
+        if (! isset($_POST[ReceiptName::META_KEY]) || ! is_array($_POST[ReceiptName::META_KEY])) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        $submitted = map_deep(wp_unslash($_POST[ReceiptName::META_KEY]), 'sanitize_text_field');
         if (! is_array($submitted)) {
             return;
         }
@@ -192,7 +199,7 @@ final class ReceiptNameField
             return null;
         }
 
-        return trim(sanitize_text_field(wp_unslash($submitted)));
+        return trim($submitted);
     }
 
     /**

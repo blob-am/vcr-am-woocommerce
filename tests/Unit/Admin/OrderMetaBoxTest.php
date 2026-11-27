@@ -17,7 +17,7 @@ beforeEach(function (): void {
 
         return '';
     });
-    Functions\when('sanitize_key')->returnArg();
+    Functions\when('sanitize_text_field')->returnArg();
 
     $_GET = [];
 });

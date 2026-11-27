@@ -8,6 +8,9 @@ use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
 
 beforeEach(function (): void {
+    Functions\when('map_deep')->alias(static function (mixed $value, callable $callback): mixed {
+        return is_array($value) ? array_map(static fn (mixed $item): mixed => is_array($item) ? $item : $callback($item), $value) : $callback($value);
+    });
     Functions\when('sanitize_text_field')->returnArg();
     Functions\when('wp_unslash')->returnArg();
     // Nothing stored unless a test seeds it; a save compares before writing.

@@ -78,20 +78,23 @@ final class SendHandler
     private function postedOrderId(): ?int
     {
         // phpcs:ignore WordPress.Security.NonceVerification.Missing -- the nonce is bound to this id and is verified by the caller right after reading it.
-        $raw = isset($_POST['order_id']) ? wp_unslash($_POST['order_id']) : null;
+        $raw = isset($_POST['order_id']) && is_string($_POST['order_id']) ? sanitize_text_field(wp_unslash($_POST['order_id'])) : null;
 
         return is_string($raw) && $raw !== '' && ctype_digit($raw) ? (int) $raw : null;
     }
 
     private function postedText(string $field, bool $multiline): string
     {
-        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- handle() verifies the nonce before calling this.
-        $raw = isset($_POST[$field]) ? wp_unslash($_POST[$field]) : '';
-
-        if (! is_string($raw)) {
+        // phpcs:disable WordPress.Security.NonceVerification.Missing -- handle() verifies the nonce before calling this.
+        if (! isset($_POST[$field]) || ! is_string($_POST[$field])) {
             return '';
         }
 
-        return trim($multiline ? sanitize_textarea_field($raw) : sanitize_text_field($raw));
+        $clean = $multiline
+            ? sanitize_textarea_field(wp_unslash($_POST[$field]))
+            : sanitize_text_field(wp_unslash($_POST[$field]));
+        // phpcs:enable WordPress.Security.NonceVerification.Missing
+
+        return trim($clean);
     }
 }

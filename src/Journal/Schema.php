@@ -64,6 +64,7 @@ final class Schema
 
         // Stamped only once the table answers, so a host that refused the
         // CREATE is asked again on the next request instead of never.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- asks whether the plugin's own table exists; WordPress has no API for it, and a cached answer would defeat the check.
         $found = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like(self::tableName($wpdb))));
 
         if ($found === self::tableName($wpdb)) {

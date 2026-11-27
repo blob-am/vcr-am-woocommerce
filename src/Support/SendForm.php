@@ -84,23 +84,23 @@ final class SendForm
         printf('<input type="hidden" name="action" value="%s" />', esc_attr(SendHandler::ACTION));
 
         if ($orderId !== null) {
-            printf('<input type="hidden" name="order_id" value="%d" />', $orderId);
+            printf('<input type="hidden" name="order_id" value="%s" />', esc_attr((string) $orderId));
         }
 
         wp_nonce_field(SendHandler::NONCE_ACTION . '_' . ($orderId ?? 0));
 
         printf(
             '<p><label for="vcr-report-message"><strong>%s</strong></label><br />'
-            . '<textarea id="vcr-report-message" name="vcr_report_message" rows="4" class="large-text" required maxlength="%d"></textarea></p>',
+            . '<textarea id="vcr-report-message" name="vcr_report_message" rows="4" class="large-text" required maxlength="%s"></textarea></p>',
             esc_html(__('What happened, and what did you expect?', 'vcr-am-fiscal-receipts')),
-            SupportReportInput::MAX_MESSAGE_LENGTH,
+            esc_attr((string) SupportReportInput::MAX_MESSAGE_LENGTH),
         );
 
         printf(
             '<p><label for="vcr-report-contact"><strong>%s</strong></label><br />'
-            . '<input type="text" id="vcr-report-contact" name="vcr_report_contact" class="regular-text" maxlength="%d" value="%s" /></p>',
+            . '<input type="text" id="vcr-report-contact" name="vcr_report_contact" class="regular-text" maxlength="%s" value="%s" /></p>',
             esc_html(__('Where should we answer? (email, phone or Telegram)', 'vcr-am-fiscal-receipts')),
-            SupportReportInput::MAX_CONTACT_LENGTH,
+            esc_attr((string) SupportReportInput::MAX_CONTACT_LENGTH),
             esc_attr(wp_get_current_user()->user_email),
         );
 

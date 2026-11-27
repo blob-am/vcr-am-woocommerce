@@ -59,8 +59,8 @@ class FiscalizeNowHandler
         // (WC convention; matches `WC_Admin::handle_*` flows) so an
         // attacker who somehow bypasses the cap check can't hit
         // anything beyond a 403 from check_admin_referer's die().
-        $orderIdRaw = isset($_POST['order_id']) ? wp_unslash($_POST['order_id']) : '';
-        $orderId = is_string($orderIdRaw) && $orderIdRaw !== '' && ctype_digit($orderIdRaw)
+        $orderIdRaw = isset($_POST['order_id']) && is_string($_POST['order_id']) ? sanitize_text_field(wp_unslash($_POST['order_id'])) : '';
+        $orderId = $orderIdRaw !== '' && ctype_digit($orderIdRaw)
             ? (int) $orderIdRaw
             : 0;
 
