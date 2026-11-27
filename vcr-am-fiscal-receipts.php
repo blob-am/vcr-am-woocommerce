@@ -9,7 +9,6 @@ declare(strict_types=1);
  * Description:       Issue Armenian fiscal receipts (eHDM) to the State Revenue Committee directly from WooCommerce orders. Multi-currency + refunds.
  * Version:           0.1.15
  * Requires at least: 6.7
- * Tested up to:      7.1
  * Requires PHP:      8.3
  * Requires Plugins:  woocommerce
  * WC requires at least: 9.4

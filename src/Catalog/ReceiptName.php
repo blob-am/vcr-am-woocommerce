@@ -179,7 +179,11 @@ class ReceiptName
 
     private function firstDisallowedCharacter(string $name): string
     {
-        if (preg_match(self::DISALLOWED_REGEX, $name, $matches) === 1) {
+        // mb_ord() is PHP's own (ext-mbstring, which composer.json requires).
+        // Plugin Check attributes it to WordPress 7.1, which only added a
+        // polyfill, and passes a call only behind function_exists(). Without
+        // the extension the name still gets refused; it just cannot be named.
+        if (preg_match(self::DISALLOWED_REGEX, $name, $matches) === 1 && function_exists('mb_ord')) {
             return sprintf('U+%04X', mb_ord($matches[0], 'UTF-8'));
         }
 
