@@ -56,6 +56,7 @@ vcr-am-woocommerce/
 ├── vcr-am-fiscal-receipts.php   ← plugin entry (matches the WP.org slug)
 ├── composer.json                 ← deps + Strauss config + scripts
 ├── phpstan.neon.dist             ← static analysis (level max + strict rules)
+├── phpcs.xml.dist                ← WordPress security + PHP compatibility sniffs (what WooCommerce QIT checks)
 ├── pint.json                     ← code style (Pint, PSR-12 + extras)
 ├── phpunit.xml.dist              ← test harness
 ├── readme.txt                    ← WordPress.org plugin directory readme
@@ -76,6 +77,7 @@ vcr-am-woocommerce/
 │   ├── Privacy/                  ← GDPR exporter and eraser
 │   ├── Receipt/                  ← customer-facing receipt link
 │   ├── Refund/                   ← the refund pipeline, parallel to Fiscal/
+│   ├── Request/                  ← display-only reads of query parameters
 │   ├── Settings/                 ← the WooCommerce settings tab (General + Advanced)
 │   ├── Update/                   ← where a newer release is announced from, and what the changelog modal shows
 │   └── VcrClientFactory.php      ← builds the vendored SDK client from settings
@@ -89,9 +91,11 @@ vcr-am-woocommerce/
 ## Local development
 
 ```bash
-composer check          # full local CI: format + phpstan + tests + translations
+composer check          # full local CI: format + phpstan + phpcs + tests + translations
 composer test           # Pest test suite
 composer phpstan        # static analysis
+composer phpcs          # WordPress security + PHP compatibility sniffs
+bin/plugin-check.sh     # WordPress.org Plugin Check against the plugin in a running wp-env
 composer format         # apply Pint code style fixes
 composer format:check   # verify code style without writing
 composer strauss        # re-run Strauss (auto-runs after install/update)
@@ -146,6 +150,7 @@ Layout:
 | `.wp-env.json` | wp-env config — pins PHP 8.3, mounts `build/e2e/` + the mu-plugin + the fixture scripts |
 | `tests/E2E/scripts/setup-env.mjs` | Installs and activates WooCommerce, sets the order datastore, activates the plugin. Runs as `pretest:e2e` |
 | `tests/E2E/mu-plugins/vcr-e2e-bootstrap.php` | mu-plugin loaded inside WP — points the plugin at the mock VCR |
+| `tests/E2E/mu-plugins/vcr-e2e-hostile-hooks.php` | Off unless `hook-resilience.spec.mjs` turns it on: forces the hook values WooCommerce QIT's activation test forces, so a strict-typed callback of ours fails here first |
 | `tests/E2E/mock-vcr-server.mjs` | Node HTTP server on `:9876` answering `/api/v1/whoami`, `/api/v1/cashiers`, `/api/v1/sales`, `/api/v1/sales/refund`, `/api/v1/exchange-rate`. Programmable per test via `/__test/plan` |
 | `tests/E2E/helpers/wp-cli.mjs` | `wp ...` runner, plus the storage-agnostic order-meta helpers |
 | `tests/E2E/helpers/mock-vcr.mjs` | Test-side client for `/__test/log` (assertions) and `/__test/plan` (scenario programming) |

@@ -133,6 +133,13 @@ jobs:
           WC_ORDER_STORAGE: ${{ matrix.storage }}
         run: npm run test:e2e
 
+      # WordPress.org's Plugin Check, which WooCommerce QIT also offers as a
+      # test. Once per matrix row of WP/WC: the order datastore does not
+      # change what it reads. bin/plugin-check.sh says what it excludes.
+      - name: Plugin Check
+        if: matrix.storage == 'hpos'
+        run: bin/plugin-check.sh
+
       - name: Capture wp-env logs on failure
         if: failure()
         # --watch=false so this dumps a snapshot and exits; per-step

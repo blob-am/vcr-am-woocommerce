@@ -1,0 +1,24 @@
+{
+    "name": "blob-solutions/woocommerce-vcr-am-phpcs-bin",
+    "description": "Isolated composer-bin context for PHPCS with the WordPress and PHPCompatibility sniffs, which reproduce WooCommerce QIT's Security and PHPCompatibility tests. Versions are exact because this context has no committed lock and a new sniff release would otherwise fail CI on a tree that did not change. PHPCompatibility 10 is still alpha, but it is the line that knows PHP 8.x, and QIT itself runs its develop branch.",
+    "type": "project",
+    "require": {
+        "php": "^8.3",
+        "dealerdirect/phpcodesniffer-composer-installer": "1.2.1",
+        "phpcompatibility/php-compatibility": "10.0.0-alpha2",
+        "phpcompatibility/phpcompatibility-wp": "3.0.0-alpha2",
+        "squizlabs/php_codesniffer": "3.13.6",
+        "wp-coding-standards/wpcs": "3.4.1"
+    },
+    "minimum-stability": "alpha",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "platform": {
+            "php": "8.3.0"
+        },
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
+}

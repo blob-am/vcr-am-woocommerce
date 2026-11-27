@@ -38,6 +38,21 @@ jobs:
       - name: Audit the lock file
         run: composer audit --locked
 
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The whole history: a key deleted in a later commit is still in
+          # every clone, which is what WooCommerce QIT's Security test checks.
+          fetch-depth: 0
+      # The binary through its container rather than gitleaks-action, which
+      # wants a licence key for repositories an organisation owns.
+      - name: Scan the history for secrets
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --no-banner --redact --verbose
+
   lint:
     name: Pint (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
@@ -68,6 +83,36 @@ jobs:
         run: composer install --prefer-dist --no-interaction --no-progress
       - name: Run Pint
         run: composer format:check
+
+  phpcs:
+    name: PHPCS (WordPress security + PHP compatibility)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-8.3-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-8.3-
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      # The sniffs behind WooCommerce QIT's Security and PHPCompatibility
+      # tests; phpcs.xml.dist says which and why. Warnings fail the job too,
+      # so an exemption is a commented phpcs:ignore, not a silent pass.
+      - name: Run PHPCS
+        run: composer phpcs -- --warning-severity=1
 
   phpstan:
     name: PHPStan (PHP ${{ matrix.php }})
