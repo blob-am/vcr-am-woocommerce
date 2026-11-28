@@ -7,9 +7,9 @@ namespace BlobSolutions\WooCommerceVcrAm\Admin;
 use BlobSolutions\WooCommerceVcrAm\Catalog\CashierListerFactory;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\IdentityReaderFactory;
 use BlobSolutions\WooCommerceVcrAm\Net\SafeUrlValidator;
+use BlobSolutions\WooCommerceVcrAm\Pairing\SettingsUrl;
 use BlobSolutions\WooCommerceVcrAm\Request\QueryParameter;
 use BlobSolutions\WooCommerceVcrAm\Settings\KeyStore;
-use BlobSolutions\WooCommerceVcrAm\Settings\VcrSettingsTab;
 use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
 use BlobSolutions\WooCommerceVcrAm\Vendor\BlobSolutions\VcrAm\Exception\VcrException;
 use Throwable;
@@ -84,7 +84,7 @@ class ConnectionTester
             return;
         }
 
-        if (QueryParameter::text('tab') !== VcrSettingsTab::ID) {
+        if (QueryParameter::text('tab') !== SettingsUrl::TAB) {
             return;
         }
 

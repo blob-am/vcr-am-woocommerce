@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BlobSolutions\WooCommerceVcrAm\Pairing;
 
 use BlobSolutions\WooCommerceVcrAm\Request\QueryParameter;
-use BlobSolutions\WooCommerceVcrAm\Settings\VcrSettingsTab;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -24,8 +23,17 @@ final class SettingsUrl
     /** WooCommerce's settings page, which hosts every tab. */
     private const PAGE = 'wc-settings';
 
-    /** Our tab on it, named by the class that registers it. */
-    private const TAB = VcrSettingsTab::ID;
+    /**
+     * Our tab on it, and the id Settings\VcrSettingsTab registers it under.
+     *
+     * Defined here and not on that class, because naming a constant of a
+     * class loads the class, and VcrSettingsTab extends WC_Settings_Page,
+     * which WooCommerce 9.4 has not loaded outside its own settings screen.
+     * Read through VcrSettingsTab, this id took down the Plugins screen (the
+     * action link) and the pairing redirect there with "Class
+     * WC_Settings_Page not found" (WooCommerce 9.4.5, E2E floor row).
+     */
+    public const TAB = 'vcr';
 
     /**
      * Marks a request as carrying a pairing outcome, so the notice survives

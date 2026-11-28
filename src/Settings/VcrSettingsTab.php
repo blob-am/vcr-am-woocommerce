@@ -11,6 +11,7 @@ use BlobSolutions\WooCommerceVcrAm\Catalog\DepartmentCatalog;
 use BlobSolutions\WooCommerceVcrAm\Configuration;
 use BlobSolutions\WooCommerceVcrAm\Diagnostics\ConnectionProbe;
 use BlobSolutions\WooCommerceVcrAm\Net\SafeUrlValidator;
+use BlobSolutions\WooCommerceVcrAm\Pairing\SettingsUrl;
 use WC_Settings_Page;
 
 if (! defined('ABSPATH')) {
@@ -27,20 +28,14 @@ if (! defined('ABSPATH')) {
  * {@see AdvancedFields}, and the checklist above them in
  * {@see \BlobSolutions\WooCommerceVcrAm\Admin\ReadinessPanel}.
  *
- * Loaded only when WooCommerce is active (gated by
- * `Plugin::onPluginsLoaded`), so it's safe to extend `WC_Settings_Page`
- * directly without a class-exists guard at definition time.
+ * Loaded only from WooCommerce's `woocommerce_get_settings_pages` filter
+ * (see SettingsPage), where `WC_Settings_Page` is defined. Naming anything on
+ * this class from elsewhere loads it, and on WooCommerce 9.4 that is a fatal
+ * error outside the settings screen: what other code needs to know about
+ * the tab lives on Pairing\SettingsUrl.
  */
 final class VcrSettingsTab extends WC_Settings_Page
 {
-    /**
-     * The tab's own id, as WooCommerce knows it. Public because three other
-     * places have to recognise this screen — the settings link, the script
-     * enqueue and the pairing redirect — and each of them used to spell it out
-     * again.
-     */
-    public const ID = 'vcr';
-
     public const SECTION_ADVANCED = 'advanced';
 
     /** Why the classifier code just submitted was not stored, for the notice. */
@@ -56,7 +51,9 @@ final class VcrSettingsTab extends WC_Settings_Page
         private readonly Directory $classifiers,
         private readonly SafeUrlValidator $urlValidator = new SafeUrlValidator(),
     ) {
-        $this->id = self::ID;
+        // The id lives on SettingsUrl, which loads without WooCommerce's
+        // classes; its docblock says why.
+        $this->id = SettingsUrl::TAB;
         $this->label = __('VCR', 'vcr-am-fiscal-receipts');
 
         parent::__construct();

@@ -6,8 +6,8 @@ namespace BlobSolutions\WooCommerceVcrAm\Admin;
 
 use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Directory;
 use BlobSolutions\WooCommerceVcrAm\Catalog\Classifier\Entry;
+use BlobSolutions\WooCommerceVcrAm\Pairing\SettingsUrl;
 use BlobSolutions\WooCommerceVcrAm\Request\QueryParameter;
-use BlobSolutions\WooCommerceVcrAm\Settings\VcrSettingsTab;
 use BlobSolutions\WooCommerceVcrAm\VcrClientFactory;
 use Throwable;
 
@@ -63,7 +63,7 @@ class ClassifierSearchEndpoint
             return;
         }
 
-        if (QueryParameter::text('tab') !== VcrSettingsTab::ID) {
+        if (QueryParameter::text('tab') !== SettingsUrl::TAB) {
             return;
         }
 
