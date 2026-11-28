@@ -66,7 +66,7 @@ final class ReadinessPanel
         }
 
         return sprintf(
-            '<div class="notice %s inline"><ul>%s</ul></div>',
+            '<div class="notice %s inline vcr-readiness"><ul>%s</ul></div>',
             esc_attr($worst->noticeClass()),
             $items,
         );

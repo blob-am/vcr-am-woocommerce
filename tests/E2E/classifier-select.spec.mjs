@@ -67,7 +67,9 @@ test.describe('classifier code for new catalog items', () => {
 
             await page.goto(SETTINGS_PATH);
 
-            const checklist = page.locator('.notice.inline').first();
+            // By its own class: WordPress puts an inline update nag of its own
+            // above it whenever core is behind, as on the floor matrix row.
+            const checklist = page.locator('.vcr-readiness');
             await expect(checklist).toHaveClass(/notice-error/);
             await expect(checklist).toContainText('Classifier code 47 is not one the tax service accepts');
             await expect(checklist).toContainText('47.00 — Retail trade services');
@@ -92,7 +94,7 @@ test.describe('classifier code for new catalog items', () => {
             await page.waitForLoadState('load');
 
             expect(await storedCode()).toBe('6109');
-            await expect(page.locator('.notice.inline').first()).toContainText('6109 — T-shirts');
+            await expect(page.locator('.vcr-readiness')).toContainText('6109 — T-shirts');
 
             await wpCli(['option', 'delete', 'vcr_catalog_department_id']);
         });

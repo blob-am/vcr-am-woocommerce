@@ -22,25 +22,42 @@ jobs:
     timeout-minutes: 25
     strategy:
       fail-fast: false
+      # Listed row by row rather than crossed: a full cross product is
+      # mostly combinations that cannot exist (WooCommerce 11 needs
+      # WordPress 7.0) or that say nothing a neighbouring row does not.
+      #   - the newest of everything, on both order datastores;
+      #   - every PHP the plugin allows, since a deprecation or removal
+      #     lands in one PHP release and a merchant's host picks which;
+      #   - the floor the headers declare (Requires at least: 6.7, WC
+      #     requires at least: 9.4), on both datastores, at the newest
+      #     patch of each, which is what a store pinned there would run;
+      #   - the next WooCommerce, pre-releases included.
+      # Order datastores: HPOS is the default for stores created since WC
+      # 8.2, legacy post storage is what every older store runs until it
+      # migrates, and the plugin reads and writes order meta on both.
+      # `wp` names a WordPress/WordPress ref; `wc` is read by
+      # tests/E2E/helpers/woocommerce-release.mjs.
       matrix:
-        # Start narrow. Once stable, broaden the matrix per
-        # `WP/WC version policy` in the README.
-        php: ['8.3']
-        wp: ['latest']
-        wc: ['latest']
-        # Both order datastores are live in the wild: HPOS is the default
-        # for stores created since WC 8.2, legacy post storage is what
-        # every older store runs until it migrates. The plugin reads and
-        # writes order meta on both, so both get exercised.
-        storage: ['hpos', 'posts']
+        include:
+          - { php: '8.3', wp: 'latest', wc: 'latest', storage: 'hpos', plugin-check: true }
+          - { php: '8.3', wp: 'latest', wc: 'latest', storage: 'posts' }
+          - { php: '8.4', wp: 'latest', wc: 'latest', storage: 'hpos' }
+          - { php: '8.5', wp: 'latest', wc: 'latest', storage: 'hpos' }
+          - { php: '8.6', wp: 'latest', wc: 'latest', storage: 'hpos' }
+          - { php: '8.3', wp: '6.7-branch', wc: '9.4.5', storage: 'hpos' }
+          - { php: '8.3', wp: '6.7-branch', wc: '9.4.5', storage: 'posts' }
+          - { php: '8.3', wp: 'latest', wc: 'next', storage: 'hpos' }
 
     steps:
       - uses: actions/checkout@v4
 
+      # The runner's PHP only builds the ZIP, so it is the release
+      # workflow's 8.3 on every row: each row tests the artefact a release
+      # would publish. `matrix.php` is the PHP the site runs, set below.
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php }}
+          php-version: '8.3'
           coverage: none
           tools: composer:v2
 
@@ -54,9 +71,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.composer/cache
-          key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
+          key: ${{ runner.os }}-composer-8.3-${{ hashFiles('**/composer.json') }}
           restore-keys: |
-            ${{ runner.os }}-composer-${{ matrix.php }}-
+            ${{ runner.os }}-composer-8.3-
 
       - name: Install Composer deps (also runs Strauss → vendor-prefixed/)
         run: composer install --prefer-dist --no-interaction --no-progress
@@ -67,21 +84,25 @@ jobs:
       - name: Install Playwright browsers
         run: npm run test:e2e:install
 
-      - name: Override .wp-env.json with the matrix WordPress version
-        # Only patch for a non-default version — the checked-in
-        # .wp-env.json already targets latest. The WooCommerce version is
-        # NOT set here: it is installed by tests/E2E/scripts/setup-env.mjs
-        # via `wp plugin install`, which is the only way to get the
-        # canonical `woocommerce` plugin directory that `Requires Plugins`
-        # resolves against.
-        if: matrix.wp != 'latest'
+      - name: Point wp-env at the matrix PHP and WordPress
+        # `phpVersion` picks the image the site runs in. wp-env merges this file over the
+        # checked-in .wp-env.json, which targets PHP 8.3 and the newest
+        # WordPress. WooCommerce is NOT set here: it is installed by
+        # tests/E2E/scripts/setup-env.mjs via `wp plugin install`, which is
+        # the only way to get the canonical `woocommerce` plugin directory
+        # that `Requires Plugins` resolves against.
+        env:
+          MATRIX_PHP: ${{ matrix.php }}
+          MATRIX_WP: ${{ matrix.wp }}
         run: |
           node -e "
-            const fs = require('fs');
-            const c = JSON.parse(fs.readFileSync('.wp-env.json', 'utf8'));
-            c.core = 'WordPress/WordPress#' + '${{ matrix.wp }}';
-            fs.writeFileSync('.wp-env.override.json', JSON.stringify(c, null, 2));
+            const override = { phpVersion: process.env.MATRIX_PHP };
+            if (process.env.MATRIX_WP !== 'latest') {
+              override.core = 'WordPress/WordPress#' + process.env.MATRIX_WP;
+            }
+            require('fs').writeFileSync('.wp-env.override.json', JSON.stringify(override, null, 2));
           "
+          cat .wp-env.override.json
 
       - name: Start wp-env
         # `preenv:start` builds the distributable ZIP and unpacks it into
@@ -134,10 +155,11 @@ jobs:
         run: npm run test:e2e
 
       # WordPress.org's Plugin Check, which WooCommerce QIT also offers as a
-      # test. Once per matrix row of WP/WC: the order datastore does not
-      # change what it reads. bin/plugin-check.sh says what it excludes.
+      # test. Once, on the newest WordPress: it reads the plugin's files, and
+      # neither the datastore nor the WooCommerce version changes them.
+      # bin/plugin-check.sh says what it excludes.
       - name: Plugin Check
-        if: matrix.storage == 'hpos'
+        if: matrix.plugin-check
         run: bin/plugin-check.sh
 
       - name: Capture wp-env logs on failure

@@ -20,6 +20,14 @@ import { fileURLToPath } from 'node:url';
 const WP_ENV_BIN = fileURLToPath(new URL('../../../node_modules/.bin/wp-env', import.meta.url));
 
 /**
+ * `wp-env run cli -- wp ...`, with the `--`: without it wp-env's own option
+ * parser takes any flag it also knows, and `--version=9.4.5` vanished from
+ * `wp plugin install` that way, installing the newest WooCommerce while the
+ * log said a pinned one was asked for.
+ */
+const RUN_IN_CLI = ['run', 'cli', '--', 'wp'];
+
+/**
  * Run a single `wp ...` command inside the wp-env container.
  *
  * @param {string[]} args - Args after `wp` (e.g. `['option', 'get', 'siteurl']`)
@@ -28,7 +36,7 @@ const WP_ENV_BIN = fileURLToPath(new URL('../../../node_modules/.bin/wp-env', im
  */
 export async function wpCli(args, opts = {}) {
     return new Promise((resolve, reject) => {
-        const child = spawn(WP_ENV_BIN, ['run', 'cli', 'wp', ...args], {
+        const child = spawn(WP_ENV_BIN, [...RUN_IN_CLI, ...args], {
             cwd: process.cwd(),
             env: process.env,
         });
@@ -68,7 +76,7 @@ export async function wpCli(args, opts = {}) {
  */
 export async function wpCliAllowFailure(args) {
     return new Promise((resolve, reject) => {
-        const child = spawn(WP_ENV_BIN, ['run', 'cli', 'wp', ...args], {
+        const child = spawn(WP_ENV_BIN, [...RUN_IN_CLI, ...args], {
             cwd: process.cwd(),
             env: process.env,
         });

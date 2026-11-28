@@ -133,7 +133,7 @@ Two environment variables select what the suite runs against:
 | Variable | Default | What |
 | --- | --- | --- |
 | `WC_ORDER_STORAGE` | `hpos` | `hpos` or `posts` — which table WooCommerce treats as authoritative for orders. CI runs both. |
-| `WC_VERSION` | `latest` | WooCommerce version to install. |
+| `WC_VERSION` | `latest` | WooCommerce to install: `latest`, `next` (the newest release, pre-releases included) or a release such as `9.4.5`. |
 
 ```bash
 WC_ORDER_STORAGE=posts npm run test:e2e   # legacy post storage
@@ -163,13 +163,17 @@ Order meta is read through WooCommerce's order CRUD (`tests/E2E/scripts/read-ord
 
 #### WP/WC version policy
 
-CI matrix today is `php 8.3 × WP latest × WC latest`, run against both order datastores. Once the suite proves stable on `main` for a couple of weeks, broaden to:
+The E2E matrix in `.github/workflows/e2e.yml` lists its rows one by one; the comment above it says why each is there. In short: the newest WordPress and WooCommerce on both order datastores, every PHP from the declared 8.3 to the newest, the declared floor (WordPress 6.7, WooCommerce 9.4) on both datastores, and the next WooCommerce. Pest runs on every PHP from 8.3 up.
 
-- PHP: 8.3, 8.4
-- WP: 6.7 (the declared floor), latest
-- WC: 9.4, latest, beta
+Run a row locally by writing it into `.wp-env.override.json` (gitignored), restarting wp-env, and passing the WooCommerce version:
 
-Matrix combos run in parallel. The narrow start lets us iterate on flake without burning CI minutes; expand by editing the `matrix:` block in `.github/workflows/e2e.yml`.
+```bash
+echo '{"phpVersion": "8.3", "core": "WordPress/WordPress#6.7-branch"}' > .wp-env.override.json
+npm run env:stop && npm run env:start
+WC_VERSION=9.4.5 npm run test:e2e
+```
+
+When a `Requires` header moves, move the floor rows with it.
 
 ## Architecture principles
 

@@ -15,9 +15,25 @@ import { evalFile, wpCli } from './helpers/wp-cli.mjs';
  * nothing failing anywhere.
  *
  * So this runs against the built artefact and asks WordPress itself.
+ *
+ * Both groups skip on WordPress before 6.8, which has no such lookup for a
+ * plugin outside WordPress.org: there the interface is English by design
+ * (see onPluginsLoaded in src/Plugin.php), and the E2E floor row runs 6.7.
  */
+
+/** Skip the enclosing group when WordPress predates the Domain Path lookup. */
+async function skipBeforeDomainPathLookup() {
+    const version = await wpCli(['core', 'version']);
+    const [major, minor] = version.split('.').map(Number);
+    const hasLookup = major > 6 || (major === 6 && minor >= 8);
+
+    test.skip(! hasLookup, `WordPress ${version} loads no translations from a plugin's Domain Path (6.8+ does)`);
+}
+
 test.describe('translations shipped in the ZIP', () => {
     test.beforeAll(async () => {
+        await skipBeforeDomainPathLookup();
+
         // A locale WordPress has no core files for cannot be switched to,
         // which is also the state of a store that never chose the language.
         await wpCli(['language', 'core', 'install', 'ru_RU', 'hy']);
@@ -63,6 +79,8 @@ test.describe('settings screen on a Russian store', () => {
     let noticesBefore;
 
     test.beforeAll(async ({ browser }) => {
+        await skipBeforeDomainPathLookup();
+
         await wpCli(['language', 'core', 'install', 'ru_RU']);
         noticesBefore = Number(await evalFile('count-early-translation-notices.php'));
         await wpCli(['site', 'switch-language', 'ru_RU']);

@@ -23,7 +23,9 @@
  *
  * Environment:
  *
- *   WC_VERSION         WooCommerce version to install ("latest" by default).
+ *   WC_VERSION         WooCommerce to install: "latest" (default), "next"
+ *                      or a release such as 9.4.5. See
+ *                      helpers/woocommerce-release.mjs.
  *   WC_ORDER_STORAGE   "hpos" (default) or "posts" — which table is
  *                      authoritative for orders. Both are live in the wild:
  *                      HPOS is the default for new stores since WC 8.2,
@@ -31,6 +33,7 @@
  *                      still runs until it migrates.
  */
 
+import { resolveWooCommerceVersion } from '../helpers/woocommerce-release.mjs';
 import { evalFile, wpCli } from '../helpers/wp-cli.mjs';
 
 const WC_VERSION = process.env.WC_VERSION ?? 'latest';
@@ -48,17 +51,23 @@ async function reportWordPressVersion() {
 
 async function installWooCommerce() {
     const args = ['plugin', 'install', 'woocommerce', '--activate'];
+    const version = await resolveWooCommerceVersion(WC_VERSION);
 
-    if (WC_VERSION !== 'latest') {
+    if (version !== null) {
         // --force so a container carrying a different version from a previous
         // matrix leg is overwritten rather than silently kept.
-        args.push(`--version=${WC_VERSION}`, '--force');
+        args.push(`--version=${version}`, '--force');
     }
 
     await wpCli(args);
 
-    const version = await wpCli(['plugin', 'get', 'woocommerce', '--field=version']);
-    console.log(`  WooCommerce ${version} installed and active`);
+    const installed = await wpCli(['plugin', 'get', 'woocommerce', '--field=version']);
+
+    if (version !== null && installed !== version) {
+        throw new Error(`asked for WooCommerce ${version}, ${installed} is installed`);
+    }
+
+    console.log(`  WooCommerce ${installed} installed and active (asked for "${WC_VERSION}")`);
 }
 
 /**

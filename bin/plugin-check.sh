@@ -23,9 +23,17 @@ SLUG="vcr-am-fiscal-receipts"
 PLUGIN_CHECK_VERSION="2.2.0"
 WP_ENV="$(dirname "$0")/../node_modules/.bin/wp-env"
 
-"$WP_ENV" run cli wp plugin install plugin-check --version="$PLUGIN_CHECK_VERSION" --force --activate >/dev/null
+# `--` keeps wp-env from taking `--version` as its own flag, which dropped
+# the pin silently before.
+"$WP_ENV" run cli -- wp plugin install plugin-check --version="$PLUGIN_CHECK_VERSION" --force --activate >/dev/null
 
-report="$("$WP_ENV" run cli wp plugin check "$SLUG" --exclude-checks=plugin_updater --format=csv)"
+installed="$("$WP_ENV" run cli -- wp plugin get plugin-check --field=version)"
+if [ "$installed" != "$PLUGIN_CHECK_VERSION" ]; then
+    echo "Plugin Check $installed installed, $PLUGIN_CHECK_VERSION asked for" >&2
+    exit 1
+fi
+
+report="$("$WP_ENV" run cli -- wp plugin check "$SLUG" --exclude-checks=plugin_updater --format=csv)"
 
 errors="$(grep -c ',ERROR,' <<<"$report" || true)"
 warnings="$(grep -c ',WARNING,' <<<"$report" || true)"
